@@ -6,8 +6,9 @@ import { makeNoise } from './voices.js';
 import { Deck } from './deck.js';
 import { Strip, faderGain } from './strip.js';
 import { SCALES } from '../music/emotion.js';
+import { PROFILE } from '../core/profile.js';
 
-const LOOKAHEAD = 0.12; // s
+const LOOKAHEAD = PROFILE.lookahead; // s (más en móvil: aguanta tirones del hilo principal)
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const scaleIdx = (v) => Math.max(0, Math.min(SCALES.length - 1, Math.floor(((v + 1) / 2) * SCALES.length)));
 
@@ -19,6 +20,7 @@ export class Engine {
     this.rootMidi = 28 + Math.floor(Math.random() * 6); // E1..A1: el kick se afina aquí
     this.scaleI = 1;
     this.step = 0;
+    this.glitches = 0;
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
       new Deck(this, 'A', { x: 0.62, y: 0.14, v: -0.3, a: -0.25 }),
@@ -46,7 +48,7 @@ export class Engine {
 
   async init() {
     if (this.ready) return;
-    const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }));
+    const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: PROFILE.latencyHint }));
     this.noise = makeNoise(ctx);
 
     // master: suma -> glue -> limitador
@@ -70,7 +72,7 @@ export class Engine {
     });
 
     // reloj en un Worker: no se para si la pestaña pierde el foco
-    const src = 'let id=null;onmessage=e=>{if(e.data==="go"){if(!id)id=setInterval(()=>postMessage(0),20)}else{clearInterval(id);id=null}}';
+    const src = `let id=null;onmessage=e=>{if(e.data==="go"){if(!id)id=setInterval(()=>postMessage(0),${PROFILE.tickMs})}else{clearInterval(id);id=null}}`;
     this.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     this.worker.onmessage = () => this.tick();
     this.lastNow = ctx.currentTime;
@@ -90,6 +92,7 @@ export class Engine {
     // retomar siempre en el inicio de un compás: las frases siguen alineadas
     this.step = Math.ceil(this.step / 16) * 16;
     this.nextGrid = this.ctx.currentTime + 0.08;
+    this.driftBase = undefined;
     this.playing = true;
   }
 
@@ -111,10 +114,28 @@ export class Engine {
     if (lo === hi && lo !== this.scaleI) this.scaleI = lo;
   }
 
+  // Detector de cortes (móvil): si el reloj de audio se queda atrás respecto al
+  // reloj real, el audio se ha quedado sin datos = un corte que se oye.
+  watchGlitches() {
+    if (!this.ctx.getOutputTimestamp || !this.playing || document.visibilityState !== 'visible') {
+      this.driftBase = undefined;
+      return;
+    }
+    const ts = this.ctx.getOutputTimestamp();
+    if (!ts.contextTime) return;
+    const drift = ts.performanceTime / 1000 - ts.contextTime;
+    if (this.driftBase === undefined || drift < this.driftBase) this.driftBase = drift;
+    else if (drift - this.driftBase > 0.04) {
+      this.glitches++;
+      this.driftBase = drift;
+    }
+  }
+
   tick() {
     const now = this.ctx.currentTime;
     const dt = Math.min(0.1, Math.max(0, now - this.lastNow));
     this.lastNow = now;
+    if (PROFILE.lite) this.watchGlitches();
 
     this.updateScale();
     const nextBeat = this.playing ? this.nextGrid + ((4 - (this.step % 4)) % 4) * this.stepDur : now;

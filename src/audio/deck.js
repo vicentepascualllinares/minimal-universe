@@ -8,6 +8,9 @@ import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS } from '../music/arrangement.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
+import { PROFILE } from '../core/profile.js';
+
+const glideAll = glide;
 
 const newSeed = () => (Math.random() * 1e9) | 0;
 
@@ -43,7 +46,7 @@ export class Deck {
     this.sum = ctx.createGain();
     this.sum.gain.value = 0.8;
     this.shaper = ctx.createWaveShaper();
-    this.shaper.oversample = '4x';
+    this.shaper.oversample = PROFILE.oversample ?? '4x';
     this.post = ctx.createGain();
     this.driveQ = -1;
     this.sum.connect(this.shaper).connect(this.post).connect(out);
@@ -53,7 +56,7 @@ export class Deck {
     const revHp = ctx.createBiquadFilter();
     revHp.type = 'highpass'; revHp.frequency.value = 200;
     const conv = ctx.createConvolver();
-    conv.buffer = makeIR(ctx);
+    conv.buffer = makeIR(ctx, PROFILE.irSeconds);
     this.revTone = ctx.createBiquadFilter();
     this.revTone.type = 'lowpass';
     this.revRet = ctx.createGain();
@@ -77,7 +80,35 @@ export class Deck {
     dlyRet.connect(dlyToRev).connect(this.revIn);
 
     this.ch = {};
-    for (const k of INSTRUMENTS) this.ch[k] = new Channel(ctx, k, this.sum, this.revIn, this.dlyIn);
+    for (const k of INSTRUMENTS) {
+      this.ch[k] = new Channel(ctx, k, this.sum, this.revIn, this.dlyIn, PROFILE.oversample ?? '2x');
+    }
+
+    // perfil móvil: banco de hats fijo y un panorama fijo por carril de percusión
+    if (PROFILE.lite) {
+      this.hatBank = V.makeHatBank(ctx, this.engine.noise);
+      this.lanePans = new Map();
+      this.paramCache = new Map();
+    }
+  }
+
+  // móvil: no reenviar a un parámetro el valor que ya tiene
+  glideLite(param, v, now, tc) {
+    const last = this.paramCache.get(param);
+    if (last !== undefined && Math.abs(last - v) <= Math.abs(v) * 0.002 + 1e-4) return;
+    this.paramCache.set(param, v);
+    glide(param, v, now, tc);
+  }
+
+  lanePan(lane, pan) {
+    let p = this.lanePans.get(lane);
+    if (!p) {
+      p = this.ctx.createStereoPanner();
+      p.connect(this.ch.perc.input);
+      this.lanePans.set(lane, p);
+    }
+    if (p.pan.value !== pan) p.pan.value = pan;
+    return p;
   }
 
   reseed() { this.pendingSeed = newSeed(); }
@@ -135,6 +166,8 @@ export class Deck {
 
   updateSound(now) {
     const e = this.e;
+    const glide = PROFILE.lite ? this.glideLite.bind(this) : glideAll;
+    if (PROFILE.lite) this.hatBank.set(e.hat, now);
     const m = e.master;
     const C = this.ch;
     C.kick.setDrive(e.kick.drive);
@@ -185,6 +218,10 @@ export class Deck {
       this.seed = this.pendingSeed;
       this.pendingSeed = null;
       this.gen = makeGenerators(this.seed);
+      if (this.lanePans) { // móvil: soltar los panoramas de los carriles viejos
+        for (const p of this.lanePans.values()) p.disconnect();
+        this.lanePans.clear();
+      }
     }
     const G = this.gen;
     const e = this.e;
@@ -247,12 +284,16 @@ export class Deck {
     if ((ev = B.hat[s]) && A.audible('hat', t)) {
       const th = Math.max(t + hum(), ctx.currentTime);
       if (this.lastOpen && this.lastOpen.end > th) this.lastOpen.gain.setTargetAtTime(0, th, 0.007);
-      V.hat(ctx, C.hat.input, th, ev.vel, e.hat, e.hat.decay, noise);
+      // ×0.9: con el banco ya asentado el ataque sale algo más fuerte que en PC
+      if (PROFILE.lite) V.hatGate(ctx, this.hatBank, C.hat.input, th, ev.vel * 0.9, e.hat.decay);
+      else V.hat(ctx, C.hat.input, th, ev.vel, e.hat, e.hat.decay, noise);
       emit('hat', th, ev.vel);
     }
     if ((ev = B.ohat[s]) && A.audible('ohat', t)) {
       const th = t + hum() * 0.5;
-      this.lastOpen = V.hat(ctx, C.ohat.input, th, ev.vel, e.hat, e.ohat.decay, noise);
+      this.lastOpen = PROFILE.lite
+        ? V.hatGate(ctx, this.hatBank, C.ohat.input, th, ev.vel, e.ohat.decay)
+        : V.hat(ctx, C.ohat.input, th, ev.vel, e.hat, e.ohat.decay, noise);
       emit('ohat', th, ev.vel);
     }
     if ((ev = B.perc[s]) && A.audible('perc', t)) {
@@ -272,14 +313,15 @@ export class Deck {
           pan: so.pan,
         };
         const tp = Math.max(t + hum(), ctx.currentTime);
-        V.perc(ctx, C.perc.input, tp, h.vel * 0.9, sound, noise);
+        const pn = PROFILE.lite ? this.lanePan(h.lane, so.pan) : null;
+        V.perc(ctx, C.perc.input, tp, h.vel * 0.9, sound, noise, pn);
         emit('perc', tp, h.vel);
       }
     }
     if ((ev = B.bass[s]) && A.audible('bass', t)) {
       const semis = degreeToSemis(ev.deg, scale) + 12;
       const dur = Math.max(sd * 0.55, ev.len * sd * e.bass.lenMul - 0.01);
-      V.bass(ctx, C.bass.input, t, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass);
+      V.bass(ctx, C.bass.input, t, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, PROFILE.lite);
       emit('bass', t, ev.vel);
     }
   }

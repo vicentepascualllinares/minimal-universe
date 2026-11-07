@@ -2,6 +2,7 @@ import { Engine } from './audio/engine.js';
 import { VSlider } from './ui/slider.js';
 import { Knob } from './ui/knob.js';
 import { deckView } from './ui/deckView.js';
+import { PROFILE } from './core/profile.js';
 
 const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -10,6 +11,7 @@ window.MU = engine; // para depurar desde la consola
 
 const $ = (s) => document.querySelector(s);
 const root = document.documentElement;
+document.body.classList.toggle('lite', PROFILE.lite); // perfil móvil
 let views = [];
 
 // ───────── global: BPM y tónica (arrastrar en vertical o rueda)
@@ -121,6 +123,12 @@ function frame() {
   $('#mode').textContent = engine.scale.name.toUpperCase();
   const st = Math.max(0, engine.step - 1);
   $('#pos').textContent = `${String(Math.floor(st / 16) + 1).padStart(3, '0')}.${Math.floor((st % 16) / 4) + 1}`;
+  if (PROFILE.lite) {
+    const h = $('#health');
+    const g = engine.glitches;
+    h.textContent = g ? `CORTES ${g}` : 'AUDIO OK';
+    h.classList.toggle('bad', g > 0);
+  }
   const sState = $('#state');
   sState.textContent = engine.playing ? 'EN VIVO' : 'PAUSA';
   sState.classList.toggle('live', engine.playing);
@@ -132,7 +140,7 @@ function frame() {
       meters[i].style.transform = `scaleY(${meterLv[i]})`;
     });
 
-    if (scope.clientWidth) {
+    if (!PROFILE.lite && scope.clientWidth) {
       const w = (scope.width = scope.clientWidth * devicePixelRatio);
       const h = (scope.height = scope.clientHeight * devicePixelRatio);
       scopeBuf ||= new Float32Array(engine.analyser.fftSize);

@@ -29,6 +29,20 @@ redes privadas. Si ya tenías abierto INICIAR.bat, ciérralo antes. En iPhone, s
 quita el modo silencio.
 Requiere [Node.js](https://nodejs.org). Alternativa manual: `node serve.mjs` y abrir http://localhost:5317.
 
+## Versión móvil y versión ordenador
+
+El mismo programa elige solo su perfil:
+
+- **Ordenador**: el motor completo, sin cambios.
+- **Móvil** (Android / iPhone / iPad): misma música, optimizada para que el audio no se corte:
+  búfer de audio grande, hats sobre un banco de osciladores fijo (1 nodo por golpe en vez de 9),
+  un panorama fijo por carril de percusión, bajo sin osciladores inaudibles, reverb de 2 s,
+  saturación sin sobremuestreo, ajustes solo cuando cambian, canvas a menor resolución y sin
+  osciloscopio. Unos la mitad de nodos de audio por segundo. En la cabecera aparece
+  **AUDIO OK** o **CORTES n** (cortes detectados).
+
+Para forzar un perfil: añade `?movil` o `?pc` a la dirección.
+
 ## Cada universo (izquierda A, derecha B)
 
 | Control | Qué hace |

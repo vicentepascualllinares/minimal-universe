@@ -1,3 +1,5 @@
+import { PROFILE } from '../core/profile.js';
+
 // Pad XY en canvas. value = {x, y} en 0..1 (y = 1 arriba).
 // `follow` = punto real (con inercia) que persigue al objetivo.
 
@@ -43,7 +45,7 @@ export class XYPad {
 
   resize() {
     const r = this.canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, PROFILE.maxDpr); // móvil: menos píxeles que pintar
     this.w = r.width; this.h = r.height;
     this.canvas.width = Math.max(1, Math.round(r.width * dpr));
     this.canvas.height = Math.max(1, Math.round(r.height * dpr));

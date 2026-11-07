@@ -116,12 +116,71 @@ export function hat(ctx, out, t, vel, p, decay, noise) {
   return { gain: g.gain, end };
 }
 
+// ───────────────────────── HATS (perfil móvil)
+// Un banco metálico SIEMPRE sonando (6 osciladores + ruido + filtros) y cada
+// golpe solo abre una puerta (1 nodo). En PC se usa `hat()`, un motor por golpe.
+export function makeHatBank(ctx, noise) {
+  const metal = ctx.createGain();
+  const oscs = METAL.map(() => {
+    const o = ctx.createOscillator();
+    o.type = 'square';
+    o.connect(metal);
+    o.start();
+    return o;
+  });
+  const n = noiseSrc(ctx, noise);
+  n.loop = true;
+  const ng = ctx.createGain();
+  n.connect(ng);
+  n.start();
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 0.7;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  metal.connect(bp);
+  ng.connect(bp);
+  bp.connect(hp);
+  let last = null;
+  return {
+    out: hp,
+    set(p, t) {
+      // solo cuando el timbre cambia de verdad
+      if (last && Math.abs(last.base - p.base) < 0.5 && Math.abs(last.noiseMix - p.noiseMix) < 0.01 &&
+          Math.abs(last.bp - p.bp) < 20 && Math.abs(last.hp - p.hp) < 20) return;
+      last = { base: p.base, noiseMix: p.noiseMix, bp: p.bp, hp: p.hp };
+      oscs.forEach((o, i) => o.frequency.setTargetAtTime(p.base * METAL[i], t, 0.05));
+      metal.gain.setTargetAtTime((1 - p.noiseMix) * 0.16, t, 0.05);
+      ng.gain.setTargetAtTime(p.noiseMix * 0.9, t, 0.05);
+      bp.frequency.setTargetAtTime(p.bp, t, 0.05);
+      hp.frequency.setTargetAtTime(p.hp, t, 0.05);
+    },
+  };
+}
+
+export function hatGate(ctx, bank, out, t, vel, decay) {
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vel, t + 0.0008);
+  g.gain.setTargetAtTime(0, t + 0.0008, decay / 3.5);
+  bank.out.connect(g);
+  g.connect(out);
+  const end = t + decay * 2.6 + 0.02;
+  // desconectar al acabar: si no, la puerta seguiría procesando para siempre
+  setTimeout(() => { bank.out.disconnect(g); g.disconnect(); }, (end - ctx.currentTime) * 1000 + 100);
+  return { gain: g.gain, end };
+}
+
 // ───────────────────────── PERCUSIÓN GENERATIVA
 // s = sonido ya resuelto con la emoción: {type, freq, ratio, index, decay, q, pan}
-export function perc(ctx, out, t, vel, s, noise) {
-  const pan = ctx.createStereoPanner();
-  pan.pan.value = s.pan;
-  pan.connect(out);
+// `panNode` (perfil móvil): panorama fijo del carril, en vez de uno nuevo por golpe
+export function perc(ctx, out, t, vel, s, noise, panNode = null) {
+  let pan = panNode;
+  if (!pan) {
+    pan = ctx.createStereoPanner();
+    pan.pan.value = s.pan;
+    pan.connect(out);
+  }
   const g = ctx.createGain();
   g.connect(pan);
   const d = s.decay;
@@ -165,21 +224,26 @@ export function perc(ctx, out, t, vel, s, noise) {
 }
 
 // ───────────────────────── BASS
-export function bass(ctx, out, t, vel, freq, dur, p) {
+// `lite` (perfil móvil): no crea el oscilador cuadrado si casi no se oye
+export function bass(ctx, out, t, vel, freq, dur, p, lite = false) {
   const saw = ctx.createOscillator();
   saw.type = 'sawtooth';
   saw.frequency.value = freq;
   saw.detune.value = p.detune;
-  const sq = ctx.createOscillator();
-  sq.type = 'square';
-  sq.frequency.value = freq;
-  sq.detune.value = -p.detune * 0.5;
+  const useSq = !lite || p.square > 0.04;
+  const sq = useSq ? ctx.createOscillator() : null;
+  if (sq) {
+    sq.type = 'square';
+    sq.frequency.value = freq;
+    sq.detune.value = -p.detune * 0.5;
+  }
   const sub = ctx.createOscillator();
   sub.type = 'sine';
   sub.frequency.value = freq;
 
   const gs = ctx.createGain(); gs.gain.value = p.saw * 0.5;
-  const gq = ctx.createGain(); gq.gain.value = p.square * 0.35;
+  const gq = sq ? ctx.createGain() : null;
+  if (gq) gq.gain.value = p.square * 0.35;
   const gb = ctx.createGain(); gb.gain.value = p.sub;
 
   const lp = ctx.createBiquadFilter();
@@ -190,7 +254,7 @@ export function bass(ctx, out, t, vel, freq, dur, p) {
   lp.frequency.setTargetAtTime(p.cutoff, t, p.filtDecay / 3);
 
   saw.connect(gs).connect(lp);
-  sq.connect(gq).connect(lp);
+  if (sq) sq.connect(gq).connect(lp);
   const g = ctx.createGain();
   sub.connect(gb).connect(g);
   lp.connect(g);
@@ -201,5 +265,5 @@ export function bass(ctx, out, t, vel, freq, dur, p) {
   g.connect(out);
 
   const end = t + dur + p.release * 2 + 0.05;
-  for (const o of [saw, sq, sub]) { o.start(t); o.stop(end); }
+  for (const o of [saw, sq, sub]) if (o) { o.start(t); o.stop(end); }
 }

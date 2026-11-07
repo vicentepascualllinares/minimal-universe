@@ -36,12 +36,12 @@ const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc:
 const LEVEL = { kick: 0.92, bass: 0.5, clap: 0.36, hat: 0.2, ohat: 0.14, perc: 0.3 };
 
 export class Channel {
-  constructor(ctx, name, dest, rev, dly) {
+  constructor(ctx, name, dest, rev, dly, oversample = '2x') {
     this.name = name;
     this.sweep = SWEEP[name];
     this.input = ctx.createGain();
     this.shaper = ctx.createWaveShaper();
-    this.shaper.oversample = '2x';
+    this.shaper.oversample = oversample;
     this.post = ctx.createGain();
     this.hp = ctx.createBiquadFilter();
     this.hp.type = 'highpass';

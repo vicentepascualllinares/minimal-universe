@@ -79,6 +79,11 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .u, #mode { margin-left: -6px; }
 #state { color: var(--dim); padding: 2px 0; }
 #state.live { color: var(--fg); }
+.only-lite { display: none; }
+body.lite .only-lite { display: inline-block; }
+#health { color: var(--faint); font-size: 9px; }
+#health.bad { color: #c98a6a; }
+body.lite #scope { display: none; }
 
 .tabs { display: none; }
 

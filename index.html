@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#060607" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>MINIMAL UNIVERSE</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="brand">MINIMAL&nbsp;UNIVERSE</div>
+      <div class="meta">
+        <span class="drag" id="bpm" title="arrastra o rueda">124</span><span class="u">BPM</span>
+        <span class="sep"></span>
+        <span class="drag" id="key" title="tónica global · arrastra o rueda">A</span><span id="mode">EÓLICO</span>
+        <span class="sep hide-compact"></span>
+        <span id="pos" class="hide-compact">001.1</span>
+        <span class="sep"></span>
+        <button id="state" title="ESPACIO">PAUSA</button>
+      </div>
+    </header>
+
+    <!-- solo en pantallas pequeñas y modo DJ -->
+    <nav class="tabs" id="tabs">
+      <button data-tab="A" class="on">UNIVERSO A</button>
+      <button data-tab="M">MEZCLA</button>
+      <button data-tab="B">UNIVERSO B</button>
+    </nav>
+
+    <main id="stage" data-tab="A">
+      <div class="deck left" id="deckA"></div>
+
+      <section class="mixer" id="mixer">
+        <div class="col-title">MEZCLA</div>
+        <div class="mx-grid">
+          <span class="mx-deck">A</span><span></span><span class="mx-deck">B</span>
+          <div data-d="0" data-k="hi"></div><span class="mx-lab">HI</span><div data-d="1" data-k="hi"></div>
+          <div data-d="0" data-k="mid"></div><span class="mx-lab">MID</span><div data-d="1" data-k="mid"></div>
+          <div data-d="0" data-k="lo"></div><span class="mx-lab">LOW</span><div data-d="1" data-k="lo"></div>
+          <div data-d="0" data-k="filter"></div><span class="mx-lab">FILTRO<small>LP · HP</small></span><div data-d="1" data-k="filter"></div>
+        </div>
+        <div class="mx-faders">
+          <div class="meter" data-d="0"><i></i></div>
+          <div class="fader" data-d="0"><div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div></div>
+          <div class="fader" data-d="1"><div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div></div>
+          <div class="meter" data-d="1"><i></i></div>
+        </div>
+        <canvas id="scope"></canvas>
+      </section>
+
+      <div class="deck right" id="deckB"></div>
+    </main>
+  </div>
+
+  <div id="enter">
+    <div class="enter-title">MINIMAL&nbsp;UNIVERSE</div>
+    <div class="enter-modes" id="modes">
+      <button class="mode-opt" data-mode="solo">
+        <span class="mo-name">UN UNIVERSO</span>
+        <span class="mo-desc">un mundo, todo el detalle</span>
+      </button>
+      <button class="mode-opt" data-mode="dj">
+        <span class="mo-name">DJ</span>
+        <span class="mo-desc">dos universos y mesa de mezcla</span>
+      </button>
+    </div>
+    <div class="enter-keys">
+      ESPACIO play / pausa<br />
+      <span class="k-solo">L loop &nbsp;·&nbsp; N nuevo universo</span><br />
+      <span class="k-dj">DJ: Q loop A &nbsp;·&nbsp; W nuevo A &nbsp;|&nbsp; O nuevo B &nbsp;·&nbsp; P loop B</span>
+    </div>
+  </div>
+
+  <script>
+    // Abierto con doble clic (file://): el navegador bloquea los módulos. Avisamos.
+    if (location.protocol === 'file:') {
+      const e = document.getElementById('enter');
+      e.style.cursor = 'default';
+      e.innerHTML =
+        '<div class="enter-title">MINIMAL&nbsp;UNIVERSE</div>' +
+        '<div class="enter-sub">ábrelo con INICIAR.bat</div>' +
+        '<div class="enter-keys">el navegador no deja sonar el motor abriendo index.html directamente</div>';
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

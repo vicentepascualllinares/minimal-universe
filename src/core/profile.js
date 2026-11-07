@@ -18,8 +18,11 @@ const lite = q.has('movil') ? true : q.has('pc') ? false : isMobileDevice;
 export const PROFILE = {
   lite,
   name: lite ? 'movil' : 'pc',
-  latencyHint: lite ? 'playback' : 'interactive', // búfer grande = sin cortes
-  lookahead: lite ? 0.3 : 0.12,                   // s que se programan por adelantado
+  // búfer de salida: en móvil ~45 ms (equilibrio). Con ?estable, el máximo (más latencia, cero cortes)
+  latencyHint: lite ? (q.has('estable') ? 'playback' : 0.045) : 'interactive',
+  // s que se programan por adelantado. En móvil se adapta solo entre min y max
+  lookahead: lite ? 0.15 : 0.12,
+  lookaheadMax: lite ? 0.3 : 0.12,
   tickMs: lite ? 25 : 20,
   oversample: lite ? 'none' : null,               // null = lo que use cada nodo en PC
   irSeconds: lite ? 2.0 : 3.6,

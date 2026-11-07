@@ -116,59 +116,66 @@ export function hat(ctx, out, t, vel, p, decay, noise) {
   return { gain: g.gain, end };
 }
 
-// ───────────────────────── HATS (perfil móvil)
-// Un banco metálico SIEMPRE sonando (6 osciladores + ruido + filtros) y cada
-// golpe solo abre una puerta (1 nodo). En PC se usa `hat()`, un motor por golpe.
-export function makeHatBank(ctx, noise) {
-  const metal = ctx.createGain();
-  const oscs = METAL.map(() => {
-    const o = ctx.createOscillator();
-    o.type = 'square';
-    o.connect(metal);
-    o.start();
-    return o;
-  });
-  const n = noiseSrc(ctx, noise);
-  n.loop = true;
-  const ng = ctx.createGain();
-  n.connect(ng);
-  n.start();
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.Q.value = 0.7;
-  const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass';
-  metal.connect(bp);
-  ng.connect(bp);
-  bp.connect(hp);
-  let last = null;
-  return {
-    out: hp,
-    set(p, t) {
-      // solo cuando el timbre cambia de verdad
-      if (last && Math.abs(last.base - p.base) < 0.5 && Math.abs(last.noiseMix - p.noiseMix) < 0.01 &&
-          Math.abs(last.bp - p.bp) < 20 && Math.abs(last.hp - p.hp) < 20) return;
-      last = { base: p.base, noiseMix: p.noiseMix, bp: p.bp, hp: p.hp };
-      oscs.forEach((o, i) => o.frequency.setTargetAtTime(p.base * METAL[i], t, 0.05));
-      metal.gain.setTargetAtTime((1 - p.noiseMix) * 0.16, t, 0.05);
-      ng.gain.setTargetAtTime(p.noiseMix * 0.9, t, 0.05);
-      bp.frequency.setTargetAtTime(p.bp, t, 0.05);
-      hp.frequency.setTargetAtTime(p.hp, t, 0.05);
-    },
-  };
+// ───────────────────────── HATS (perfil móvil): sampler
+// Graba en segundo plano el MISMO hat del PC (`hat()`, 9 nodos) en 3 variantes
+// de ruido y cada golpe solo reproduce la grabación (2 nodos). Suena idéntico.
+// Si la emoción cambia el timbre, vuelve a grabar; mientras, usa la anterior.
+const VARIANTS = 3;
+
+function renderHat(sr, noise, p, decay) {
+  const len = Math.ceil((decay * 2.6 + 0.03) * sr);
+  const oc = new OfflineAudioContext(1, len, sr);
+  hat(oc, oc.destination, 0, 1, p, decay, noise);
+  return oc.startRendering();
 }
 
-export function hatGate(ctx, bank, out, t, vel, decay) {
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(vel, t + 0.0008);
-  g.gain.setTargetAtTime(0, t + 0.0008, decay / 3.5);
-  bank.out.connect(g);
-  g.connect(out);
-  const end = t + decay * 2.6 + 0.02;
-  // desconectar al acabar: si no, la puerta seguiría procesando para siempre
-  setTimeout(() => { bank.out.disconnect(g); g.disconnect(); }, (end - ctx.currentTime) * 1000 + 100);
-  return { gain: g.gain, end };
+const hatKey = (p, decay) =>
+  [Math.round(Math.log2(p.base) * 48), Math.round(p.noiseMix * 20), Math.round(p.bp / 250),
+   Math.round(p.hp / 250), Math.round(decay * 250)].join('|');
+
+export class HatSampler {
+  constructor(ctx, noise) {
+    this.ctx = ctx;
+    this.noise = noise;
+    this.sets = {};   // tipo -> { key, bufs }
+    this.want = {};
+    this.busy = {};
+  }
+
+  // pedir el timbre actual (barato si no ha cambiado)
+  update(kind, p, decay) {
+    const key = hatKey(p, decay);
+    if (this.sets[kind]?.key === key || this.want[kind]?.key === key) return;
+    this.want[kind] = { key, p: { ...p }, decay };
+    if (!this.busy[kind]) this.render(kind);
+  }
+
+  async render(kind) {
+    this.busy[kind] = true;
+    try {
+      while (this.want[kind]) {
+        const w = this.want[kind];
+        this.want[kind] = null;
+        const sr = this.ctx.sampleRate;
+        const bufs = await Promise.all(Array.from({ length: VARIANTS }, () => renderHat(sr, this.noise, w.p, w.decay)));
+        this.sets[kind] = { key: w.key, bufs };
+      }
+    } finally {
+      this.busy[kind] = false;
+    }
+  }
+
+  play(kind, out, t, vel) {
+    const set = this.sets[kind];
+    if (!set) return null; // aún grabando el primero (solo pasa al arrancar)
+    const src = this.ctx.createBufferSource();
+    src.buffer = set.bufs[(Math.random() * set.bufs.length) | 0];
+    const g = this.ctx.createGain();
+    g.gain.value = vel;
+    src.connect(g).connect(out);
+    src.start(t);
+    return { gain: g.gain, end: t + src.buffer.duration };
+  }
 }
 
 // ───────────────────────── PERCUSIÓN GENERATIVA

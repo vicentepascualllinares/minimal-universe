@@ -8,7 +8,6 @@ import { Strip, faderGain } from './strip.js';
 import { SCALES } from '../music/emotion.js';
 import { PROFILE } from '../core/profile.js';
 
-const LOOKAHEAD = PROFILE.lookahead; // s (más en móvil: aguanta tirones del hilo principal)
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const scaleIdx = (v) => Math.max(0, Math.min(SCALES.length - 1, Math.floor(((v + 1) / 2) * SCALES.length)));
 
@@ -21,6 +20,7 @@ export class Engine {
     this.scaleI = 1;
     this.step = 0;
     this.glitches = 0;
+    this.lookahead = PROFILE.lookahead; // s programados por adelantado (adaptativo en móvil)
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
       new Deck(this, 'A', { x: 0.62, y: 0.14, v: -0.3, a: -0.25 }),
@@ -114,20 +114,44 @@ export class Engine {
     if (lo === hi && lo !== this.scaleI) this.scaleI = lo;
   }
 
-  // Detector de cortes (móvil): si el reloj de audio se queda atrás respecto al
-  // reloj real, el audio se ha quedado sin datos = un corte que se oye.
+  // Detector de cortes (móvil): si el audio se queda sin datos, su reloj se
+  // queda atrás respecto al reloj real PARA SIEMPRE. La marca de tiempo tiene
+  // un temblor de hasta ~1 búfer (solo hacia arriba), así que se compara el
+  // MÍNIMO de cada ventana de ~0,5 s: el temblor no lo mueve, un corte sí.
   watchGlitches() {
     if (!this.ctx.getOutputTimestamp || !this.playing || document.visibilityState !== 'visible') {
       this.driftBase = undefined;
+      this.driftWin = [];
       return;
     }
     const ts = this.ctx.getOutputTimestamp();
     if (!ts.contextTime) return;
     const drift = ts.performanceTime / 1000 - ts.contextTime;
-    if (this.driftBase === undefined || drift < this.driftBase) this.driftBase = drift;
-    else if (drift - this.driftBase > 0.04) {
+    this.driftWin = this.driftWin || [];
+    this.driftWin.push(drift);
+    if (this.driftWin.length < 20) return;
+    const winMin = Math.min(...this.driftWin);
+    this.driftWin = [];
+    if (this.driftBase === undefined || winMin < this.driftBase) this.driftBase = winMin;
+    else if (winMin - this.driftBase > 0.02) {
       this.glitches++;
-      this.driftBase = drift;
+      this.driftBase = winMin;
+    }
+  }
+
+  // Margen adaptativo (móvil): si el hilo principal se atasca y el reloj llega
+  // tarde, programa más por adelantado; tras 20 s tranquilos, vuelve a bajar.
+  adaptLookahead() {
+    const w = performance.now();
+    const gap = this.lastWall ? w - this.lastWall : 0;
+    this.lastWall = w;
+    if (document.visibilityState !== 'visible') return;
+    if (gap > PROFILE.tickMs * 3) {
+      this.lookahead = Math.min(PROFILE.lookaheadMax, this.lookahead + 0.05);
+      this.calmSince = w;
+    } else if (w - (this.calmSince || 0) > 20000 && this.lookahead > PROFILE.lookahead) {
+      this.lookahead = Math.max(PROFILE.lookahead, this.lookahead - 0.025);
+      this.calmSince = w;
     }
   }
 
@@ -135,7 +159,10 @@ export class Engine {
     const now = this.ctx.currentTime;
     const dt = Math.min(0.1, Math.max(0, now - this.lastNow));
     this.lastNow = now;
-    if (PROFILE.lite) this.watchGlitches();
+    if (PROFILE.lite) {
+      this.watchGlitches();
+      this.adaptLookahead();
+    }
 
     this.updateScale();
     const nextBeat = this.playing ? this.nextGrid + ((4 - (this.step % 4)) % 4) * this.stepDur : now;
@@ -143,7 +170,7 @@ export class Engine {
     for (const d of act) d.update(now, dt, nextBeat);
 
     if (!this.playing) return;
-    while (this.nextGrid < now + LOOKAHEAD) {
+    while (this.nextGrid < now + this.lookahead) {
       for (const d of act) d.scheduleStep(this.step, this.nextGrid);
       this.nextGrid += this.stepDur;
       this.step++;

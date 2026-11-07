@@ -35,13 +35,19 @@ El mismo programa elige solo su perfil:
 
 - **Ordenador**: el motor completo, sin cambios.
 - **Móvil** (Android / iPhone / iPad): misma música, optimizada para que el audio no se corte:
-  búfer de audio grande, hats sobre un banco de osciladores fijo (1 nodo por golpe en vez de 9),
+  búfer de audio de ~45 ms, margen de programación adaptativo (150–300 ms, sube solo si el
+  móvil se atasca), hats grabados en segundo plano con el mismo motor del PC y reproducidos
+  como sample (2 nodos por golpe en vez de 9; se regraban si la emoción cambia el timbre),
   un panorama fijo por carril de percusión, bajo sin osciladores inaudibles, reverb de 2 s,
   saturación sin sobremuestreo, ajustes solo cuando cambian, canvas a menor resolución y sin
   osciloscopio. Unos la mitad de nodos de audio por segundo. En la cabecera aparece
   **AUDIO OK** o **CORTES n** (cortes detectados).
 
-Para forzar un perfil: añade `?movil` o `?pc` a la dirección.
+Para forzar un perfil: añade `?movil` o `?pc` a la dirección. Si en algún móvil hay cortes,
+`?estable` usa el búfer más grande posible (más latencia, máxima estabilidad).
+
+Con auriculares Bluetooth el propio Bluetooth añade unos 150–250 ms que el programa no puede
+quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 
 ## Cada universo (izquierda A, derecha B)
 

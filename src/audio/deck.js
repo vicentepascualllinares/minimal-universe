@@ -84,9 +84,9 @@ export class Deck {
       this.ch[k] = new Channel(ctx, k, this.sum, this.revIn, this.dlyIn, PROFILE.oversample ?? '2x');
     }
 
-    // perfil móvil: banco de hats fijo y un panorama fijo por carril de percusión
+    // perfil móvil: hats grabados (sampler) y un panorama fijo por carril de percusión
     if (PROFILE.lite) {
-      this.hatBank = V.makeHatBank(ctx, this.engine.noise);
+      this.hats = new V.HatSampler(ctx, this.engine.noise);
       this.lanePans = new Map();
       this.paramCache = new Map();
     }
@@ -167,7 +167,10 @@ export class Deck {
   updateSound(now) {
     const e = this.e;
     const glide = PROFILE.lite ? this.glideLite.bind(this) : glideAll;
-    if (PROFILE.lite) this.hatBank.set(e.hat, now);
+    if (PROFILE.lite) {
+      this.hats.update('closed', e.hat, e.hat.decay);
+      this.hats.update('open', e.hat, e.ohat.decay);
+    }
     const m = e.master;
     const C = this.ch;
     C.kick.setDrive(e.kick.drive);
@@ -284,15 +287,14 @@ export class Deck {
     if ((ev = B.hat[s]) && A.audible('hat', t)) {
       const th = Math.max(t + hum(), ctx.currentTime);
       if (this.lastOpen && this.lastOpen.end > th) this.lastOpen.gain.setTargetAtTime(0, th, 0.007);
-      // ×0.9: con el banco ya asentado el ataque sale algo más fuerte que en PC
-      if (PROFILE.lite) V.hatGate(ctx, this.hatBank, C.hat.input, th, ev.vel * 0.9, e.hat.decay);
+      if (PROFILE.lite) this.hats.play('closed', C.hat.input, th, ev.vel);
       else V.hat(ctx, C.hat.input, th, ev.vel, e.hat, e.hat.decay, noise);
       emit('hat', th, ev.vel);
     }
     if ((ev = B.ohat[s]) && A.audible('ohat', t)) {
       const th = t + hum() * 0.5;
       this.lastOpen = PROFILE.lite
-        ? V.hatGate(ctx, this.hatBank, C.ohat.input, th, ev.vel, e.ohat.decay)
+        ? this.hats.play('open', C.ohat.input, th, ev.vel)
         : V.hat(ctx, C.ohat.input, th, ev.vel, e.hat, e.ohat.decay, noise);
       emit('ohat', th, ev.vel);
     }

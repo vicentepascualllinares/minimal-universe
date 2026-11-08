@@ -26,7 +26,7 @@ function template(label) {
   <div class="rows">
   <div class="row">
     <section class="pad p-struct">
-      <div class="pad-title">ESTRUCTURA<span class="p-status"></span></div>
+      <div class="pad-title">ESTRUCTURA<span class="ph-ticks" title="la frase: un trazo por compás. Los viajes aterrizan al empezar la frase"></span><span class="p-status"></span></div>
       <div class="pad-box"><canvas></canvas>
         <button class="corner go tl" data-c="sindrums" title="ir aquí (otra vez: pausa)">SIN DRUMS</button><button class="corner go tr" data-c="todo" title="ir aquí (otra vez: pausa)">TODO</button>
         <button class="corner go bl" data-c="break" title="ir aquí (otra vez: pausa)">BREAK</button><button class="corner go br" data-c="drums" title="ir aquí (otra vez: pausa)">SOLO DRUMS</button>
@@ -141,6 +141,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     });
   }
   const pStatus = q('.p-status');
+  const phTicks = q('.ph-ticks');
 
   return {
     color: '200,200,205',
@@ -172,13 +173,25 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         el.classList.toggle('paused', dest && T.paused);
       });
       structPad.value = { x: AR.tx, y: AR.ty };
-      structPad.follow = { x: AR.x, y: AR.y };
+      structPad.follow = AR.shown();
       let st = '';
-      if (T && T.name && T.bars > 0) {
-        const left = Math.max(0, T.bars * (1 - T.done));
-        st = `→ ${CORNERS[T.name].label} · ${T.paused ? 'PAUSA' : left < 0.95 ? 'ÚLTIMO COMPÁS' : `${Math.ceil(left)} COMP.`}`;
+      const ti = deck.travelInfo();
+      const pv = deck.previewStart(deck.transitionBars);
+      if (ti) {
+        // el viaje espera al compás que le toca para aterrizar en frase
+        const when = ti.paused ? 'PAUSA'
+          : ti.wait > 0.02 ? `ENTRA EN ${Math.ceil(ti.wait)}`
+          : ti.left < 0.95 ? 'ÚLTIMO COMPÁS' : `${Math.ceil(ti.left)} COMP.`;
+        st = `→ ${CORNERS[ti.name].label} · ${when}`;
+      } else if (engine.ready) {
+        // antes de pulsar: cuándo empezaría un viaje con los compases elegidos
+        st = deck.transitionBars === 0 || pv.wait < 0.02 ? 'ENTRA YA' : `ENTRA EN ${Math.ceil(pv.wait)}`;
       }
       if (pStatus.textContent !== st) pStatus.textContent = st;
+      pStatus.classList.toggle('preview', !ti);
+      // la frase: un trazo por compás, el que suena encendido
+      if (phTicks.childElementCount !== pv.phrase) phTicks.innerHTML = '<i></i>'.repeat(pv.phrase);
+      [...phTicks.children].forEach((t, i) => t.classList.toggle('now', i === pv.bar));
       root.querySelector('.p-struct').classList.toggle('traveling', !!T && !T.paused);
 
       // loop

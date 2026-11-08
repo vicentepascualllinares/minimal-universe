@@ -90,7 +90,8 @@ export class Channel {
   }
 
   // progress 0..1 de la transición; mode 0 = volumen, 1 = filtro
-  applyTransition(prog, mode, now) {
+  // `tc` (opcional) = rapidez del cambio: el DROP lo pide casi seco
+  applyTransition(prog, mode, now, tc) {
     const f = 1 - mode * (1 - prog);                          // apertura del filtro
     const vp = clamp(prog / (1 - 0.85 * mode));                // el volumen siempre llega a 0
     const vol = Math.sin(vp * Math.PI / 2);
@@ -99,12 +100,12 @@ export class Channel {
     L.f = f; L.vol = vol; L.m = mode;
     const q = 0.707 + 5 * mode * Math.sin(Math.PI * (1 - f));
     if (this.sweep === 'hp') {
-      glide(this.hp.frequency, this.hpBase * Math.pow(900 * 20 / this.hpBase, 1 - f), now);
-      glide(this.hp.Q, q, now);
+      glide(this.hp.frequency, this.hpBase * Math.pow(900 * 20 / this.hpBase, 1 - f), now, tc);
+      glide(this.hp.Q, q, now, tc);
     } else {
-      glide(this.lp.frequency, 20000 * Math.pow(1 / 400, 1 - f), now);
-      glide(this.lp.Q, q, now);
+      glide(this.lp.frequency, 20000 * Math.pow(1 / 400, 1 - f), now, tc);
+      glide(this.lp.Q, q, now, tc);
     }
-    glide(this.fade.gain, vol, now, 0.03);
+    glide(this.fade.gain, vol, now, tc ?? 0.03);
   }
 }

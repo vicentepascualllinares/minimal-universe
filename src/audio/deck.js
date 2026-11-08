@@ -6,7 +6,9 @@ import * as V from './voices.js';
 import { Channel, driveCurve, glide } from './dsp.js';
 import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
-import { Arrangement, INSTRUMENTS } from '../music/arrangement.js';
+import { Arrangement, INSTRUMENTS, CORNERS, presence } from '../music/arrangement.js';
+import { classify, makePalette, PHRASE } from '../music/transitions.js';
+import { TransitionFx } from './transitionFx.js';
 import { shapeComplexity, shareDensity, randomComplexity, GROUPS } from '../music/complexity.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
@@ -21,7 +23,6 @@ export class Deck {
     this.id = id;
     this.transitionMode = 1;  // 1 filtro .. 0 volumen
     this.transitionBars = 4;  // compases del viaje al pulsar una esquina (0 = instantáneo)
-    this.nextBeat = 0;
     // COMPLEJIDAD por grupos (0 simple .. 1 complejo) y un GLOBAL que los escala.
     // Se aplica compás a compás. NUEVO UNIVERSO los cambia (luego se tocan a mano).
     this.cx = { kick: 0.3, perc: 0.6, bass: 0.5, inst: 0.5, global: 0.8 };
@@ -46,6 +47,13 @@ export class Deck {
     this.lastPrepared = -1;
     this.drift = makeDrift(new Rng(this.seed ^ 0x5bd1e995));
     this.e = mapEmotion(v, a);
+    this.newFxPalette(this.seed);
+  }
+
+  // TRANSICIONES: la paleta (qué riser, redoble, golpes...) sale de la semilla
+  newFxPalette(seed) {
+    this.fxPal = makePalette(seed);
+    this.fxRng = new Rng(seed ^ 0x6a09e667);
   }
 
   initAudio(ctx, out) {
@@ -56,7 +64,15 @@ export class Deck {
     this.shaper.oversample = PROFILE.oversample ?? '4x';
     this.post = ctx.createGain();
     this.driveQ = -1;
-    this.sum.connect(this.shaper).connect(this.post).connect(out);
+    // tensión de las transiciones: HP (build), LP (downfilter) y silencio antes del drop.
+    // Las voces de transición van aparte, directas a la salida: no se filtran.
+    const tHp = ctx.createBiquadFilter();
+    tHp.type = 'highpass'; tHp.frequency.value = 20; tHp.Q.value = 3;
+    const tLp = ctx.createBiquadFilter();
+    tLp.type = 'lowpass'; tLp.frequency.value = 20000; tLp.Q.value = 4;
+    const gap = ctx.createGain();
+    this.sum.connect(this.shaper).connect(this.post).connect(tHp).connect(tLp).connect(gap).connect(out);
+    this.fx = new TransitionFx(this, ctx, out, { hp: tHp, lp: tLp, gap });
 
     this.ch = {};
     for (const k of INSTRUMENTS) {
@@ -104,11 +120,81 @@ export class Deck {
   }
   setComplexity(group, v) { this.cx[group] = v; }
 
+  // paso de la rejilla que suena ahora (fraccionario); null en pausa
+  pos(now = this.ctx?.currentTime) {
+    const E = this.engine;
+    return E.playing ? E.step - (E.nextGrid - now) / E.stepDur : null;
+  }
+
+  // dónde empieza un viaje de `bars` compases para ATERRIZAR EN FRASE:
+  // la llegada cae en el primer inicio de frase posible. YA = el siguiente tiempo.
+  startStepFor(bars) {
+    const s = this.engine.step; // el siguiente paso aún sin programar
+    if (bars === 0) return s + ((4 - (s % 4)) % 4);
+    const P = PHRASE(bars) * 16;
+    const earliest = Math.ceil(s / 16) * 16;
+    return Math.ceil((earliest + bars * 16) / P) * P - bars * 16;
+  }
+
   // pulsar el nombre de una esquina: viajar ahí; pulsar la misma a mitad = pausa / sigue
   goCorner(name) {
+    const A = this.arr;
+    const T = A.travel;
+    if (T && T.name === name && T.bars > 0) return this.toggleTravelPause();
+    const bars = this.transitionBars;
+    const c = CORNERS[name];
+    const kind = classify(presence(A.x, A.y), presence(c.x, c.y));
+    A.goTo(name, bars, this.startStepFor(bars), kind === 'build');
+    if (bars === 0 && !this.engine.playing) { // parado e instantáneo: salta sin transición
+      A.land();
+      return;
+    }
+    this.fx?.start(A.travel, kind, this.fxPal, this.fxRng);
+  }
+
+  toggleTravelPause() {
     const T = this.arr.travel;
-    if (T && T.name === name && T.bars > 0) this.arr.togglePause();
-    else this.arr.goTo(name, this.transitionBars, this.nextBeat);
+    if (!T.paused) {
+      T.paused = true;
+      if (this.ctx) this.fx.pause(this.ctx.currentTime);
+      return;
+    }
+    T.paused = false;
+    const pos = this.pos();
+    if (pos === null) return;
+    if (T.done <= 0) T.startStep = this.startStepFor(T.bars); // aún no había empezado: frase nueva
+    else T.startStep = Math.round((pos - T.done * T.bars * 16) / 4) * 4; // sigue desde donde iba, a tiempo
+  }
+
+  // DROP: el destino entra de golpe en el tiempo exacto `t` (lo llama la transición)
+  land(t) {
+    this.arr.land();
+    for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, t, 0.006);
+  }
+
+  // para la vista, antes de pulsar: compases que faltan para que EMPIECE un viaje de
+  // `bars` compases (0 = ya), y en qué compás de la frase estamos
+  previewStart(bars) {
+    const pos = this.pos() ?? this.engine.step;
+    const P = PHRASE(bars);
+    return {
+      wait: bars === 0 ? 0 : Math.max(0, (this.startStepFor(bars) - pos) / 16),
+      phrase: P,
+      bar: Math.floor(Math.max(0, pos) / 16) % P,
+    };
+  }
+
+  // para la vista: a dónde va, cuántos compases faltan para llegar y si aún espera la frase
+  travelInfo() {
+    const T = this.arr.travel;
+    if (!T || !T.name || T.bars === 0) return null;
+    const pos = this.pos() ?? this.engine.step;
+    if (T.paused) return { name: T.name, paused: true, left: T.bars * (1 - T.done) };
+    return {
+      name: T.name,
+      left: Math.max(0, (T.startStep + T.bars * 16 - pos) / 16),
+      wait: Math.max(0, (T.startStep - pos) / 16),
+    };
   }
 
   toggleLoop() {
@@ -129,10 +215,11 @@ export class Deck {
       releasing: false,
     };
     this.arr.frozen = true;
+    this.fx.cancel(this.ctx.currentTime); // el loop congela: la transición en curso se apaga
   }
 
-  // se ejecuta en el primer paso del compás siguiente a soltar el loop (t0 = su tiempo)
-  finishLoop(t0) {
+  // se ejecuta en el primer paso del compás b siguiente a soltar el loop (t0 = su tiempo)
+  finishLoop(t0, b) {
     this.loop = null;
     this.arr.frozen = false;
     const now = this.ctx.currentTime;
@@ -143,20 +230,20 @@ export class Deck {
       for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, t0);
     } else {
       this.emotion.rampTo(this.releaseBars * this.engine.barDur, t0 - now);
-      this.arr.travelToTarget(this.releaseBars, t0);
+      this.arr.travelToTarget(this.releaseBars, b * 16);
     }
   }
 
   // control (≈50 Hz): emoción, estructura, transiciones y sonido
-  update(now, dt, nextBeat) {
-    this.nextBeat = nextBeat;
-    const playDt = this.engine.playing ? dt : 0;
+  update(now, dt) {
+    const pos = this.pos(now);
     if (this.loop) {
-      this.arr.update(now, dt, playDt, this.engine.barDur); // congelado: solo se previsualiza lo pendiente
+      this.arr.update(dt, pos); // congelado: solo se previsualiza lo pendiente
     } else {
       this.emotion.update(dt);
       this.e = mapEmotion(this.emotion.v, this.emotion.a, this.drift(now));
-      this.arr.update(now, dt, playDt, this.engine.barDur);
+      this.arr.update(dt, pos);
+      this.fx.update(now, pos);
       for (const k of INSTRUMENTS) {
         this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, now);
       }
@@ -205,7 +292,7 @@ export class Deck {
     this.lastPrepared = b;
     const L = this.loop;
     if (L) {
-      if (L.releasing) this.finishLoop(t0);
+      if (L.releasing) this.finishLoop(t0, b);
       else {
         const i = (((b - L.startBar) % L.n) + L.n) % L.n;
         this.bars = L.bars[i];
@@ -217,6 +304,7 @@ export class Deck {
       this.pendingSeed = null;
       this.gen = makeGenerators(this.seed);
       this.newCharacter(this.seed);
+      this.newFxPalette(this.seed);
       if (this.lanePans) { // móvil: soltar los panoramas de los carriles viejos
         for (const p of this.lanePans.values()) p.disconnect();
         this.lanePans.clear();
@@ -298,6 +386,7 @@ export class Deck {
   scheduleStep(n, gridT) {
     const s = n % 16;
     const b = Math.floor(n / 16);
+    this.fx.step(n, gridT); // antes que las notas: en la llegada de un build, el DROP
     if (s === 0 || !this.bars.kick) this.prepareBar(b, n - s, gridT);
     const ctx = this.ctx;
     const noise = this.engine.noise;
@@ -398,6 +487,7 @@ export class Deck {
 
   // pausa: soltar lo que se sostiene (el pad)
   release(at) {
+    this.fx.kill(at);
     if (this.padVoice) this.padVoice.release(at, 1.2);
     this.padVoice = null;
   }

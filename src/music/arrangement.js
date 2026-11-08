@@ -13,7 +13,9 @@
 //
 // La posición que suena (x, y) persigue al cursor (tx, ty). Al pulsar el
 // nombre de una esquina, viaja hasta ella en N compases (se puede pausar);
-// mover el cursor cancela el viaje.
+// mover el cursor cancela el viaje. El viaje se mide en pasos de la rejilla
+// (16 por compás) y aterriza siempre en el inicio de una frase. Un viaje
+// `drop` (entra el kick) aguanta el origen y salta al destino de golpe en el 1.
 
 import { clamp } from '../core/rng.js';
 
@@ -92,23 +94,23 @@ export class Arrangement {
     this.travel = null;
   }
 
-  // viajar a una esquina en `bars` compases (0 = instantáneo), empezando en `startAt`
-  goTo(name, bars, startAt) {
+  // viajar a una esquina en `bars` compases (0 = instantáneo), empezando en el paso `startStep`.
+  // `drop`: no se mueve durante el viaje; salta al destino de golpe al llegar
+  goTo(name, bars, startStep, drop = false) {
     const c = CORNERS[name];
     this.tx = c.x; this.ty = c.y;
     this.travel = {
-      name, bars, startAt, done: 0, paused: false,
+      name, bars, startStep, done: 0, paused: false, drop,
       from: { x: this.x, y: this.y }, to: { x: c.x, y: c.y },
     };
   }
   // viaje a la posición del cursor (salida progresiva del LOOP)
-  travelToTarget(bars, startAt) {
+  travelToTarget(bars, startStep) {
     this.travel = {
-      name: null, bars, startAt, done: 0, paused: false,
+      name: null, bars, startStep, done: 0, paused: false, drop: false,
       from: { x: this.x, y: this.y }, to: { x: this.tx, y: this.ty },
     };
   }
-  togglePause() { if (this.travel && this.travel.bars > 0) this.travel.paused = !this.travel.paused; }
 
   // salida instantánea del LOOP: salta al cursor
   snap() {
@@ -117,23 +119,40 @@ export class Arrangement {
     this.compute();
   }
 
-  // `dt` = tiempo real; `playDt` = 0 en pausa (los viajes solo avanzan sonando)
-  update(now, dt, playDt, barDur) {
+  // dónde se dibuja la bolita: en un DROP el sonido aguanta el origen, pero la
+  // bolita viaja igual, para ver siempre cuánto falta
+  shown() {
+    const T = this.travel;
+    if (!T || !T.drop) return { x: this.x, y: this.y };
+    const s = smooth(T.done);
+    return { x: T.from.x + (T.to.x - T.from.x) * s, y: T.from.y + (T.to.y - T.from.y) * s };
+  }
+
+  // llegada de golpe al destino del viaje (DROP / instantáneo)
+  land() {
+    const T = this.travel;
+    if (!T) return;
+    this.travel = null;
+    this.x = T.to.x; this.y = T.to.y;
+    this.compute();
+  }
+
+  // `dt` = tiempo real; `pos` = paso de la rejilla que suena ahora (null en
+  // pausa: los viajes solo avanzan sonando)
+  update(dt, pos) {
     if (!this.frozen) {
       const T = this.travel;
       if (T) {
-        if (now >= T.startAt) {
-          if (T.bars === 0) {
-            this.x = T.to.x; this.y = T.to.y;
-            this.travel = null;
-          } else {
-            if (!T.paused) T.done = Math.min(1, T.done + playDt / (barDur * T.bars));
-            const s = smooth(T.done);
-            this.x = T.from.x + (T.to.x - T.from.x) * s;
-            this.y = T.from.y + (T.to.y - T.from.y) * s;
-            if (T.done >= 1) this.travel = null;
-          }
+        if (pos !== null && !T.paused && pos >= T.startStep) {
+          if (T.bars === 0) return this.land();
+          T.done = clamp((pos - T.startStep) / (T.bars * 16));
         }
+        if (!T.drop) {
+          const s = smooth(T.done);
+          this.x = T.from.x + (T.to.x - T.from.x) * s;
+          this.y = T.from.y + (T.to.y - T.from.y) * s;
+          if (T.done >= 1) this.travel = null;
+        } else if (T.done >= 1) return this.land(); // por si el paso de llegada no lo hizo
       } else {
         const k = 1 - Math.exp(-dt / FOLLOW);
         this.x += (this.tx - this.x) * k;

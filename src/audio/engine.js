@@ -208,9 +208,8 @@ export class Engine {
       this.adaptLookahead();
     }
 
-    const nextBeat = this.playing ? this.nextGrid + ((4 - (this.step % 4)) % 4) * this.stepDur : now;
     const act = this.active;
-    for (const d of act) d.update(now, dt, nextBeat);
+    for (const d of act) d.update(now, dt);
 
     if (!this.playing) return;
     while (this.nextGrid < now + this.lookahead) {

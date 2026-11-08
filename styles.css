@@ -207,6 +207,10 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .cxf-val { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; height: 12px; }
 .cxf-name { color: var(--fg); font-size: 9px; letter-spacing: 0.14em; white-space: nowrap; }
 .p-status { margin-left: 10px; color: var(--fg); letter-spacing: 0.08em; }
+.p-status.preview { color: var(--dim); }
+.ph-ticks { display: inline-flex; gap: 3px; margin-left: 10px; vertical-align: middle; }
+.ph-ticks i { width: 6px; height: 2px; background: var(--faint); }
+.ph-ticks i.now { background: var(--fg); }
 .t-len { flex-wrap: wrap; justify-content: center; row-gap: 3px; max-width: var(--col); }
 
 /* ───────── columnas (transición / loop) */

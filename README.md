@@ -82,13 +82,45 @@ BREAK     └───────────┘ SOLO DRUMS
 - **Progresivo**: al pasar el umbral de un instrumento no entra de golpe. Su cantidad
   (filtro o volumen, según TRANSICIÓN, y su densidad) crece poco a poco hasta llegar a la
   esquina. Por el borde de abajo, por ejemplo, el kick va 0 → 6 % → 20 % → 40 % → 60 % → 80 % → 100 %.
-- **Viajar a una esquina**: pulsa su nombre. Empieza en la siguiente negra y tarda los
-  compases elegidos en A ESQUINA (YA = al instante). El título muestra
-  "→ ESQUINA · N COMP.". Pulsa la **misma esquina** otra vez para **pausar** y otra más para
-  seguir. Pulsar **otra esquina** cambia el destino desde donde estés. **Mover el cursor
-  cancela** el viaje.
+- **Viajar a una esquina**: pulsa su nombre. Tarda los compases elegidos en A ESQUINA y
+  **aterriza en frase**: la llegada cae en el inicio de una frase (cada 4 compases para
+  viajes de 1–2, cada 8 para 4 o más), así que puede esperar unos compases antes de
+  empezar. No hay un loop por universo: es una rejilla de frases común, contada desde el
+  primer compás. Junto a ESTRUCTURA, un trazo por compás de la frase (el que suena,
+  encendido) y, **antes de pulsar**, "ENTRA YA" o "ENTRA EN N": cuándo empezaría un viaje
+  con los compases elegidos en A ESQUINA. Después, "→ ESQUINA · ENTRA EN N" mientras espera y
+  "→ ESQUINA · N COMP." durante el viaje. La bolita del pad viaja siempre, también en un
+  build (aunque el sonido se aguante hasta el drop). YA = en la siguiente negra. Pulsa la **misma
+  esquina** otra vez para **pausar** y otra más para seguir (si aún no había empezado,
+  vuelve a esperar frase). Pulsar **otra esquina** cambia el destino desde donde estés.
+  **Mover el cursor cancela** el viaje.
+- Cada viaje lleva su **transición** (ver abajo).
 - Con **LOOP** activo, pulsar una esquina la deja pendiente; al soltar el loop se aplica
   según SALIDA (instantánea o progresiva).
+
+## Transiciones
+
+Al viajar a una esquina, el universo compone solo la transición: sabe de dónde sale, a
+dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay).
+
+| Viaje | Qué pasa |
+|---|---|
+| **Entra el kick** (BREAK o SIN DRUMS → TODO o SOLO DRUMS) | **build**: riser (ruido y/o tono que sube), redoble que acelera (negras → corcheas → semicorcheas → fusas), el universo se va adelgazando con un high-pass y a veces un silencio de ½–2 tiempos antes del final. La estructura **se aguanta** y todo entra de golpe en el 1 (**drop**) con impacto y plato. |
+| **Entra la música sobre el kick** (SOLO DRUMS → TODO) | progresivo, con riser suave, redoble corto y plato al llegar |
+| **Se va el kick** (TODO o SOLO DRUMS → BREAK o SIN DRUMS) | progresivo, con downfilter (el universo entero se cierra los últimos compases), plato al revés que muere en el 1, golpe grave y caída de ruido después |
+| **Se va la música** (TODO → SOLO DRUMS) | progresivo, con un reverse corto, redoble del último tiempo y plato |
+| **Sin kick** (BREAK ↔ SIN DRUMS) | solo un barrido suave |
+
+- **Cuantos más compases, más capas**: con YA solo hay golpe o plato al llegar; con 1–2,
+  un redoble corto y un soplo de ruido; con 4, riser y tensión; con 8 o más, todo (el
+  riser dura como mucho 16 compases y el redoble 4).
+- **Paleta por universo**: qué riser (ruido, tono o los dos, cuánto sube, si late), qué
+  redoble (caja, clap, rim o tom, si sube de tono), qué golpe (grave afinado en la tónica,
+  sordo o los dos), cómo son los platos, cuánta tensión y si hay silencio antes del drop
+  salen de la semilla del universo, igual que su color. Hay universos sobrios y universos
+  intensos; NUEVO UNIVERSO cambia también la paleta.
+- Mover el cursor, pulsar otra esquina o activar el LOOP corta la transición en curso.
+  Las transiciones suenan por el canal del universo (en DJ, pasan por su EQ y su fader).
 
 ## Instrumentos
 

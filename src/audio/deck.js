@@ -236,6 +236,12 @@ export class Deck {
     const A = this.arr;
     if (this.loop) return A.setTarget(name);
     if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
+    // antes del primer GENERAR no hay nada que viajar: se elige desde dónde empieza
+    if (!this.engine.generated) {
+      A.goTo(name, 0, 0);
+      this.fx?.cancel(this.ctx.currentTime);
+      return A.land();
+    }
     const kind = classify(A.cur, SCENES[name].mix);
     // la FORMA solo cuenta en los viajes: lo instantáneo (el CORTE, o CLIC en INSTANTÁNEO) salta
     const cut = this.form === 'golpe' && g.bars > 0;

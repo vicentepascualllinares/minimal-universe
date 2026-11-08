@@ -79,8 +79,9 @@ export class Engine {
     this.lookahead = MARGIN_S[this.marginMode] ?? PROFILE.lookahead; // s programados por adelantado
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
-      new Deck(this, 'A', { scene: 'esqueleto', v: -0.3, a: -0.25 }), // kick, bajo y hat
-      new Deck(this, 'B', { scene: 'todo', v: 0.2, a: 0.15 }),
+      // los dos arrancan en SOLO DRUMS: la entrada natural de un tema (y para mezclar)
+      new Deck(this, 'A', { scene: 'drums', v: -0.3, a: -0.25 }),
+      new Deck(this, 'B', { scene: 'drums', v: 0.2, a: 0.15 }),
     ];
     this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
     this.eqType = 'iso'; // EQ de la mesa DJ: 'iso' (silencia, −∞) | 'eq' (atenúa, −26 dB)

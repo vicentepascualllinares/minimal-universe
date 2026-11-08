@@ -121,6 +121,8 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
   vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
 - Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
   es solo el cambio (de golpe o progresivo, según TRANSICIÓN).
+- **Al abrir**, los universos empiezan en **SOLO DRUMS**. Antes del primer GENERAR, pulsar una
+  escena la elige directamente, sin viaje ni FX: es desde donde empieza a sonar.
 - Con **LOOP** activo, pulsar una escena la deja pendiente (borde discontinuo); al soltar el
   loop se aplica según SALIDA (instantánea o progresiva).
 

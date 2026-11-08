@@ -26,7 +26,7 @@ export class XYPad {
     this.canvas.addEventListener('pointerdown', (ev) => {
       if (this.pid !== null) return;
       this.pid = ev.pointerId;
-      this.canvas.setPointerCapture(ev.pointerId);
+      try { this.canvas.setPointerCapture(ev.pointerId); } catch {} // algunos navegadores fallan con punteros sintéticos
       this.el.classList.add('active');
       pos(ev);
     });

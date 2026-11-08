@@ -18,7 +18,7 @@ export class VSlider {
     this.track.addEventListener('pointerdown', (ev) => {
       if (this.pid !== null) return;
       this.pid = ev.pointerId;
-      this.track.setPointerCapture(ev.pointerId);
+      try { this.track.setPointerCapture(ev.pointerId); } catch {} // algunos navegadores fallan con punteros sintéticos
       el.classList.add('active');
       pos(ev);
     });
@@ -56,7 +56,7 @@ export class HSlider {
     this.track.addEventListener('pointerdown', (ev) => {
       if (this.pid !== null) return;
       this.pid = ev.pointerId;
-      this.track.setPointerCapture(ev.pointerId);
+      try { this.track.setPointerCapture(ev.pointerId); } catch {} // algunos navegadores fallan con punteros sintéticos
       el.classList.add('active');
       pos(ev);
     });

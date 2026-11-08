@@ -20,11 +20,13 @@ export class Deck {
     this.engine = engine;
     this.id = id;
     this.transitionMode = 1;  // 1 filtro .. 0 volumen
-    this.transitionBars = 4;
+    this.transitionBars = 4;  // compases del viaje al pulsar una esquina (0 = instantáneo)
+    this.nextBeat = 0;
     this.complexity = 0.4;    // 0 simple .. 1 complejo (se aplica compás a compás)
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement();
     this.arr.set(x, y);
+    this.arr.snap();
     this.events = [];
     this.seed = newSeed();
     this.gen = makeGenerators(this.seed);
@@ -117,6 +119,13 @@ export class Deck {
 
   reseed() { this.pendingSeed = newSeed(); }
 
+  // pulsar el nombre de una esquina: viajar ahí; pulsar la misma a mitad = pausa / sigue
+  goCorner(name) {
+    const T = this.arr.travel;
+    if (T && T.name === name && T.bars > 0) this.arr.togglePause();
+    else this.arr.goTo(name, this.transitionBars, this.nextBeat);
+  }
+
   toggleLoop() {
     if (this.loop) this.loop.releasing = !this.loop.releasing; // segundo clic antes del compás: cancela
     else this.engageLoop();
@@ -134,11 +143,13 @@ export class Deck {
       frozen: { x: this.arr.x, y: this.arr.y, v: this.emotion.v, a: this.emotion.a },
       releasing: false,
     };
+    this.arr.frozen = true;
   }
 
   // se ejecuta en el primer paso del compás siguiente a soltar el loop (t0 = su tiempo)
   finishLoop(t0) {
     this.loop = null;
+    this.arr.frozen = false;
     const now = this.ctx.currentTime;
     if (this.releaseMode === 'instant') {
       this.emotion.snap();
@@ -146,21 +157,21 @@ export class Deck {
       this.arr.snap();
       for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, t0);
     } else {
-      const barDur = this.engine.barDur;
-      this.emotion.rampTo(this.releaseBars * barDur, t0 - now);
-      this.arr.update(now, 0, barDur, this.releaseBars, t0);
+      this.emotion.rampTo(this.releaseBars * this.engine.barDur, t0 - now);
+      this.arr.travelToTarget(this.releaseBars, t0);
     }
   }
 
   // control (≈50 Hz): emoción, estructura, transiciones y sonido
   update(now, dt, nextBeat) {
+    this.nextBeat = nextBeat;
+    const playDt = this.engine.playing ? dt : 0;
     if (this.loop) {
-      this.arr.preview(); // congelado: solo se previsualiza lo pendiente
+      this.arr.update(now, dt, playDt, this.engine.barDur); // congelado: solo se previsualiza lo pendiente
     } else {
       this.emotion.update(dt);
       this.e = mapEmotion(this.emotion.v, this.emotion.a, this.drift(now));
-      const playing = this.engine.playing;
-      this.arr.update(now, playing ? dt : 0, this.engine.barDur, this.transitionBars, nextBeat);
+      this.arr.update(now, dt, playDt, this.engine.barDur);
       for (const k of INSTRUMENTS) {
         this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, now);
       }
@@ -266,7 +277,7 @@ export class Deck {
     const dens = {}, prog = {};
     for (const k of INSTRUMENTS) {
       dens[k] = S[k].density;
-      prog[k] = Math.max(S[k].progress, S[k].target ? 1 : 0);
+      prog[k] = S[k].progress;
     }
     const shared = shareDensity(dens, prog, cx.budget);
     const d = (k) => shared[k];

@@ -53,22 +53,51 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 
 | Control | Qué hace |
 |---|---|
-| **ESTRUCTURA** (XY) | TODO ↗ · DEEP ↘ (kick + bass) · NADA ↙ · NO DEEP ↖ (todo menos kick y bass: aquí manda el pad). Cada instrumento entra al superar su umbral; lo que sobra es su densidad. |
-| **TRANSICIÓN** (vertical) | Arriba: entradas/salidas con filtro (HP para kick/bass, LP para el resto, con resonancia). Abajo: con volumen. En medio: mezcla. Duración: 1–16 compases. Se cuantiza a la siguiente negra. |
+| **ESTRUCTURA** (XY) | Los momentos de un tema (ver abajo). X = ritmo, Y = música. Al mover el cursor el sonido lo sigue de forma progresiva. Pulsar el nombre de una esquina = viajar ahí. |
+| **TRANSICIÓN** (vertical) | Cómo entra y sale cada instrumento. Arriba: con filtro (HP para kick/bass, LP para el resto, con resonancia). Abajo: con volumen. En medio: mezcla. Debajo, **A ESQUINA**: cuánto dura el viaje al pulsar una esquina (YA, 1, 2, 4, 8, 16, 32 compases). |
 | **EMOCIÓN** (XY) | X oscuro → luminoso, Y quieto → intenso. Esquinas: TENSIÓN, EUFORIA, ABISMO, CALIDEZ. Tiene inercia (~2 s). |
 | **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
 | **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
 | **COMPLEJIDAD** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Cuánta información dice el universo entero (ver abajo). Se aplica en el siguiente compás. Rueda = fino, doble clic = valor inicial (0,4). En DJ y en móvil las etiquetas son − / +. |
 | **NUEVO UNIVERSO** | Otros motivos y otro kit de percusión para ese universo (en el siguiente compás; si está en loop, al soltarlo). |
 
+## Estructura: los momentos de un tema
+
+```
+SIN DRUMS ┌───────────┐ TODO
+          │           │
+BREAK     └───────────┘ SOLO DRUMS
+```
+
+| Esquina | Qué suena |
+|---|---|
+| **SOLO DRUMS** | kick, hats, clap, open hat y percusión: la entrada / salida para mezclar |
+| **TODO** | todo; el pad algo al fondo y filtrado |
+| **SIN DRUMS** | bajo, acordes y pad: el momento en que se quita el kick |
+| **BREAK** | el pad a tope, algo de percusión, unos acordes y un hat lejano. Sin kick ni bajo |
+
+- Cada borde es una transición típica: **derecha** = la subida (entra la música sobre los
+  drums), **arriba** = se quitan los drums, **izquierda** = se va el bajo y queda la
+  atmósfera, **abajo** = entra el groove.
+- **Progresivo**: al pasar el umbral de un instrumento no entra de golpe. Su cantidad
+  (filtro o volumen, según TRANSICIÓN, y su densidad) crece poco a poco hasta llegar a la
+  esquina. Por el borde de abajo, por ejemplo, el kick va 0 → 6 % → 20 % → 40 % → 60 % → 80 % → 100 %.
+- **Viajar a una esquina**: pulsa su nombre. Empieza en la siguiente negra y tarda los
+  compases elegidos en A ESQUINA (YA = al instante). El título muestra
+  "→ ESQUINA · N COMP.". Pulsa la **misma esquina** otra vez para **pausar** y otra más para
+  seguir. Pulsar **otra esquina** cambia el destino desde donde estés. **Mover el cursor
+  cancela** el viaje.
+- Con **LOOP** activo, pulsar una esquina la deja pendiente; al soltar el loop se aplica
+  según SALIDA (instantánea o progresiva).
+
 ## Instrumentos
 
 KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **CHORD** · **PAD**.
 
 - **CHORD** — acordes dub: stabs cortos con filtro que se cierra y mucho delay. Ritmo en
-  contratiempo que nunca pisa al kick. Entra tarde en TODO y en NO DEEP.
+  contratiempo que nunca pisa al kick. A tope en SIN DRUMS y en TODO, un poco en el BREAK.
 - **PAD** — la atmósfera: un acorde largo con filtro que respira y un poco de aire (ruido
-  filtrado). Manda en NO DEEP, para los breaks. Mientras suena sigue a la emoción en vivo.
+  filtrado). Manda en el BREAK y en SIN DRUMS; en TODO se aparta. Mientras suena sigue a la emoción en vivo.
 - Los dos comparten una progresión de 8 compases en grados de escala (un solo acorde, o la
   casa y otro: iv, VI, VII o v). Si el modo cambia, se recolorean al compás siguiente.
 - La emoción decide el resto: ABISMO = acordes oscuros con cola larga y pad presente;

@@ -3,7 +3,7 @@
 
 import { XYPad } from './xypad.js';
 import { VSlider, HSlider } from './slider.js';
-import { INSTRUMENTS, CORNER_WEIGHTS } from '../music/arrangement.js';
+import { INSTRUMENTS, CORNER_WEIGHTS, CORNERS } from '../music/arrangement.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
 
@@ -25,10 +25,10 @@ function template(label) {
   <div class="rows">
   <div class="row">
     <section class="pad p-struct">
-      <div class="pad-title">ESTRUCTURA</div>
+      <div class="pad-title">ESTRUCTURA<span class="p-status"></span></div>
       <div class="pad-box"><canvas></canvas>
-        <span class="corner tl" data-c="nodeep">NO DEEP</span><span class="corner tr" data-c="todo">TODO</span>
-        <span class="corner bl" data-c="nada">NADA</span><span class="corner br" data-c="deep">DEEP</span>
+        <button class="corner go tl" data-c="sindrums" title="ir aquí (otra vez: pausa)">SIN DRUMS</button><button class="corner go tr" data-c="todo" title="ir aquí (otra vez: pausa)">TODO</button>
+        <button class="corner go bl" data-c="break" title="ir aquí (otra vez: pausa)">BREAK</button><button class="corner go br" data-c="drums" title="ir aquí (otra vez: pausa)">SOLO DRUMS</button>
       </div>
     </section>
     <section class="col trans">
@@ -36,8 +36,8 @@ function template(label) {
       <div class="t-lab top">FILTRO</div>
       <div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div>
       <div class="t-lab bot">VOLUMEN</div>
-      ${opts('t-len', nums([1, 2, 4, 8, 16]), '4')}
-      <div class="unit">COMPASES</div>
+      ${opts('t-len', [['0', 'YA'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
+      <div class="unit">A ESQUINA</div>
     </section>
   </div>
   <div class="row">
@@ -124,6 +124,14 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     cells[k] = { el, dot: el.querySelector('.dot'), bar: el.querySelector('i'), mark: el.querySelector('b'), flash: 0 };
   }
   const structCorners = [...root.querySelectorAll('.p-struct .corner')];
+  // pulsar una esquina: viajar ahí en los compases elegidos (otra vez = pausa / sigue)
+  for (const el of structCorners) {
+    el.addEventListener('pointerdown', (ev) => {
+      ev.stopPropagation();
+      deck.goCorner(el.dataset.c);
+    });
+  }
+  const pStatus = q('.p-status');
   const emoCorners = [...root.querySelectorAll('.p-emo .corner')];
 
   return {
@@ -136,8 +144,24 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       emoPad.color = col;
       root.style.setProperty('--glow', col);
 
-      const cw = CORNER_WEIGHTS(deck.arr.x, deck.arr.y);
-      structCorners.forEach((el) => (el.style.opacity = 0.2 + 0.8 * cw[el.dataset.c]));
+      const AR = deck.arr;
+      const T = AR.travel;
+      const cw = CORNER_WEIGHTS(AR.x, AR.y);
+      structCorners.forEach((el) => {
+        el.style.opacity = 0.3 + 0.7 * cw[el.dataset.c];
+        const dest = !!T && T.name === el.dataset.c;
+        el.classList.toggle('dest', dest && !T.paused);
+        el.classList.toggle('paused', dest && T.paused);
+      });
+      structPad.value = { x: AR.tx, y: AR.ty };
+      structPad.follow = { x: AR.x, y: AR.y };
+      let st = '';
+      if (T && T.name && T.bars > 0) {
+        const left = Math.max(0, T.bars * (1 - T.done));
+        st = `→ ${CORNERS[T.name].label} · ${T.paused ? 'PAUSA' : left < 0.95 ? 'ÚLTIMO COMPÁS' : `${Math.ceil(left)} COMP.`}`;
+      }
+      if (pStatus.textContent !== st) pStatus.textContent = st;
+      root.querySelector('.p-struct').classList.toggle('traveling', !!T && !T.paused);
       const vx = (em.v + 1) / 2;
       const ay = (em.a + 1) / 2;
       const ew = { abyss: (1 - vx) * (1 - ay), warmth: vx * (1 - ay), tension: (1 - vx) * ay, euphoria: vx * ay };

@@ -172,6 +172,14 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .corner.tr { top: 8px; right: 7px; }
 .corner.bl { bottom: 8px; left: 9px; }
 .corner.br { bottom: 8px; right: 7px; }
+/* esquinas de ESTRUCTURA: se pulsan para viajar ahí */
+.corner.go { pointer-events: auto; cursor: pointer; padding: 4px 3px; margin: -4px -3px; touch-action: none; transition: opacity 0.3s; }
+.corner.go:hover { opacity: 1 !important; }
+.corner.go.dest { opacity: 1 !important; animation: dest-blink 0.9s steps(2) infinite; }
+@keyframes dest-blink { 50% { color: var(--dim); } }
+.corner.go.paused { opacity: 1 !important; text-decoration: underline; text-underline-offset: 3px; }
+.p-status { margin-left: 10px; color: var(--fg); letter-spacing: 0.08em; }
+.t-len { flex-wrap: wrap; justify-content: center; row-gap: 3px; max-width: var(--col); }
 
 /* ───────── columnas (transición / loop) */
 .col {

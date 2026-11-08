@@ -189,6 +189,14 @@ function frame() {
     h.hidden = !shown;
     $('#health-sep').hidden = !shown;
   }
+  if (engine.easyOn) { // EASY EQ · GRAVES: de qué universo sale el kick y el bajo (parpadea si va a cambiar)
+    const L = engine.low.info();
+    for (const r of ['kick', 'bass']) {
+      const el = $(`.r-${r}`), t = L[r] || '–';
+      if (el.textContent !== t) el.textContent = t;
+    }
+    $('.mx-roles').classList.toggle('pending', L.pending);
+  }
   const sState = $('#state');
   const stTxt = engine.playing ? 'EN VIVO' : engine.generated ? 'PAUSA' : 'GENERAR';
   if (sState.textContent !== stTxt) sState.textContent = stTxt;

@@ -501,11 +501,14 @@ export class Deck {
     if ((ev = B.kick[s]) && A.audible('kick', t)) {
       V.kick(ctx, C.kick.input, t, ev.vel, e.kick, root, noise);
       const depth = e.kick.duck * ev.vel * A.state.kick.progress;
-      C.bass.duck.gain.setTargetAtTime(1 - depth, t, 0.003);
-      C.bass.duck.gain.setTargetAtTime(1, t + 0.045, 0.055);
-      // un poco de bombeo en la armonía (sidechain)
+      // SIDECHAIN al bajo: el suyo o, con EASY EQ en DJ, el bajo que suene en la mezcla
+      const low = this.engine.low;
+      if (low) low.duck(this, t, depth);
+      else this.duckBass(t, depth);
+      // un poco de bombeo en la armonía (sidechain), si este kick suena en la mezcla
+      const lv = low ? low.kickLevel(this) : 1;
       for (const [k, amt] of [['chord', 0.25], ['pad', 0.35]]) {
-        const dk = depth * amt * A.state[k].progress;
+        const dk = depth * lv * amt * A.state[k].progress;
         if (dk < 0.01) continue;
         C[k].duck.gain.setTargetAtTime(1 - dk, t, 0.004);
         C[k].duck.gain.setTargetAtTime(1, t + 0.05, 0.09);
@@ -579,6 +582,14 @@ export class Deck {
         emit('pad', t, ev.vel);
       }
     }
+  }
+
+  // SIDECHAIN: un kick (de este universo o, con EASY EQ, del otro) empuja a este bajo
+  duckBass(t, depth) {
+    if (depth < 0.001) return;
+    const g = this.ch.bass.duck.gain;
+    g.setTargetAtTime(1 - depth, t, 0.003);
+    g.setTargetAtTime(1, t + 0.045, 0.055);
   }
 
   // pausa: soltar lo que se sostiene (el pad)

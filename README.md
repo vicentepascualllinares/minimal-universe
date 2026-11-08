@@ -201,7 +201,7 @@ la tónica y el swing no pasa del 58 %. El color del universo en pantalla lo ref
 
 | Control | Qué hace |
 |---|---|
-| **EASY EQ** (botón, encendido por defecto; se recuerda) | La forma fácil de mezclar. En vez de la EQ de cada canal, **una perilla por banda (HI · MID · LOW) que pasa de A (izquierda) a B (derecha)**; en el centro suenan los dos. Al encenderlo los dos faders suben a tope y las perillas empiezan en A. **HI y MID**: sin hueco, en el centro los dos enteros y cada lado solo baja el otro. **LOW**: intercambio de bajo, nunca dos bajos enteros; cruzan en un tramo estrecho del centro (los dos a −3 dB) y en cuanto sales de él suena uno solo. Como el modo Frequency Mix del Pioneer DJM-2000. Doble clic = centro. Apagado: la EQ de siempre. |
+| **EASY EQ** (botón, encendido por defecto; se recuerda) | La forma fácil de mezclar. En vez de la EQ de cada canal, **una perilla por banda (HI · MID · LOW) que pasa de A (izquierda) a B (derecha)**; en el centro suenan los dos. Al encenderlo los dos faders suben a tope y las perillas empiezan en A. **HI y MID**: sin hueco, en el centro los dos enteros y cada lado solo baja el otro. **LOW** = los graves, que se reparten por instrumento y no por frecuencia: **en la mezcla suena como mucho un kick y un bajo**. Si solo un universo tiene kick (o bajo), suena, y en el centro se mezcla con lo del otro; el kick que suena hace **sidechain al bajo que suena**, venga de donde venga. Si los dos tienen kick (o los dos bajo), suena solo uno y cambia de dueño según giras: de A a B, primero el bajo (al 40 %) y luego el kick (al 60 %); de B a A, igual al revés. El centro nunca choca: el kick del que se va con el bajo del que llega. Cada cambio espera al siguiente tiempo. Bajo la perilla, **KICK · BAJO** dicen de qué universo sale cada uno (parpadean si van a cambiar). Como el modo Frequency Mix del Pioneer DJM-2000. Doble clic = centro. Apagado: la EQ de siempre. |
 | HI / MID / LOW (sin EASY EQ) | EQ de 3 bandas por canal (cortes en 250 Hz y 3,5 kHz). Centro = 0 dB (plano), derecha hasta +6 dB. A la izquierda, según OPCIONES → DJ: **ISOLATOR** (por defecto) silencia la banda del todo (−∞); **EQ** baja hasta −26 dB. |
 | FILTRO | Centro abierto. Izquierda = low pass, derecha = high pass, con algo de resonancia. |
 | Faders | Volumen de cada universo, con medidor al lado. A empieza arriba y B abajo. |
@@ -323,7 +323,8 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 
 - `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (glue + limitador).
 - `src/audio/deck.js` — un universo: 8 canales, loop, secuenciador. Sin reverb ni delay: todo seco.
-- `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ), filtro DJ, fader, medidor.
+- `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ; curvas de EASY EQ), filtro DJ, fader, medidor.
+- `src/audio/lowRoles.js` — EASY EQ · GRAVES: reparte los papeles KICK y BAJO entre los dos universos (dueño según el giro, cambio en el tiempo, sidechain cruzado).
 - `src/audio/dsp.js` — canal de instrumento (drive → HP → LP → fade → duck), saturación.
 - `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo, acordes dub y pad.
 - `src/music/emotion.js` — el color de cada universo → timbre, golpe, duraciones y swing; las escalas.

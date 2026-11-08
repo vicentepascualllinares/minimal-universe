@@ -27,19 +27,12 @@ export function bandGain(v, type) {
 }
 
 // EASY EQ: una perilla por banda que cruza de A (x = 0) a B (x = 1); en el centro, los dos.
-// Como el "Frequency Mix" del Pioneer DJM-2000, con las curvas de la mezcla con EQ:
-//   HI y MID  sin hueco: en el centro los dos enteros; cada lado solo baja el otro
-//             (a 3/4 del recorrido, el que se va está a −3 dB)
-//   LOW       intercambio de bajo: nunca dos bajos enteros. Cruce estrecho (LO_SWAP del
-//             recorrido) a potencia constante: en el centro los dos a −3 dB, y en cuanto
-//             sales de él suena un solo bajo
-const LO_SWAP = 0.12;
+// Como el "Frequency Mix" del Pioneer DJM-2000. Las tres bandas, sin hueco: en el centro los
+// dos enteros; cada lado solo baja el otro (a 3/4 del recorrido, el que se va está a −3 dB).
+// En LOW, además, nunca suenan dos kicks ni dos bajos a la vez: eso lo reparte lowRoles.js
+// (por instrumento, no por frecuencia).
 export function easyGains(band, x) {
   const q = Math.PI / 2;
-  if (band === 'lo') {
-    const t = Math.min(1, Math.max(0, (x - 0.5) / LO_SWAP + 0.5));
-    return [Math.cos(t * q), Math.sin(t * q)];
-  }
   return [x <= 0.5 ? 1 : Math.cos(((x - 0.5) / 0.5) * q), x >= 0.5 ? 1 : Math.cos(((0.5 - x) / 0.5) * q)];
 }
 

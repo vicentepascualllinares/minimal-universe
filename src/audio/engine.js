@@ -5,6 +5,7 @@
 import { makeNoise } from './voices.js';
 import { Deck } from './deck.js';
 import { Strip, easyGains } from './strip.js';
+import { LowRoles } from './lowRoles.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS } from '../music/arrangement.js';
 import { glide, ceiling } from './dsp.js';
@@ -96,6 +97,7 @@ export class Engine {
     // B (1). Empieza todo en A, como los faders de siempre. Se recuerda entre sesiones.
     this.easyEq = store.get('mu.easyEq') !== '0';
     this.xf = { hi: 0, mid: 0, lo: 0 };
+    this.low = new LowRoles(this); // LOW reparte los papeles KICK y BAJO (ver lowRoles.js)
   }
 
   get easyOn() { return this.easyEq && this.mode === 'dj'; }
@@ -109,6 +111,7 @@ export class Engine {
   }
 
   setXf(band, x) {
+    if (band === 'lo') this.low.move(x);
     this.xf[band] = x;
     this.applyEq([band]);
   }
@@ -273,6 +276,7 @@ export class Engine {
       d.initAudio(ctx, s.input);
       return s;
     });
+    this.low.reset(); // canales nuevos: los papeles de graves se vuelven a escribir
 
     // reloj en un Worker: no se para si la pestaña pierde el foco
     const src = `let id=null;onmessage=e=>{if(e.data==="go"){if(!id)id=setInterval(()=>postMessage(0),${PROFILE.tickMs})}else{clearInterval(id);id=null}}`;
@@ -416,12 +420,14 @@ export class Engine {
     const act = this.active;
     for (const d of act) d.update(now, dt);
 
-    if (!this.playing) return;
+    if (!this.playing) return this.low.apply(now); // parado: los papeles de graves, ya
     while (this.nextGrid < now + this.lookahead) {
       // TARDE: el hilo principal se atascó y este paso ya debería estar sonando
       // (sus notas salen desplazadas). Distinto de un CORTE (el audio sin datos).
       if (this.nextGrid < now) this.late++;
       if (this.step % 16 === 0 && this.scaleNext !== null) { this.scaleI = this.scaleNext; this.scaleNext = null; }
+      // EASY EQ · GRAVES: un cambio de dueño del kick o del bajo entra en el tiempo, antes de sus notas
+      if (this.step % 4 === 0) this.low.apply(this.nextGrid);
       for (const d of act) d.scheduleStep(this.step, this.nextGrid);
       this.nextGrid += this.stepDur;
       this.step++;

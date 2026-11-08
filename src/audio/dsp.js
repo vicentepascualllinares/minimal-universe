@@ -147,6 +147,7 @@ export class Channel {
     this.fade.gain.value = 0;
     this.duck = ctx.createGain();
     this.user = ctx.createGain(); // volumen del MIXER global (0 dB por defecto)
+    this.role = ctx.createGain(); // EASY EQ · GRAVES: 0 si otro universo tiene este papel (ver lowRoles)
     this.out = ctx.createGain();
     this.level = LEVEL[name];
     this.out.gain.value = this.level;
@@ -160,7 +161,7 @@ export class Channel {
       this.mud.frequency.value = f; this.mud.gain.value = g; this.mud.Q.value = q;
       chain = chain.connect(this.mud);
     }
-    chain.connect(this.fade).connect(this.duck).connect(this.user).connect(this.out).connect(dest);
+    chain.connect(this.fade).connect(this.duck).connect(this.user).connect(this.role).connect(this.out).connect(dest);
     this.last = { f: -1, vol: -1, m: -1 };
   }
 

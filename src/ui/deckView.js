@@ -4,6 +4,7 @@
 import { VSlider, HSlider } from './slider.js';
 import { INSTRUMENTS, SCENES, GRID, LAYERS, likeness } from '../music/arrangement.js';
 import { GROUPS, GROUP_LABEL, shapeComplexity } from '../music/complexity.js';
+import { faderDb, snap, setFxFader, FADER_ZERO, fmtDb } from './instMixer.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
 
@@ -42,7 +43,10 @@ function template(label) {
       ${opts('t-flow stack', [['escalonado', 'ESCALONADA'], ['suave', 'SUAVE']], 'suave')}
       ${opts('t-len', [['0', 'INSTANTÁNEO'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
       <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
-      <div class="spacer"></div>
+      <div class="t-vol" title="VOLUMEN de los efectos de transición de este universo (también en el MIXER) · doble clic = 0 dB">
+        <div class="fader"><div class="t-track"><div class="t-line"></div><i class="im-zero"></i><div class="t-handle"></div></div></div>
+        <span class="t-vol-db">0.0</span>
+      </div>
     </section>
   </div>
   <div class="row">
@@ -122,6 +126,23 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     showGesture();
   });
   showGesture();
+  // VOLUMEN DE FX: el mismo fader que en el MIXER (imán y doble clic a 0 dB); la posición vive en
+  // el motor, así las dos vistas van juntas
+  const di = deck.engine.decks.indexOf(deck);
+  const fxDb = q('.t-vol-db');
+  let fxSeen = deck.engine.fxPos[di];
+  const showFx = (v) => {
+    fxSeen = v;
+    fxDb.textContent = fmtDb(faderDb(v));
+    fxDb.classList.toggle('moved', Math.abs(v - FADER_ZERO) > 0.004);
+  };
+  const fxVol = new VSlider(q('.t-vol .fader'), {
+    value: fxSeen,
+    onChange: (v) => { setFxFader(deck.engine, di, v); showFx(v); },
+    onEnd: (v) => { const s = snap(v); if (s !== v) { setFxFader(deck.engine, di, s); showFx(s); fxVol.glideTo(s); } },
+  });
+  q('.t-vol .t-track').addEventListener('dblclick', () => { fxVol.set(FADER_ZERO); setFxFader(deck.engine, di, FADER_ZERO); showFx(FADER_ZERO); });
+  showFx(fxSeen);
   // FORMA del viaje: DE GOLPE / PROGRESIVA; y, solo en progresiva, ESCALONADA / SUAVE
   const showForm = () => {
     for (const [sel, v] of [['.t-form', deck.form], ['.t-flow', deck.flow]]) {
@@ -189,6 +210,8 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       const col = emoColor(em.v, em.a);
       this.color = col;
       root.style.setProperty('--glow', col);
+      // VOLUMEN DE FX movido desde el MIXER: el fader lo sigue
+      if (engine.fxPos[di] !== fxSeen) { fxVol.set(engine.fxPos[di]); showFx(engine.fxPos[di]); }
 
       // complejidad: si NUEVO UNIVERSO cambió los valores, los faders los siguen
       if (cxSeen !== deck.cxVersion) {

@@ -149,6 +149,28 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
   sordo o los dos), cómo son los platos, cuánta tensión y si hay silencio antes del drop
   salen de la semilla del universo, igual que su color. Hay universos sobrios y universos
   intensos; NUEVO UNIVERSO cambia también la paleta.
+- **Cada transición es distinta**: la paleta es la *familia* del universo, no un sonido fijo.
+  Cada transición tira sus propios detalles alrededor de ella (afinaciones, colas, cómo crece el
+  riser, hasta dónde suben los filtros) y una combinación principal (riser · voz del redoble ·
+  patrón · impacto) que **no repite ninguna de las 3 anteriores**. Se reconoce el universo, pero
+  nunca suena idéntico.
+  - **Riser TONAL**: un arpegio en la escala y la tónica del momento (grado a grado, la tríada o
+    tónica y quinta) que sube, acelera (corcheas → semicorcheas → fusas) y se abre de filtro, con
+    un soplo de ruido debajo. Suena a ese tema, no a un efecto pegado. Solo en viajes de 4
+    compases o más (en los cortos, el riser es un soplo de ruido).
+  - **Redoble con la voz PROPIA**: el clap del universo, con su color, más corto y subiendo de tono.
+  - **Patrones de redoble**: ACELERA (negras → fusas), RECTO (semicorcheas), TRESILLOS (de
+    corchea y luego de semicorchea) y FANTASMAS (acento en los tiempos, el resto flojo y con huecos).
+  - **Impacto con el KICK del universo**: su propio kick, con más caída de tono y más cola.
+  - Los **básicos** siguen todos: riser de ruido blanco, riser de tono (ahora también con
+    **senoidal** pura, la más probable cuando cambia la onda), los dos juntos, caída de ruido,
+    barridos de filtro (HP de tensión, LP de caída), reverse, redobles, golpes y platos. Lo
+    tonal y lo propio se suman a ellos; no los sustituyen.
+- **VOLUMEN DE FX** de cada universo: un fader bajo el botón FX de su columna TRANSICIÓN (A a la
+  izquierda, B a la derecha) y, el mismo, en el **MIXER** (caja FX, A y B, nunca vinculados, con
+  medidor). 0 dB = como sonaba; +6 arriba, −48 y silencio abajo; imán y doble clic = 0 dB. Mueve
+  solo las voces de transición (riser, redoble, golpes, platos, reverse, caída): los barridos
+  de filtro y el silencio antes del drop son la propia música. En el móvil, solo en el MIXER.
 - Pulsar otra escena o activar el LOOP corta la transición en curso.
   Las transiciones suenan por el canal del universo (en DJ, pasan por su EQ y su fader).
 
@@ -267,6 +289,11 @@ sus opciones van de menos a más calidad; AUTO, que se mueve solo por esa escala
   los nombres de las salidas el navegador pide permiso de micrófono (solo para eso, no se
   graba nada). Si la salida guardada desaparece, vuelve a la del sistema.
 - **RENDIMIENTO → Medidores**: qué se ve en la cabecera (CORTES, TARDE).
+- **RENDIMIENTO → Incidencias**: los fallos del audio que el programa ha visto, con la hora,
+  dónde se atascó y lo que sonaba (al pasar el ratón). Si el audio se queda mudo o roto (un
+  valor no numérico atrapado, el sistema suspende el audio, el reloj se para), el programa
+  **rehace el audio solo** y la cabecera avisa **AUDIO RECUPERADO**: la música vuelve en un
+  momento. Ver [RENDIMIENTO.md](RENDIMIENTO.md) §10.
 
 ## MIXER (volumen por instrumento)
 
@@ -278,6 +305,18 @@ El botón VINCULADOS los separa. En el móvil, en DJ, no se ven los dB (no caben
 Siempre arranca en 0 dB = la mezcla por defecto.
 Arriba +6 dB, abajo hasta −48 dB y silencio. **Imán** a 0 dB: mientras lo mueves va libre; si lo sueltas a menos de 0,75 dB, se va a 0 dB (el sonido al instante; el mando se desliza unas milésimas). En DJ, cada instrumento va en su caja (A y B juntos). Doble clic = 0 dB. RESTABLECER = todo a 0 dB.
 La música sigue sonando mientras está abierto. (Todavía no se guarda: vendrá con las cuentas.)
+
+**MASTER** (a la derecha, aparte): la **ganancia del máster** va **antes del limitador**: subirla
+empuja la mezcla contra él (más nivel, más limitación). 0 dB = como sonaba siempre; arriba +12 dB,
+abajo −48 dB y silencio; mismo imán y doble clic = 0 dB, y nunca va vinculado. Al lado, el
+**medidor del máster** (pico de L y R de lo que sale, tras el techo) y el de **LIM**, en naranja,
+bajando desde arriba: lo que está quitando el limitador (0–12 dB). Abajo, las cifras: el pico en
+dBFS y lo que quita, retenidos 1,5 s para que dé tiempo a leerlos. En **DJ**, la mesa enseña
+siempre el máster **entre los dos faders**: L y R y LIM en vertical, del mismo tamaño que los
+medidores de canal, y debajo las mismas cifras; la ganancia se toca en el MIXER.
+Solo el máster tiene limitador: A, B y los canales llevan medidor de nivel, no de limitación.
+(Provisional: con la sesión de mezcla y máster, con cadenas de clippers y limitadores, se
+replantea qué mide LIM; ver [HOJA_DE_RUTA.md](HOJA_DE_RUTA.md).)
 
 ## Mezcla por defecto
 
@@ -302,7 +341,11 @@ Medido con todo sonando y un color neutro (loudness K-ponderado ≈ LUFS):
   140, hats 300), y un recorte de "barro" en acordes (−5 dB a 550 Hz) y pad (−3 dB a 380 Hz).
   El pad ya no dobla la tónica grave: esa octava es del bajo.
 - **Sidechain**: el kick aparta al bajo ≈ 3 dB (quieto) a 7 dB (intenso), a acordes y pad un
-  poco.
+  poco. En **DJ** es **cruzado** cuando hace falta: si un universo tiene un bajo sonando **sin
+  kick propio** (p. ej. A en SOLO DRUMS y B en SIN DRUMS), el kick que suena del otro también
+  lo aparta, en proporción a lo que la mesa deja oír de ese kick (fader y LOW). Con EASY EQ ya
+  era así; ahora también con la EQ normal. Si el bajo tiene su propio kick, solo lo empuja el
+  suyo (no hay doble bombeo).
 - **Compresión de bus** (glue): 2:1, ataque 20 ms para dejar pasar el golpe del kick,
   ≈ 1–2 dB de reducción.
 - **Saturación**: cada canal satura según el color del universo, pero compensando el
@@ -325,10 +368,11 @@ ESPACIO play/pausa (o tocar EN VIVO / PAUSA en la cabecera)
 
 Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 
-- `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (glue + limitador).
+- `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (ganancia → glue + limitador → techo; medidor L/R y lo que quita el limitador).
+- `src/ui/meters.js` — escala de los medidores y el máster (se lee una vez por fotograma; lo pintan la mesa DJ y el MIXER).
 - `src/audio/deck.js` — un universo: 8 canales, loop, secuenciador. Sin reverb ni delay: todo seco.
 - `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ; curvas de EASY EQ), filtro DJ, fader, medidor.
-- `src/audio/lowRoles.js` — EASY EQ · GRAVES: reparte los papeles KICK y BAJO entre los dos universos (dueño según el giro, cambio en el tiempo, sidechain cruzado).
+- `src/audio/lowRoles.js` — EASY EQ · GRAVES: reparte los papeles KICK y BAJO entre los dos universos (dueño según el giro, cambio en el tiempo, sidechain cruzado; con la EQ normal, cruzado cuando un bajo suena sin kick propio).
 - `src/audio/dsp.js` — canal de instrumento (drive → HP → LP → fade → duck), saturación.
 - `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo, acordes dub y pad.
 - `src/music/emotion.js` — el color de cada universo → timbre, golpe, duraciones y swing; las escalas.

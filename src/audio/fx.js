@@ -3,6 +3,8 @@
 // Las voces de un golpe se programan en un tiempo exacto `t`; el riser es una voz
 // sostenida que el universo mueve compás a compás con set(progreso).
 
+import * as V from './voices.js';
+
 const METAL = [1, 1.4826, 1.8003, 2.5461, 2.6303, 3.8968];
 const nz = (ctx, noise, loop = false) => {
   const n = ctx.createBufferSource();
@@ -90,7 +92,7 @@ export function riser(ctx, out, t, p, root, noise, level = 1, noiseOnly = false)
         lp.frequency.setTargetAtTime(900 * Math.pow(9, q), now, tc);
       }
       if (lfo) lfo.frequency.setTargetAtTime(2 + 14 * q * q, now, tc);
-      g.gain.setTargetAtTime(level * (0.04 + 0.96 * Math.pow(q, 1.8)), now, tc);
+      g.gain.setTargetAtTime(level * (0.04 + 0.96 * Math.pow(q, p.riseCurve ?? 1.8)), now, tc);
     },
     end(at) { stop(at, 0.004); }, // corte seco: el riser muere justo en el 1
     kill(at) { stop(at, 0.05); },
@@ -153,6 +155,46 @@ export function rollHit(ctx, out, t, vel, p, q, noise) {
   }
   n.start(t, off(noise));
   n.stop(end);
+}
+
+// ───────────────────────── RISER TONAL (una nota del arpegio)
+// Lo programa el universo nota a nota (en la rejilla, exacto): sube por la escala del momento y
+// acelera. q = 0..1 avance: el filtro se abre y la nota se acorta. Seco y corto: no se pisa
+// con la llegada.
+export function arpNote(ctx, out, t, freq, vel, p, q) {
+  const dur = 0.16 - 0.1 * q;
+  const o = ctx.createOscillator();
+  o.type = p.wave;
+  o.frequency.value = freq;
+  const o2 = ctx.createOscillator(); // una octava abajo, flojo: cuerpo
+  o2.type = 'triangle';
+  o2.frequency.value = freq / 2;
+  const lp = filt(ctx, 'lowpass', 700 * Math.pow(12, q), 2);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vel, t + 0.003);
+  g.gain.setTargetAtTime(0, t + 0.003, dur / 4);
+  const g2 = ctx.createGain();
+  g2.gain.value = 0.35;
+  o.connect(lp);
+  o2.connect(g2).connect(lp);
+  lp.connect(g).connect(out);
+  const end = t + dur * 1.8 + 0.02;
+  for (const x of [o, o2]) { x.start(t); x.stop(end); }
+}
+
+// ───────────────────────── REDOBLE CON LA VOZ PROPIA: el clap del universo (su color), más corto
+// y subiendo de tono si la paleta lo pide
+export function selfHit(ctx, out, t, vel, p, q, clapP, noise) {
+  const pm = Math.pow(2, (p.rollRise * q) / 12);
+  V.clap(ctx, out, t, vel * 1.1, { ...clapP, freq: clapP.freq * pm, decay: Math.min(clapP.decay, 0.06 + 0.08 * (1 - q)), spread: clapP.spread * 0.6 }, noise);
+}
+
+// ───────────────────────── IMPACTO CON EL KICK DEL UNIVERSO: su kick, con más caída y más cola
+export function kickImpact(ctx, out, t, vel, kickP, root, noise) {
+  V.kick(ctx, out, t, vel * 0.6, {
+    ...kickP, punch: kickP.punch * 1.5, pitchDecay: kickP.pitchDecay * 4, hold: kickP.hold * 2, decay: kickP.decay * 2.5,
+  }, root, noise);
 }
 
 // ───────────────────────── IMPACTO (al llegar)

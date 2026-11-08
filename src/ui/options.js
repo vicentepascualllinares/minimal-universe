@@ -57,6 +57,11 @@ export function optionsPanel(root, engine, onClose) {
           <button class="op-choice op-plain" data-m="tarde" title="notas que salieron fuera de tiempo: el ordenador se atascó"><b>TARDE</b></button>
         </div>
       </div>
+      <div class="op-row">
+        <span class="op-lab">INCIDENCIAS</span>
+        <div class="op-inc"></div>
+        <span class="op-note">fallos del audio que el programa ha visto (y, si pudo, arreglado solo) · se guardan en este navegador · <button class="op-mini op-inc-clear">BORRAR</button></span>
+      </div>
     </div>
     <div class="im-foot">
       <button class="im-close">CERRAR</button>
@@ -131,11 +136,32 @@ export function optionsPanel(root, engine, onClose) {
   root.querySelector('.im-close').addEventListener('click', onClose);
   show();
 
+  // REGISTRO DE INCIDENCIAS: las más recientes arriba (ver logIncident en engine.js)
+  const inc = q('.op-inc');
+  let incShown = -1;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const showIncidents = () => {
+    const list = engine.incidents;
+    if (list.length === incShown && (list.at(-1)?.t ?? '') === inc.dataset.last) return;
+    incShown = list.length;
+    inc.dataset.last = list.at(-1)?.t ?? '';
+    inc.innerHTML = list.length
+      ? list.slice(-8).reverse().map((it) => {
+        const d = new Date(it.t);
+        const when = `${d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} ${d.toLocaleTimeString('es-ES')}`;
+        return `<div class="op-inc-it" title="${esc(it.ctx)}"><b>${when} · ${esc(it.type.toUpperCase())}</b> ${esc(it.detail)}</div>`;
+      }).join('')
+      : '<div class="op-inc-none">ninguna</div>';
+  };
+  q('.op-inc-clear').addEventListener('click', () => { engine.clearIncidents(); showIncidents(); });
+  showIncidents();
+
   // lo que ha dado de verdad este equipo (se refresca mientras el panel está abierto)
   const lat = q('.op-lat');
   return {
     frame() {
       show();
+      showIncidents();
       const L = engine.latencyInfo();
       const txt = engine.rebuilding ? 'rehaciendo el audio…'
         : !L ? ''

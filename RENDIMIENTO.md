@@ -366,3 +366,55 @@ instrumento y del universo. Una versión contra sí misma difiere < −80 dB (re
   sigue siendo más simple (por diseño).
 - Arreglo menor: el primer valor de saturación tras crear o rehacer el audio entra al momento
   (antes subía con una rampa de 50 ms).
+
+---
+
+## 10. Sonido roto y luego silencio (2026-11-08): el NaN atrapado
+
+**Síntoma** (prueba del usuario, modo DJ): unos segundos de sonido roto y, de golpe, silencio
+total, con la pantalla funcionando.
+
+**Lo que se descartó**: los medidores del máster (solo leen: analizadores tras el techo, no
+tocan la señal) y la ganancia del máster (a 0 dB es idéntica a antes; a +12 dB satura más,
+pero no silencia).
+
+**El mecanismo, medido**: basta **una muestra NaN** (un valor no numérico) en cualquier canal
+para que el máster se quede **mudo para siempre**. Los nodos con memoria que reciben sonido sin
+parar (filtros de transición del universo, crossover de la mesa, glue, limitador, el
+sobremuestreo de las saturaciones) guardan el NaN en su estado y ya no lo sueltan. Los canales
+de instrumento se recuperan solos en un silencio entre notas (el navegador vacía los filtros sin
+entrada), pero lo de detrás no. Un WaveShaper no frena un NaN (sí frena un Infinity). Con
+sobremuestreo, además, se queda atascado. Y desde JavaScript no se puede vaciar un nodo: solo
+rehacerlo.
+
+**De dónde pudo venir el NaN**: sin reproducir. Una prueba de estrés de varios minutos con gestos
+al azar (escenas, cortes, complejidad, NUEVO, loop, EQ, filtro, EASY EQ, ganancias, BPM, modo)
+no lo provocó. Candidatos: un filtro que se vuelve inestable al moverse deprisa (sonaría «roto»
+mientras crece hasta Infinity y luego NaN), o un error de programa a mitad de paso. Otros que
+dan el mismo síntoma: el sistema suspende el audio (cambio de salida o Bluetooth) o se cuelga al
+rehacer el audio (AUTO por cortes).
+
+**La protección** (`watchAudio` en engine.js, en cada tic del reloj):
+- **NaN en la salida**: se busca dónde está atrapado (sondas de un instante en cada canal, en la
+  saturación, en la transición, en la mesa, en la suma, en el glue y en el limitador), se apunta
+  y se **rehace el audio**. Comprobado inyectando un NaN en el bajo de A: vuelve a sonar en
+  menos de 0,3 s.
+- **Contexto suspendido** mientras suena: se reanuda; si en 3 s no vuelve, se rehace.
+- **Reloj del audio parado** (con la pestaña visible): se rehace.
+- **Errores de programa en el reloj**: cada universo va protegido. Un error se apunta y la
+  rejilla sigue (antes una excepción podía dejar el paso sin avanzar).
+- **Rehacer el audio**: cerrar el contexto viejo espera como mucho 1 s y, si montar el nuevo
+  falla, se reintenta una vez.
+- No se rehace en bucle: como mucho una vez cada 5 s.
+- Los medidores tratan un NaN como silencio (antes se quedaban clavados en el último valor y
+  parecía que todo sonaba).
+
+**REGISTRO DE INCIDENCIAS** (OPCIONES → RENDIMIENTO → INCIDENCIAS; en consola, `MU.incidents`):
+cada fallo con la hora, qué pasó, dónde se atascó y, al pasar el ratón, lo que sonaba (escenas,
+búfer, calidad, ganancia del máster, cortes y tarde). También los errores del programa y las
+subidas de búfer de AUTO. Se guardan las últimas 30 en el navegador. La cabecera avisa
+**AUDIO RECUPERADO** unos segundos.
+
+**Si vuelve a pasar**: mirar INCIDENCIAS. El primer punto de la lista «atascado en» dice por
+dónde entró (p. ej., «A transición» = vino del universo A, antes de la mesa). Con eso se busca
+la fuente y se corta en origen.

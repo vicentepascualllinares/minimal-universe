@@ -15,6 +15,10 @@ import { Recorder } from './recorder.js';
 
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
+// headroom de la suma: con la GANANCIA DEL MÁSTER a 0 dB, el máster ronda −12 LUFS y los picos
+// quedan por debajo de −1 dBFS
+const HEADROOM = 0.72;
+
 // ── BÚFER DE AUDIO (OPCIONES → RENDIMIENTO)
 // El navegador fija el búfer al crear el contexto de audio y no deja cambiarlo
 // después. Para cambiarlo se rehace solo el audio (como Ableton al cambiar el
@@ -99,6 +103,46 @@ export class Engine {
     this.easyEq = store.get('mu.easyEq') !== '0';
     this.xf = { hi: 0, mid: 0, lo: 0 };
     this.low = new LowRoles(this); // LOW reparte los papeles KICK y BAJO (ver lowRoles.js)
+    // GANANCIA DEL MÁSTER (MIXER): antes del limitador, empuja la mezcla contra él (1 = 0 dB = como
+    // sonaba siempre). Como el resto del MIXER, aún no se guarda (vendrá con las cuentas)
+    this.masterGain = 1;
+    // VOLUMEN DE FX por universo: ganancia (1 = 0 dB) y la posición de su fader, que comparten
+    // la columna TRANSICIÓN del universo y el MIXER (ver setFxFader en instMixer.js)
+    this.fxGain = [1, 1];
+    this.fxPos = [0.75, 0.75];
+    // REGISTRO DE INCIDENCIAS (ver logIncident)
+    try { this.incidents = JSON.parse(store.get('mu.incidents') || '[]'); } catch { this.incidents = []; }
+    if (!Array.isArray(this.incidents)) this.incidents = [];
+  }
+
+  // VOLUMEN DE FX de un universo (0 = A, 1 = B): sus efectos de transición
+  setFxGain(i, g) {
+    this.fxGain[i] = g;
+    if (this.ready) this.decks[i].fx?.setLevel(g);
+  }
+
+  setMasterGain(g) {
+    this.masterGain = g;
+    if (this.ready) glide(this.sum.gain, HEADROOM * g, this.ctx.currentTime, 0.02);
+  }
+
+  // MEDIDOR DEL MÁSTER: pico de L y R de lo que sale de verdad (tras el techo)
+  masterPeaks() {
+    if (!this.ready) return [0, 0];
+    return this.outMeters.map((a) => {
+      a.getFloatTimeDomainData(this.outBuf);
+      let p = 0;
+      for (let i = 0; i < this.outBuf.length; i++) p = Math.max(p, Math.abs(this.outBuf[i]));
+      return p;
+    });
+  }
+
+  // lo que está quitando ahora el limitador del máster (dB, ≥ 0). PROVISIONAL: en la sesión de
+  // mezcla y máster (cadenas de clippers y limitadores) hay que replantear qué se mide aquí
+  limiterGr() {
+    if (!this.ready) return 0;
+    const r = this.limiter.reduction;
+    return Math.max(0, -(typeof r === 'number' ? r : r.value)); // en navegadores viejos era un AudioParam
   }
 
   get easyOn() { return this.easyEq && this.mode === 'dj'; }
@@ -231,15 +275,113 @@ export class Engine {
     this.ready = false;
     this.worker.postMessage('stop');
     this.worker.terminate();
-    try { await this.ctx.close(); } catch {}
+    // si la salida de audio se ha quedado colgada, cerrar puede no acabar nunca: como mucho 1 s
+    try { await Promise.race([this.ctx.close(), new Promise((r) => setTimeout(r, 1000))]); } catch {}
     try {
-      await this.init();
+      // un fallo al montar el audio dejaba el programa mudo para siempre: se reintenta una vez
+      try { await this.init(); }
+      catch (e) {
+        this.logIncident('error', `al rehacer el audio: ${e?.message || e} · se reintenta`);
+        await new Promise((r) => setTimeout(r, 500));
+        await this.init();
+      }
       this.glitchTimes = [];
       this.lastRebuild = performance.now();
       if (wasPlaying) await this.play();
     } finally {
       this.rebuilding = false;
     }
+  }
+
+  // ── VIGILANTE DEL AUDIO (ver RENDIMIENTO.md §10)
+  // Un solo valor no numérico (NaN) en cualquier punto de la cadena se queda atrapado para
+  // siempre en los nodos con memoria que suenan sin parar (filtros de transición, EQ de la mesa,
+  // glue, limitador, sobremuestreo de la saturación): el máster queda MUDO aunque todo lo demás
+  // siga funcionando. Comprobado: una muestra NaN en el bajo de A silencia todo. No hay forma de
+  // vaciar esos nodos: se rehace el audio (la música sigue en el siguiente compás).
+  // También: el reloj del audio parado o el contexto suspendido por el sistema.
+  watchAudio(now) {
+    const w = performance.now();
+    if (this.rebuilding || w < (this.settleUntil || 0)) return;
+    // 1) NaN en la salida: una vez atrapado lo llena todo, basta mirar tres muestras
+    const a = this.outMeters[0];
+    a.getFloatTimeDomainData(this.outBuf);
+    const b = this.outBuf;
+    if (!Number.isFinite(b[0]) || !Number.isFinite(b[1024]) || !Number.isFinite(b[2047])) {
+      return this.recover('nan', 'la salida dejó de dar números (NaN)');
+    }
+    // 2) el contexto, suspendido o interrumpido por el sistema mientras suena
+    if (this.playing && this.ctx.state !== 'running') {
+      if (!this.resumeAt) {
+        this.resumeAt = w;
+        this.logIncident('estado', `el sistema puso el audio en «${this.ctx.state}» · se reanuda`);
+        this.ctx.resume().catch(() => {});
+      } else if (w - this.resumeAt > 3000) {
+        this.resumeAt = 0;
+        this.recover('estado', `el audio sigue en «${this.ctx.state}» tras reanudar`);
+      }
+      return;
+    }
+    this.resumeAt = 0;
+    // 3) el reloj del audio parado (el contexto dice que va, pero no avanza)
+    if (now !== this.clockLast) { this.clockLast = now; this.clockAt = w; }
+    else if (this.playing && document.visibilityState === 'visible' && w - this.clockAt > 1500) {
+      this.clockAt = w;
+      this.recover('reloj', 'el reloj del audio se paró');
+    }
+  }
+
+  // rehacer el audio por un fallo, apuntando dónde estaba (si se repite enseguida, espera:
+  // no se rehace en bucle)
+  async recover(type, detail) {
+    const w = performance.now();
+    if (this.rebuilding || w - (this.recoverAt || 0) < 5000) return;
+    this.recoverAt = w;
+    const where = type === 'nan' ? await this.findNaN() : '';
+    this.logIncident(type, detail + (where ? ` · atascado en: ${where}` : '') + ' · audio rehecho');
+    this.recoveredAt = performance.now(); // la cabecera lo avisa unos segundos
+    this.rebuildAudio();
+  }
+
+  // dónde está atrapado el NaN, de lo primero a lo último de la cadena (para saber de dónde vino)
+  async findNaN() {
+    const ctx = this.ctx;
+    const pts = [];
+    this.active.forEach((d, i) => {
+      const id = 'AB'[i];
+      for (const k of Object.keys(d.ch)) pts.push([`${id} ${k}`, d.ch[k].out]);
+      pts.push([`${id} saturación`, d.sat.output], [`${id} transición`, d.fx.f.gap], [`${id} mesa`, this.strips[i].fader]);
+    });
+    pts.push(['máster suma', this.sum], ['glue', this.glue], ['limitador', this.limiter]);
+    const probes = pts.map(([name, node]) => {
+      const a = ctx.createAnalyser();
+      a.fftSize = 256;
+      node.connect(a);
+      return { name, a, node };
+    });
+    await new Promise((r) => setTimeout(r, 80)); // que pase sonido por las sondas
+    const buf = new Float32Array(256);
+    const bad = probes.filter(({ a }) => { a.getFloatTimeDomainData(buf); return buf.some((v) => !Number.isFinite(v)); });
+    probes.forEach(({ a, node }) => { try { node.disconnect(a); } catch {} });
+    return bad.map((p) => p.name).join(', ');
+  }
+
+  // REGISTRO DE INCIDENCIAS: fallos del audio, con la hora y lo que sonaba. Se guarda en este
+  // navegador (las últimas 30) y se ve en OPCIONES → RENDIMIENTO. Sirve para saber qué pasó
+  // cuando algo suena mal y no se pudo ver en el momento.
+  logIncident(type, detail) {
+    const d = this.decks.map((x) => `${x.id}:${x.arr?.home ?? '?'}`).join(' ');
+    const g = this.masterGain > 0 ? 20 * Math.log10(this.masterGain) : -Infinity;
+    const ctxInfo = `${this.mode} · ${d} · búfer ${this.bufferMode} · calidad ${this.qualityMode} · máster ${g.toFixed(1)} dB · cortes ${this.glitches} · tarde ${this.late}`;
+    const it = { t: new Date().toISOString(), type, detail, ctx: ctxInfo };
+    this.incidents.push(it);
+    while (this.incidents.length > 30) this.incidents.shift();
+    store.set('mu.incidents', JSON.stringify(this.incidents));
+    console.warn(`[INCIDENCIA] ${type}: ${detail} (${ctxInfo})`);
+  }
+  clearIncidents() {
+    this.incidents = [];
+    store.set('mu.incidents', '[]');
   }
 
   // AUTO: varios cortes seguidos = subir un escalón de búfer
@@ -252,6 +394,7 @@ export class Engine {
     this.autoStep++;
     store.set('mu.bufferAuto', String(this.autoStep));
     this.bufferNote = `AUTO subió el búfer por cortes (escalón ${this.autoStep + 1} de ${AUTO_STEPS.length})`;
+    this.logIncident('cortes', this.bufferNote);
     this.bufferNoteAt = performance.now(); // la cabecera lo avisa unos segundos: el hueco no es un fallo
     this.rebuildAudio();
   }
@@ -268,7 +411,7 @@ export class Engine {
 
     // master: suma -> graves en mono -> glue -> limitador
     this.sum = ctx.createGain();
-    this.sum.gain.value = 0.72; // headroom: el master ronda -12 LUFS, picos por debajo de -1 dBFS
+    this.sum.gain.value = HEADROOM * this.masterGain; // con la GANANCIA DEL MÁSTER
     this.sum.channelCount = 2;
     this.sum.channelCountMode = 'explicit';     // lo mono se reparte a L y R antes del M/S
     this.sum.channelInterpretation = 'speakers';
@@ -288,6 +431,16 @@ export class Engine {
     monoLow.connect(glue).connect(limiter).connect(ceil.input);
     ceil.output.connect(this.analyser).connect(ctx.destination);
     this.rec.attach(ctx, ceil.output); // GRABAR escucha justo lo que sale
+    // MEDIDOR DEL MÁSTER: L y R por separado (un analizador solo mezclaría los dos a mono)
+    const split = ctx.createChannelSplitter(2);
+    ceil.output.connect(split);
+    this.outMeters = [0, 1].map((c) => {
+      const a = ctx.createAnalyser();
+      a.fftSize = 2048; // ~43 ms: más que un fotograma, no se escapa ningún pico
+      split.connect(a, c);
+      return a;
+    });
+    this.outBuf = new Float32Array(2048);
 
     this.strips = this.active.map((d, i) => {
       const s = new Strip(ctx, this.sum, this.eqType);
@@ -439,21 +592,39 @@ export class Engine {
     this.lastNow = now;
     this.watchGlitches(); // en todos los perfiles: el medidor de la cabecera (ver RENDIMIENTO.md)
     if (this.marginMode === 'auto') this.adaptLookahead();
+    this.watchAudio(now); // VIGILANTE: NaN, contexto suspendido, reloj parado
+    if (!this.ready) return; // el vigilante acaba de mandar rehacer el audio
 
+    // Un error en un universo no puede parar el reloj: antes, una excepción aquí dejaba el paso
+    // sin avanzar (el mismo paso repetido o nada nuevo sonando) mientras la pantalla seguía.
+    // Se apunta en el registro y la rejilla sigue.
     const act = this.active;
-    for (const d of act) d.update(now, dt);
+    for (const d of act) this.safe(() => d.update(now, dt), `${d.id} update`);
 
-    if (!this.playing) return this.low.apply(now); // parado: los papeles de graves, ya
+    if (!this.playing) return this.safe(() => this.low.apply(now), 'low');
     while (this.nextGrid < now + this.lookahead) {
       // TARDE: el hilo principal se atascó y este paso ya debería estar sonando
       // (sus notas salen desplazadas). Distinto de un CORTE (el audio sin datos).
       if (this.nextGrid < now) this.late++;
       if (this.step % 16 === 0 && this.scaleNext !== null) { this.scaleI = this.scaleNext; this.scaleNext = null; }
       // EASY EQ · GRAVES: un cambio de dueño del kick o del bajo entra en el tiempo, antes de sus notas
-      if (this.step % 4 === 0) this.low.apply(this.nextGrid);
-      for (const d of act) d.scheduleStep(this.step, this.nextGrid);
+      if (this.step % 4 === 0) this.safe(() => this.low.apply(this.nextGrid), 'low');
+      for (const d of act) this.safe(() => d.scheduleStep(this.step, this.nextGrid), `${d.id} paso`);
       this.nextGrid += this.stepDur;
       this.step++;
+    }
+  }
+
+  // ejecutar una parte del reloj sin que un error lo pare; cada error distinto se apunta una vez
+  safe(fn, where) {
+    try { return fn(); }
+    catch (e) {
+      const msg = `${where}: ${e?.message || e}`;
+      this.errSeen ||= new Set();
+      if (!this.errSeen.has(msg)) {
+        this.errSeen.add(msg);
+        this.logIncident('error', `${msg} · ${String(e?.stack || '').split('\n')[1]?.trim() || ''}`);
+      }
     }
   }
 }

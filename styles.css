@@ -8,6 +8,7 @@
   --glowB: 120, 130, 200;
   --ga: 1;
   --gb: 0;
+  --gr: #c98a6a; /* lo que quita un limitador */
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, ui-monospace, monospace;
   --col: 92px;
   --mixer: 210px;
@@ -106,6 +107,12 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .op-choice.on small { color: var(--dim); }
 .op-note { color: var(--faint); font-size: 9px; letter-spacing: 0.06em; line-height: 1.5; }
 .op-note.op-lat { color: var(--dim); }
+/* INCIDENCIAS: la más reciente arriba; al pasar el ratón, lo que sonaba en ese momento */
+.op-inc { display: flex; flex-direction: column; gap: 6px; max-width: 560px; }
+.op-inc-it { color: var(--dim); font-size: 9px; line-height: 1.5; letter-spacing: 0.04em; }
+.op-inc-it b { color: var(--gr); font-weight: normal; }
+.op-inc-none { color: var(--faint); font-size: 9px; }
+.op-inc-clear { padding: 2px 6px; margin-left: 4px; }
 .op-row[hidden] { display: none; }
 /* RENDIMIENTO: solo el nombre, en fila (también en el móvil) */
 .op-choice.op-plain { align-items: center; padding: 10px 6px; }
@@ -156,6 +163,19 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-meter { position: relative; width: 5px; background: var(--line); }
 .im-meter i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--fg); transform-origin: bottom; transform: scaleY(0); }
 .im-u { color: var(--dim); font-size: 8px; letter-spacing: 0.1em; }
+/* MÁSTER del MIXER: aparte de los instrumentos; L y R, el fader y lo que quita el limitador
+   (baja desde arriba) */
+.im-master, .im-fx { margin-left: 18px; }
+.instmix:not(.dj) .im-master { border-left: 1px solid var(--line); padding-left: 22px; width: 84px; }
+.instmix.dj .im-master { border-color: #3a3a40; }
+.im-master .im-fdrow { gap: 3px; }
+.im-master .im-meter { width: 4px; }
+.im-master .fader .t-track { width: 22px; }
+.im-master .fader .t-handle { width: 20px; }
+.im-gr i { transform-origin: top; top: 0; bottom: auto; }
+.im-read { display: flex; flex-direction: column; align-items: center; gap: 2px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.im-read b, .im-read em { font-weight: normal; font-style: normal; }
+.im-read .m-grdb.on { color: var(--gr); }
 .im-link { font-size: 9px; letter-spacing: 0.2em; padding: 4px 8px 4px 10px; border: 1px solid var(--faint); color: var(--dim); margin-top: 4px; }
 .im-link.on { color: var(--fg); border-color: var(--dim); }
 .im-name { color: var(--fg); font-size: 9px; letter-spacing: 0.16em; }
@@ -276,6 +296,13 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .t-len button[data-v="0"] { flex-basis: 100%; font-size: 9px; letter-spacing: 0.1em; }
 .t-fx { font-size: 9px; letter-spacing: 0.25em; padding: 3px 7px 3px 9px; border: 1px solid var(--faint); touch-action: none; }
 .t-fx.on { color: var(--fg); border-color: var(--dim); }
+/* VOLUMEN DE FX bajo el botón FX: ocupa lo que queda de la columna (A a la izquierda, B a la derecha) */
+.t-vol { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; }
+.t-vol .fader { flex: 1; min-height: 36px; position: relative; }
+.t-vol .fader .t-track { width: 22px; }
+.t-vol .fader .t-handle { width: 20px; height: 9px; }
+.t-vol-db { color: var(--dim); font-size: 9px; font-variant-numeric: tabular-nums; }
+.t-vol-db.moved { color: var(--fg); }
 
 /* ───────── columnas (transición / loop) */
 .col {
@@ -395,7 +422,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   height: min(250px, calc(100vh - 470px));
   min-height: 110px;
   display: grid;
-  grid-template-columns: 8px 1fr 1fr 8px;
+  grid-template-columns: 8px 1fr auto 1fr 8px;
   gap: 8px;
   width: 100%;
   padding: 0 14px;
@@ -407,6 +434,21 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .fader.active .t-handle { width: 34px; }
 .meter { position: relative; background: var(--line); width: 5px; justify-self: center; }
 .meter i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--fg); transform-origin: bottom; transform: scaleY(0); }
+
+/* MÁSTER en la mesa DJ: entre los dos faders, L y R (como los de canal: de abajo arriba) y lo
+   que quita el limitador (naranja, de arriba abajo, como la reducción de ganancia de una mesa).
+   Debajo de los faders, las cifras */
+.mx-mstr { display: flex; gap: 3px; height: 100%; }
+.vbar { position: relative; width: 5px; height: 100%; background: var(--line); overflow: hidden; }
+.vbar i { position: absolute; inset: 0; background: var(--fg); transform-origin: bottom; transform: scaleY(0); }
+.vbar.gr { margin-left: 3px; }
+.vbar.gr i, .im-gr i { background: var(--gr); }
+.vbar.gr i { transform-origin: top; }
+.mx-master { display: flex; justify-content: center; align-items: baseline; gap: 6px; }
+.mm-lab { color: var(--dim); font-size: 8px; letter-spacing: 0.16em; }
+.mm-lab + .mm-db + .mm-lab { margin-left: 10px; }
+.mm-db { color: var(--fg); font-size: 9px; font-weight: normal; min-width: 30px; font-variant-numeric: tabular-nums; }
+.m-grdb.on { color: var(--gr); }
 
 #scope { width: 100%; height: 30px; opacity: 0.55; }
 
@@ -494,6 +536,19 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .instmix.dj .im-fdrow { gap: 1px; }
   .instmix.dj .im-fdrow .fader .t-track { width: 13px; }
   .instmix.dj .im-fdrow .fader .t-handle { width: 12px; }
+  /* con FX y MÁSTER son 10 columnas: se estrechan para caber en 375 px sin desplazar */
+  .im-row, .instmix.dj .im-row { gap: 3px; }
+  .im-ch, .instmix.dj .im-ch { width: 33px; }
+  .instmix.dj .im-pair { gap: 3px; }
+  .instmix.dj .im-fdrow .fader .t-track, .im-master .fader .t-track { width: 10px; }
+  .instmix.dj .im-fdrow .fader .t-handle, .im-master .fader .t-handle { width: 9px; }
+  .im-master, .im-fx { margin-left: 4px; }
+  /* el VOLUMEN DE FX no cabe en la columna TRANSICIÓN del móvil: ahí se toca en el MIXER */
+  .t-vol { display: none; }
+  .instmix:not(.dj) .im-master { width: 40px; padding-left: 4px; }
+  .im-master .im-fdrow { gap: 2px; }
+  .im-master .im-meter { width: 3px; }
+  .im-lim { display: none; }
   .op-choices { flex-direction: column; }
   .im-name { letter-spacing: 0.04em; }
   .inst .name { letter-spacing: 0.06em; }
@@ -513,7 +568,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .mx-faders { flex: 1; height: auto; min-height: 140px; max-height: 320px; padding: 12px 30px; gap: 14px; }
   .fader .t-track { width: 64px; }
   .fader .t-handle { width: 42px; height: 18px; }
-  .meter { width: 6px; }
+  .meter, .vbar { width: 6px; }
 }
 
 /* vertical: estructura arriba, emoción abajo */
@@ -539,6 +594,8 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .mx-grid { width: auto; }
   .knob { width: 46px; height: 46px; }
   .mx-faders { flex: none; width: 240px; max-height: none; }
+  .mx-master { flex: none; align-self: center; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .mm-lab + .mm-db + .mm-lab { margin-left: 0; margin-top: 6px; }
   #enter { gap: 18px; }
   .enter-modes { flex-direction: row; }
   .enter-keys { display: none; }

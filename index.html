@@ -59,8 +59,17 @@
         <div class="mx-faders">
           <div class="meter" data-d="0"><i></i></div>
           <div class="fader" data-d="0"><div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div></div>
+          <!-- MÁSTER entre los dos canales: L, R y lo que quita el limitador (baja desde arriba) -->
+          <div class="mx-mstr" title="MASTER: pico de L y R de lo que sale · LIM (naranja): lo que quita el limitador del máster · la ganancia del máster está en el MIXER">
+            <div class="vbar"><i class="m-l"></i></div><div class="vbar"><i class="m-r"></i></div><div class="vbar gr"><i class="m-gr"></i></div>
+          </div>
           <div class="fader" data-d="1"><div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div></div>
           <div class="meter" data-d="1"><i></i></div>
+        </div>
+        <!-- las cifras del máster (las barras van entre los dos faders). La ganancia, en el MIXER -->
+        <div class="mx-master" title="MASTER: pico de lo que sale (dBFS) · LIM: lo que quita el limitador del máster (dB) · la ganancia del máster está en el MIXER">
+          <span class="mm-lab">MASTER</span><b class="mm-db m-peak">−∞</b>
+          <span class="mm-lab">LIM</span><b class="mm-db m-grdb">0.0</b>
         </div>
         <canvas id="scope"></canvas>
       </section>

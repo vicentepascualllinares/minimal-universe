@@ -82,6 +82,65 @@ export function makePalette(seed) {
   return pal;
 }
 
+// ── VARIACIÓN POR TRANSICIÓN
+// La paleta es la FAMILIA del universo (su ADN de transiciones), no un sonido fijo: cada
+// transición tira sus propios detalles alrededor de ella. El universo se reconoce, pero dos
+// builds nunca suenan idénticos. Con MEMORIA: la combinación principal (riser · voz del
+// redoble · patrón · impacto) no repite ninguna de las últimas `RECENT`.
+//
+//   riser   ruido / tono / los dos / TONAL (arpegio en la escala del momento que sube y
+//           acelera, con un soplo de ruido debajo). Manda el de la paleta (≈ la mitad)
+//   redoble voz: la de la paleta o la PROPIA (el clap del universo, con su color) ·
+//           patrón: ACELERA (negras → fusas) / RECTO / TRESILLOS / FANTASMAS
+//   impacto BOOM (seno afinado) / THUD (ruido sordo) / KICK (el kick del universo, alargado)
+//   el resto (afinaciones, colas, filtros) se mueve un poco alrededor de la paleta
+const RECENT = 3;
+const RISERS = ['noise', 'tone', 'both', 'tonal'];
+const ROLLS = ['snare', 'clap', 'rim', 'tom', 'self'];
+export const ROLL_PATTERNS = ['acelera', 'recto', 'tresillo', 'fantasma'];
+const ARPS = ['escala', 'acorde', 'quintas'];
+
+export function varyPalette(pal, r, recent = []) {
+  const around = (v, amt) => v * (1 + r.float(-amt, amt));
+  let v, sig;
+  for (let tries = 0; tries < 8; tries++) {
+    v = { ...pal };
+    v.riser = r.chance(0.4) ? pal.riser : r.weighted(RISERS, [1, 1, 1, 3]); // el tonal, el más buscado
+    v.arp = r.pick(ARPS);
+    v.roll = r.chance(0.4) ? pal.roll : r.weighted(ROLLS, [1, 1, 1, 1, 3]); // la voz propia, la más buscada
+    v.rollPattern = r.weighted(ROLL_PATTERNS, [4, 2, 2, 2]);
+    const imp = r.weighted(['boom', 'thud', 'both', 'kick'], [pal.boom ? 3 : 1, pal.thud ? 3 : 1, 2, 3]);
+    v.boom = imp === 'boom' || imp === 'both';
+    v.thud = imp === 'thud' || imp === 'both';
+    v.kickImpact = imp === 'kick';
+    sig = `${v.riser}|${v.roll}|${v.rollPattern}|${imp}`;
+    if (!recent.includes(sig)) break;
+  }
+  recent.push(sig);
+  while (recent.length > RECENT) recent.shift();
+  // detalles alrededor de la paleta
+  // la onda del riser de tono (y del tonal): la de la paleta o otra, con la SENOIDAL pura (el
+  // clásico tono limpio que sube) como la más probable
+  v.wave = r.chance(0.6) ? pal.wave : r.pick(['sine', 'sine', 'sawtooth', 'square', 'triangle']);
+  v.wobble = r.chance(0.75) ? pal.wobble : !pal.wobble;
+  v.riseSemis = r.chance(0.6) ? pal.riseSemis : r.pick([7, 12, 19, 24]);
+  v.riseCurve = r.float(1.3, 2.4);           // cómo crece el volumen del riser (más alto = se guarda para el final)
+  v.noiseQ = around(pal.noiseQ, 0.3);
+  v.rollTone = around(pal.rollTone, 0.15);
+  v.rollRise = r.chance(0.6) ? pal.rollRise : r.pick([0, 5, 7, 12]);
+  v.rollDecay = around(pal.rollDecay, 0.25);
+  v.snap = around(pal.snap, 0.2);
+  v.boomDrop = around(pal.boomDrop, 0.2);
+  v.boomDecay = around(pal.boomDecay, 0.2);
+  v.crashBase = around(pal.crashBase, 0.12);
+  v.crashDecay = around(pal.crashDecay, 0.2);
+  v.crashMetal = clamp(pal.crashMetal + r.float(-0.15, 0.15), 0.1, 0.7);
+  v.tensionHz = around(pal.tensionHz, 0.25);
+  v.downHz = around(pal.downHz, 0.25);
+  v.sig = sig;
+  return v;
+}
+
 // Capas (u en compases del viaje):
 //   riser / tension / down   sostenidas entre a y b
 //   roll                     golpes que aceleran entre a y b

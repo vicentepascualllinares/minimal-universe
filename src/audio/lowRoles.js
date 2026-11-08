@@ -9,8 +9,9 @@
 //     Así el centro nunca choca: el kick del que se va con el bajo del que llega.
 //   - el cambio espera al siguiente tiempo (nunca se pisan ni entra a destiempo)
 //   - SIDECHAIN CRUZADO: el kick que suena empuja al bajo que suena, venga de donde venga
-// Sin EASY EQ (o en UN UNIVERSO) todo es como siempre: cada universo con lo suyo. Salvo una
-// cosa: al pasar de EASY a la EQ normal, los silencios de papel que había (p. ej. el bajo de A
+// Sin EASY EQ (o en UN UNIVERSO) todo es como siempre: cada universo con lo suyo. Salvo dos
+// cosas. Una: SIDECHAIN CRUZADO también con la EQ normal, cuando un universo tiene un bajo
+// sonando sin kick propio y el otro un kick sonando (ver duck). Otra: al pasar de EASY a la EQ normal, los silencios de papel que había (p. ej. el bajo de A
 // callado porque suena el de B) se HEREDAN, porque la EQ normal no puede expresar "kick de A +
 // bajo de B". Cada uno se suelta, en el siguiente tiempo, cuando el otro universo deja de
 // sonar en ese papel (bajas su LOW o su fader, o cambia a una escena sin él): así el cambio
@@ -123,11 +124,29 @@ export class LowRoles {
     return E.easyOn ? role * easyGains('lo', E.xf.lo)[i] : role;
   }
 
+  // cuánto deja oír la mesa (EQ normal) los graves del universo o: fader × banda LOW, hasta 1
+  mixLow(o) {
+    const m = this.E.mix[o];
+    return Math.min(1, faderGain(m.fader) * bandGain(m.lo, this.E.eqType));
+  }
+
   // SIDECHAIN: el kick de `from` (con profundidad `depth`) empuja al bajo que suena. Cruzado
-  // con EASY o con papeles heredados; si no, cada universo a lo suyo (como siempre)
+  // con EASY o con papeles heredados. Con la EQ normal, cada universo empuja su bajo y, además,
+  // SIDECHAIN CRUZADO: si el otro universo tiene un bajo sonando SIN kick propio en la mezcla
+  // (p. ej. A solo kick y B solo bajo), el kick que suena también lo empuja. Como el sonido lo
+  // generamos nosotros, se sabe qué es kick y qué es bajo: una mesa de verdad no podría.
+  // Va en proporción a lo que la mesa deja oír de este kick (fader y LOW).
   duck(from, t, depth) {
     const E = this.E;
-    if (!E.easyOn && !this.held.length) return from.duckBass(t, depth);
+    if (!E.easyOn && !this.held.length) {
+      from.duckBass(t, depth);
+      if (E.mode !== 'dj') return;
+      const i = E.decks.indexOf(from), o = 1 - i;
+      if (this.soundsIn(i, 'kick') && this.soundsIn(o, 'bass') && !this.soundsIn(o, 'kick')) {
+        E.decks[o].duckBass(t, depth * this.mixLow(i));
+      }
+      return;
+    }
     const lv = this.kickLevel(from);
     E.decks.forEach((d, i) => {
       if ((this.applied?.[i].bass ?? 1) <= 0 || !this.has(d, 'bass')) return;

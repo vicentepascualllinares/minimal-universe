@@ -4,6 +4,7 @@ import { Knob } from './ui/knob.js';
 import { deckView } from './ui/deckView.js';
 import { instMixer } from './ui/instMixer.js';
 import { optionsPanel } from './ui/options.js';
+import { masterMeter, paintMaster } from './ui/meters.js';
 import { PROFILE } from './core/profile.js';
 import { SCALES } from './music/emotion.js';
 
@@ -11,6 +12,9 @@ const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const engine = new Engine();
 window.MU = engine; // para depurar desde la consola
+// cualquier error del programa queda en el REGISTRO DE INCIDENCIAS (OPCIONES → RENDIMIENTO)
+window.addEventListener('error', (e) => engine.logIncident('error', `${e.message} · ${e.filename?.split('/').pop()}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => engine.logIncident('error', `${e.reason?.message || e.reason}`));
 
 const $ = (s) => document.querySelector(s);
 const root = document.documentElement;
@@ -158,11 +162,17 @@ const meterLv = [0, 0];
 const scope = $('#scope');
 const sg = scope.getContext('2d');
 let scopeBuf = null;
+const mm = masterMeter(engine); // el máster, leído una vez por fotograma (mesa DJ y MIXER)
+const mxMaster = $('.mx-mstr');
+const mixerEl = $('#mixer'); // barras del máster entre los faders y cifras debajo: se pintan juntas
 
 function frame() {
   views.forEach((v) => v.frame(engine));
   if (!optPanel.hidden) optView.frame();
-  if (!mixPanel.hidden) mixView.frame();
+  const djMaster = engine.ready && engine.mode === 'dj' && mxMaster.offsetParent !== null; // la mesa se ve
+  if (engine.ready && (djMaster || !mixPanel.hidden)) mm.update();
+  if (!mixPanel.hidden) mixView.frame(mm);
+  if (djMaster) paintMaster(mixerEl, mm);
   root.style.setProperty('--glowA', views[0].color);
   root.style.setProperty('--ga', engine.mix[0].fader);
   if (views[1]) {
@@ -183,13 +193,16 @@ function frame() {
     const g = M.cortes ? engine.glitches : 0, l = M.tarde ? engine.late : 0;
     // AUTO acaba de subir el búfer (el hueco que se oyó): se avisa unos segundos
     const autoUp = engine.bufferNoteAt && performance.now() - engine.bufferNoteAt < 6000;
+    // el VIGILANTE acaba de rehacer el audio por un fallo (ver OPCIONES → RENDIMIENTO → INCIDENCIAS)
+    const healed = engine.recoveredAt && performance.now() - engine.recoveredAt < 8000;
     const txt = engine.rebuilding ? 'REHACIENDO AUDIO…'
+      : healed ? 'AUDIO RECUPERADO'
       : autoUp ? 'AUTO: BÚFER ↑'
       : g || l ? [g && `CORTES ${g}`, l && `TARDE ${l}`].filter(Boolean).join(' · ') : 'AUDIO OK';
     const h = $('#health');
     if (h.textContent !== txt) h.textContent = txt;
-    h.classList.toggle('bad', g + l > 0 || autoUp);
-    const shown = M.cortes || M.tarde || autoUp || engine.rebuilding;
+    h.classList.toggle('bad', g + l > 0 || autoUp || healed);
+    const shown = M.cortes || M.tarde || autoUp || healed || engine.rebuilding;
     h.hidden = !shown;
     $('#health-sep').hidden = !shown;
   }
@@ -223,7 +236,7 @@ function frame() {
 
   if (engine.ready && engine.mode === 'dj') {
     engine.strips.forEach((s, i) => {
-      const lv = Math.min(1, s.level());
+      const lv = Math.min(1, s.level() || 0); // NaN → 0: si no, el medidor se quedaba clavado
       meterLv[i] = Math.max(lv, meterLv[i] * 0.9); // caída suave
       meters[i].style.transform = `scaleY(${meterLv[i]})`;
     });

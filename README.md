@@ -276,7 +276,7 @@ instrumento, **VINCULADOS** por defecto: mover un instrumento en un universo lo 
 otro (conservando la diferencia que tuvieran, como un grupo de faders; doble clic, los dos a 0 dB).
 El botón VINCULADOS los separa. En el móvil, en DJ, no se ven los dB (no caben).
 Siempre arranca en 0 dB = la mezcla por defecto.
-Arriba +6 dB, abajo hasta −48 dB y silencio. **Imán** a 0 dB: a menos de 0,75 dB se queda en 0 dB. Doble clic = 0 dB. RESTABLECER = todo a 0 dB.
+Arriba +6 dB, abajo hasta −48 dB y silencio. **Imán** a 0 dB: mientras lo mueves va libre; si lo sueltas a menos de 0,75 dB, se va a 0 dB (el sonido al instante; el mando se desliza unas milésimas). En DJ, cada instrumento va en su caja (A y B juntos). Doble clic = 0 dB. RESTABLECER = todo a 0 dB.
 La música sigue sonando mientras está abierto. (Todavía no se guarda: vendrá con las cuentas.)
 
 ## Mezcla por defecto

@@ -17,7 +17,7 @@ export function faderDb(v) {
   if (v <= 0.005) return -Infinity;
   return -48 * Math.pow((DEF - v) / DEF, 1.5);
 }
-// IMÁN: a menos de 0,75 dB de 0 dB, el fader se queda en 0 dB (+0,12 o −0,5 no tienen sentido)
+// IMÁN: al soltar a menos de 0,75 dB de 0 dB, el fader se va a 0 dB (+0,12 o −0,5 no tienen sentido)
 const MAGNET_DB = 0.75;
 const snap = (v) => (Math.abs(faderDb(v)) < MAGNET_DB ? DEF : v);
 const fmt = (db) => (db === -Infinity ? '−∞' : `${db > 0.05 ? '+' : db < -0.05 ? '−' : ''}${Math.abs(db).toFixed(1)}`);
@@ -79,19 +79,25 @@ export function instMixer(root, engine, onClose) {
           engine.setInst(i, k, d === -Infinity ? 0 : Math.pow(10, d / 20));
         };
         // vinculados: el otro se mueve lo mismo (conserva la diferencia)
-        // (con imán a 0 dB en los dos)
-        const move = (raw) => {
-          const v = snap(raw);
-          if (v !== raw) c.s.set(v);
+        const move = (v) => {
           const delta = v - val[i][k];
           c.apply(v);
           const o = dj && linked ? find(1 - i, k) : null;
           if (!o) return;
-          const ov = snap(Math.min(1, Math.max(0, val[o.i][k] + delta)));
+          const ov = Math.min(1, Math.max(0, val[o.i][k] + delta));
           o.s.set(ov);
           o.apply(ov);
         };
-        c.s = new VSlider(el, { value: val[i][k], onChange: move });
+        // IMÁN al soltar: el sonido va a 0 dB ya; el mando se desliza unas milésimas
+        const release = () => {
+          for (const x of dj && linked ? [c, find(1 - i, k)] : [c]) {
+            const v = snap(val[x.i][k]);
+            if (v === val[x.i][k]) continue;
+            x.apply(v);
+            x.s.glideTo(v);
+          }
+        };
+        c.s = new VSlider(el, { value: val[i][k], onChange: move, onEnd: release });
         // doble clic: vuelve a 0 dB (vinculados, los dos)
         el.querySelector('.t-track').addEventListener('dblclick', () => {
           for (const x of dj && linked ? [c, find(1 - i, k)] : [c]) { x.s.set(DEF); x.apply(DEF); }

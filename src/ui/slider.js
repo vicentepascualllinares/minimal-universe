@@ -2,8 +2,10 @@
 // Multitáctil: cada slider sigue solo al dedo que lo tocó.
 
 export class VSlider {
-  constructor(el, { value, onChange }) {
+  // `onEnd(value)` (opcional): al soltar
+  constructor(el, { value, onChange, onEnd }) {
     this.el = el;
+    this.onEnd = onEnd;
     this.track = el.querySelector('.t-track');
     this.handle = el.querySelector('.t-handle');
     this.value = value;
@@ -27,10 +29,18 @@ export class VSlider {
       if (ev.pointerId !== this.pid) return;
       this.pid = null;
       el.classList.remove('active');
+      this.onEnd?.(this.value);
     };
     this.track.addEventListener('pointerup', up);
     this.track.addEventListener('pointercancel', up);
     this.set(value);
+  }
+  // ir a v deslizando el mando unas milésimas (solo se ve: el valor ya es v)
+  glideTo(v, ms = 120) {
+    this.handle.style.transition = `top ${ms}ms ease-out`;
+    this.set(v);
+    clearTimeout(this.glideT);
+    this.glideT = setTimeout(() => (this.handle.style.transition = ''), ms + 20);
   }
   set(v) {
     this.value = v;

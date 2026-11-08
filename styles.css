@@ -136,8 +136,10 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
 .im-row { display: flex; gap: 40px; height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
 .im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 60px; }
-.instmix.dj .im-ch { width: 78px; }
-.instmix.dj .im-row { gap: 52px; }
+/* DJ: cada instrumento en su caja (A y B juntos), con aire entre cajas y el nombre más marcado */
+.instmix.dj .im-row { gap: 26px; }
+.instmix.dj .im-ch { width: 100px; padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
+.instmix.dj .im-name { font-size: 10px; letter-spacing: 0.26em; margin-right: -0.26em; }
 .im-dbs { display: flex; gap: 10px; }
 .im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
 .instmix.dj .im-dbs { gap: 4px; }
@@ -484,7 +486,8 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .im-row { gap: 4px; }
   .im-ch { width: 40px; }
   .instmix.dj .im-row { gap: 6px; }
-  .instmix.dj .im-ch { width: 40px; }
+  .instmix.dj .im-ch { width: 40px; padding: 8px 0 6px; }
+  .instmix.dj .im-name { font-size: 8px; letter-spacing: 0.04em; margin-right: 0; }
   .instmix.dj .im-pair, .instmix.dj .im-dbs { gap: 5px; }
   .im-meter { width: 3px; }
   .instmix.dj .im-dbs { display: none; } /* en el móvil no caben los dB de A y B */

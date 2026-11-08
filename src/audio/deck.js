@@ -18,10 +18,11 @@ const glideAll = glide;
 
 const newSeed = () => (Math.random() * 1e9) | 0;
 
-// un pad apoyado más que esto = CORTE. 200 ms es lo que usan los teclados que distinguen tocar
-// de mantener (QMK, TAPPING_TERM): un toque normal dura menos. Los sistemas (400–500 ms)
-// son para menús, demasiado lento para tocar. El CORTE suena tras esto + hasta una corchea
-export const HOLD_MS = 200;
+// un pad apoyado más que esto = CORTE. Los teclados que distinguen tocar de mantener usan
+// 200 ms por defecto (QMK, TAPPING_TERM) y quien toca rápido lo baja; un clic o un toque
+// normal dura ~100 ms. Los sistemas (400–500 ms) son para menús, demasiado lento para tocar.
+// El CORTE suena tras esto + hasta una corchea
+export const HOLD_MS = 150;
 
 export class Deck {
   constructor(engine, id, { scene, v, a }) {
@@ -200,7 +201,7 @@ export class Deck {
       return 'loop';
     }
     const T = A.travel;
-    if (T && T.name === name && T.bars > 0 && !this.held.length) {
+    if (T && T.name === name && T.bars > 0 && !this.held.length && this.engine.playing) {
       this.toggleTravelPause();
       return 'pause';
     }
@@ -235,19 +236,20 @@ export class Deck {
   goScene(name, g, force = false) {
     const A = this.arr;
     if (this.loop) return A.setTarget(name);
-    if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
-    // antes del primer GENERAR no hay nada que viajar: se elige desde dónde empieza
-    if (!this.engine.generated) {
+    // parado (antes del primer GENERAR o en PAUSA) no hay nada que viajar: se salta directo
+    // y la música empieza (o sigue) desde ahí
+    if (!this.engine.playing) {
+      if (A.target === name && !A.travel) return;
       A.goTo(name, 0, 0);
       this.fx?.cancel(this.ctx.currentTime);
       return A.land();
     }
+    if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
     const kind = classify(A.cur, SCENES[name].mix);
     // la FORMA solo cuenta en los viajes: lo instantáneo (el CORTE, o CLIC en INSTANTÁNEO) salta
     const cut = this.form === 'golpe' && g.bars > 0;
     const stagger = !cut && g.bars > 0 && this.flow === 'escalonado' ? this.fxPal.order : null;
     A.goTo(name, g.bars, this.startStepFor(g.bars, g.quant), { drop: cut, stagger });
-    if (g.bars === 0 && !this.engine.playing) return A.land(); // parado e instantáneo: salta sin transición
     this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng, cut);
   }
 

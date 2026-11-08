@@ -105,9 +105,9 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
     densidad): kick y bajo con un high-pass, acordes con un low-pass resonante, hats, clap,
     percusión y pad sobre todo con volumen. Cada universo lo mueve un poco.
 - **CLIC** (pulsar y soltar): cambia a esa escena con los compases y el FX de CLIC.
-- **CORTE** (mantener más de 0,2 s, lo que usan los teclados que distinguen tocar de
-  mantener): cambia a esa escena al instante (en la
-  siguiente corchea, y con el FX de CORTE) mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
+- **CORTE** (mantener más de 0,15 s; un clic normal dura menos):
+  cambia a esa escena al instante (en la
+  siguiente corchea) mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
   no cambia. Se pueden mantener varias a la vez (manda la última; al soltarla, la anterior).
 - **Viajar a una escena**: tarda los compases elegidos y
   **aterriza en frase**: la llegada cae en el inicio de una frase (cada 4 compases para
@@ -121,8 +121,10 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
   vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
 - Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
   es solo el cambio (de golpe o progresivo, según TRANSICIÓN).
-- **Al abrir**, los universos empiezan en **SOLO DRUMS**. Antes del primer GENERAR, pulsar una
-  escena la elige directamente, sin viaje ni FX: es desde donde empieza a sonar.
+- **Al abrir**, los universos empiezan en **SOLO DRUMS**. **Parado** (antes del primer GENERAR
+  o en PAUSA), pulsar una escena salta a ella directamente, sin viaje ni FX: es desde donde
+  empieza (o sigue) a sonar. Un viaje que quedó a medias al pausar sigue al volver a tocar,
+  salvo que pulses una escena antes.
 - Con **LOOP** activo, pulsar una escena la deja pendiente (borde discontinuo); al soltar el
   loop se aplica según SALIDA (instantánea o progresiva).
 

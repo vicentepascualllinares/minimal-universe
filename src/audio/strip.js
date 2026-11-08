@@ -26,6 +26,14 @@ export function bandGain(v, type) {
   return Math.pow(10, (EQ_TYPES.eq.floor * x) / 20); // lineal en dB hasta −26
 }
 
+// al revés: posición del knob que da la ganancia g (en EQ, por debajo de −26 dB se queda en −26)
+export function bandValue(g, type) {
+  if (g >= 1) return Math.min(1, 0.5 + (0.5 * 20 * Math.log10(g)) / MAX_DB);
+  if (type === 'iso') return 0.5 - 0.5 * (1 - Math.sqrt(g));
+  const db = g > 0 ? 20 * Math.log10(g) : -Infinity;
+  return 0.5 - 0.5 * Math.min(1, db / EQ_TYPES.eq.floor);
+}
+
 // EASY EQ: una perilla por banda que cruza de A (x = 0) a B (x = 1); en el centro, los dos.
 // Como el "Frequency Mix" del Pioneer DJM-2000. Las tres bandas, sin hueco: en el centro los
 // dos enteros; cada lado solo baja el otro (a 3/4 del recorrido, el que se va está a −3 dB).
@@ -34,6 +42,15 @@ export function bandGain(v, type) {
 export function easyGains(band, x) {
   const q = Math.PI / 2;
   return [x <= 0.5 ? 1 : Math.cos(((x - 0.5) / 0.5) * q), x >= 0.5 ? 1 : Math.cos(((0.5 - x) / 0.5) * q)];
+}
+
+// al revés: dónde va la perilla para que A y B suenen en la proporción a : b (niveles reales
+// de la banda en cada universo). Sin nada sonando, se queda donde estaba (`prev`)
+export function easyX(a, b, prev = 0) {
+  const m = Math.max(a, b);
+  if (m < 1e-4) return prev;
+  const off = (r) => (0.5 * Math.acos(Math.min(1, r))) / (Math.PI / 2);
+  return a >= b ? 0.5 - off(b / a) : 0.5 + off(a / b);
 }
 
 // fader con curva suave (la mitad del recorrido ≈ -11 dB)

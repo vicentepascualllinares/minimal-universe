@@ -119,17 +119,16 @@ function start(mode) {
     views = [deckView($('#deckA'), A, 'UNIVERSO')];
   } else {
     views = [deckView($('#deckA'), A), deckView($('#deckB'), B)];
-    document.querySelectorAll('.mx-grid [data-k]').forEach((el) => {
+    const eqKnobs = [...document.querySelectorAll('.mx-grid [data-k]')].map((el) => {
       const d = Number(el.dataset.d);
       const k = el.dataset.k;
-      new Knob(el, { value: engine.mix[d][k], onChange: (v) => engine.setMix(d, k, v) });
+      return { d, k, knob: new Knob(el, { value: engine.mix[d][k], onChange: (v) => engine.setMix(d, k, v) }) };
     });
     // EASY EQ: una perilla por banda de A (izquierda) a B (derecha); doble clic = los dos
-    document.querySelectorAll('.mx-grid [data-x]').forEach((el) => {
+    const xfKnobs = [...document.querySelectorAll('.mx-grid [data-x]')].map((el) => {
       const k = el.dataset.x;
-      new Knob(el, { value: engine.xf[k], onChange: (v) => engine.setXf(k, v) });
+      return { k, knob: new Knob(el, { value: engine.xf[k], onChange: (v) => engine.setXf(k, v) }) };
     });
-    if (engine.easyEq) engine.setEasyEq(true); // faders a tope: mandan las perillas
     const faders = [...document.querySelectorAll('#mixer .fader')].map((el) => {
       const d = Number(el.dataset.d);
       return new VSlider(el, { value: engine.mix[d].fader, onChange: (v) => engine.setMix(d, 'fader', v) });
@@ -139,9 +138,12 @@ function start(mode) {
       $('#mixer').classList.toggle('easy', engine.easyEq);
       easyBtn.classList.toggle('on', engine.easyEq);
     };
+    // al cambiar, el motor traduce lo que suena (ver setEasyEq): los mandos lo siguen
     easyBtn.addEventListener('pointerdown', () => {
       engine.setEasyEq(!engine.easyEq);
-      faders.forEach((f, d) => f.set(engine.mix[d].fader)); // al encender, suben a tope
+      eqKnobs.forEach((o) => o.knob.set(engine.mix[o.d][o.k]));
+      xfKnobs.forEach((o) => o.knob.set(engine.xf[o.k]));
+      faders.forEach((f, d) => f.set(engine.mix[d].fader));
       showEasy();
     });
     showEasy();
@@ -196,6 +198,10 @@ function frame() {
       if (el.textContent !== t) el.textContent = t;
     }
     $('.mx-roles').classList.toggle('pending', L.pending);
+  } else if (engine.mode === 'dj') { // EQ normal: papeles heredados de EASY que siguen forzados
+    const h = engine.low.heldInfo().map((t) => `<span>${t}</span>`).join('');
+    const el = $('.mx-held');
+    if (el.innerHTML !== h) el.innerHTML = h;
   }
   const sState = $('#state');
   const stTxt = engine.playing ? 'EN VIVO' : engine.generated ? 'PAUSA' : 'GENERAR';

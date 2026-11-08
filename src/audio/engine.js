@@ -4,7 +4,7 @@
 
 import { makeNoise } from './voices.js';
 import { Deck } from './deck.js';
-import { Strip, easyGains } from './strip.js';
+import { Strip, easyGains, easyX, bandGain, bandValue, faderGain } from './strip.js';
 import { LowRoles } from './lowRoles.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS } from '../music/arrangement.js';
@@ -102,11 +102,31 @@ export class Engine {
 
   get easyOn() { return this.easyEq && this.mode === 'dj'; }
 
-  // EASY EQ sí / no. Al encenderlo, los faders suben a tope: mandan las perillas
+  // EASY EQ sí / no. Al cambiar se traduce lo que suena, para que no salte:
+  //   EASY → normal: la EQ de cada canal da la misma ganancia que daban las perillas; los
+  //     silencios de papel de LOW se heredan hasta que dejan de hacer falta (ver lowRoles)
+  //   normal → EASY: cada perilla, donde da la misma proporción A : B (fader × EQ); los dos
+  //     faders, al del universo que más sonaba; si sonaban dos bajos (o dos kicks), se queda
+  //     el del universo con más graves y el otro se va en el siguiente tiempo
+  // EASY no puede expresar "los dos recortados" ni realces: ahí se conserva la proporción.
   setEasyEq(on) {
+    if (on === this.easyEq) return;
+    const BANDS = ['hi', 'mid', 'lo'];
+    if (on) {
+      const lv = (i, k) => faderGain(this.mix[i].fader) * bandGain(this.mix[i][k], this.eqType);
+      for (const k of BANDS) this.xf[k] = easyX(lv(0, k), lv(1, k), this.xf[k]);
+      const F = Math.max(this.mix[0].fader, this.mix[1].fader);
+      for (let i = 0; i < 2; i++) this.setMix(i, 'fader', F);
+      this.low.enterEasy(lv(0, 'lo'), lv(1, 'lo'));
+    } else {
+      for (const k of BANDS) {
+        const g = easyGains(k, this.xf[k]);
+        for (let i = 0; i < 2; i++) this.mix[i][k] = bandValue(g[i], this.eqType);
+      }
+      this.low.leaveEasy();
+    }
     this.easyEq = on;
     store.set('mu.easyEq', on ? '1' : '0');
-    if (on) for (let i = 0; i < 2; i++) this.setMix(i, 'fader', 1);
     this.applyEq();
   }
 
@@ -140,6 +160,7 @@ export class Engine {
     if (this.ready) return; // el modo se elige al entrar
     this.mode = m;
     if (m === 'solo') this.mix[0].fader = 1;
+    if (m === 'dj' && this.easyEq) this.mix[1].fader = 1; // EASY EQ: faders a tope, mandan las perillas (en A)
   }
 
   // qué se le pide al navegador según el modo de búfer

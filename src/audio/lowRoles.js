@@ -9,9 +9,17 @@
 //     Así el centro nunca choca: el kick del que se va con el bajo del que llega.
 //   - el cambio espera al siguiente tiempo (nunca se pisan ni entra a destiempo)
 //   - SIDECHAIN CRUZADO: el kick que suena empuja al bajo que suena, venga de donde venga
-// Sin EASY EQ (o en UN UNIVERSO) todo es como siempre: cada universo con lo suyo.
+// Sin EASY EQ (o en UN UNIVERSO) todo es como siempre: cada universo con lo suyo. Salvo una
+// cosa: al pasar de EASY a la EQ normal, los silencios de papel que había (p. ej. el bajo de A
+// callado porque suena el de B) se HEREDAN, porque la EQ normal no puede expresar "kick de A +
+// bajo de B". Cada uno se suelta, en el siguiente tiempo, cuando el otro universo deja de
+// sonar en ese papel (bajas su LOW o su fader, o cambia a una escena sin él): así el cambio
+// de bajo hecho a mano lo completa el programa. También si mueves el LOW del universo callado
+// (lo reclamas: quieres oírlo). Si no se toca nada, suena igual siempre.
 
-import { easyGains } from './strip.js';
+import { easyGains, bandGain, faderGain } from './strip.js';
+
+const LABEL = { kick: 'KICK', bass: 'BAJO' };
 
 const ROLES = ['kick', 'bass'];
 const SWAP = { bass: 0.4, kick: 0.6 }; // girando de A a B; de B a A, en 1 − SWAP
@@ -23,6 +31,36 @@ export class LowRoles {
     this.x = 0;                        // posición de la perilla LOW
     this.owner = { kick: 0, bass: 0 }; // dueño de cada papel cuando lo tienen los dos (0 = A, 1 = B)
     this.applied = null;               // ganancias de papel que suenan: [{kick, bass}, {kick, bass}]
+    this.held = [];                    // silencios heredados de EASY en la EQ normal: [{ i, r }]
+  }
+
+  // EASY → normal: los papeles callados se heredan
+  leaveEasy() {
+    this.held = [];
+    const lo = this.E.mix.map((m) => m.lo); // LOW de cada canal ya traducido
+    this.applied?.forEach((g, i) => { for (const r of ROLES) if (g[r] <= 0) this.held.push({ i, r, v: lo[i] }); });
+  }
+
+  // normal → EASY: la perilla ya está traducida (E.xf.lo); `la`, `lb` = graves de A y de B.
+  // Si los dos suenan en un papel, su dueño es el de más graves (empate: kick A, bajo B)
+  enterEasy(la, lb) {
+    const E = this.E, D = E.decks;
+    this.held = [];
+    this.x = E.xf.lo;
+    for (const r of ROLES) {
+      const both = this.has(D[0], r) && this.has(D[1], r) && la > 0.05 && lb > 0.05;
+      if (!both) this.owner[r] = this.x > 0.5 ? 1 : 0;
+      else if (Math.abs(la - lb) < 0.05 * Math.max(la, lb)) this.owner[r] = r === 'kick' ? 0 : 1;
+      else this.owner[r] = la > lb ? 0 : 1;
+    }
+  }
+
+  // con la EQ normal: ¿el universo o suena en el papel r? (lo tiene, no está callado y su
+  // banda LOW y su fader lo dejan oír)
+  soundsIn(o, r) {
+    const E = this.E, m = E.mix[o];
+    return this.has(E.decks[o], r) && (this.applied?.[o][r] ?? 1) > 0
+      && faderGain(m.fader) * bandGain(m.lo, E.eqType) > 0.05;
   }
 
   // la perilla se mueve: solo cambia de dueño hacia donde se gira
@@ -38,7 +76,12 @@ export class LowRoles {
   desired() {
     const E = this.E, D = E.decks;
     const g = [{ kick: 1, bass: 1 }, { kick: 1, bass: 1 }];
-    if (!E.easyOn) return g;
+    if (!E.easyOn) { // EQ normal: solo los silencios heredados que aún hacen falta (el otro
+      // sigue sonando en ese papel) y que nadie ha reclamado (tocar el LOW del callado lo suelta)
+      this.held = this.held.filter((h) => this.soundsIn(1 - h.i, h.r) && Math.abs(E.mix[h.i].lo - h.v) < 0.02);
+      for (const h of this.held) g[h.i][h.r] = 0;
+      return g;
+    }
     for (const r of ROLES) {
       if (!this.has(D[0], r) || !this.has(D[1], r)) continue;
       const o = this.owner[r];
@@ -70,18 +113,19 @@ export class LowRoles {
     return w.some((g, i) => ROLES.some((r) => g[r] !== this.applied[i][r]));
   }
 
-  // cuánto suena el kick de un universo en la mezcla (papel × banda LOW)
+  // cuánto suena el kick de un universo en la mezcla (papel × banda LOW de EASY)
   kickLevel(d) {
     const E = this.E;
-    if (!E.easyOn) return 1;
     const i = E.decks.indexOf(d);
-    return (this.applied?.[i].kick ?? 1) * easyGains('lo', E.xf.lo)[i];
+    const role = E.mode === 'dj' ? (this.applied?.[i].kick ?? 1) : 1;
+    return E.easyOn ? role * easyGains('lo', E.xf.lo)[i] : role;
   }
 
-  // SIDECHAIN: el kick de `from` (con profundidad `depth`) empuja al bajo que suena
+  // SIDECHAIN: el kick de `from` (con profundidad `depth`) empuja al bajo que suena. Cruzado
+  // con EASY o con papeles heredados; si no, cada universo a lo suyo (como siempre)
   duck(from, t, depth) {
     const E = this.E;
-    if (!E.easyOn) return from.duckBass(t, depth);
+    if (!E.easyOn && !this.held.length) return from.duckBass(t, depth);
     const lv = this.kickLevel(from);
     E.decks.forEach((d, i) => {
       if ((this.applied?.[i].bass ?? 1) <= 0 || !this.has(d, 'bass')) return;
@@ -96,5 +140,11 @@ export class LowRoles {
     const band = easyGains('lo', E.xf.lo);
     const src = (r) => [0, 1].filter((i) => this.has(D[i], r) && g[i][r] > 0 && band[i] > 0.01).map((i) => 'AB'[i]).join('+');
     return { kick: src('kick'), bass: src('bass'), pending: this.pending() };
+  }
+
+  // para la vista con la EQ normal: qué papeles siguen forzados (p. ej. ['BAJO B'])
+  heldInfo() {
+    this.desired(); // suelta los que ya no hacen falta
+    return this.held.map((h) => `${LABEL[h.r]} ${'AB'[1 - h.i]}`);
   }
 }

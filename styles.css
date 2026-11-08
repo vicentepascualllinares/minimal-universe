@@ -359,7 +359,8 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .mx-easy-btn.on { color: var(--fg); border-color: var(--dim); }
 #mixer.easy .eqk, #mixer:not(.easy) .easy { display: none; }
 .mx-xc { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.mx-roles { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; color: var(--dim); }
+.mx-roles, .mx-held { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; color: var(--dim); }
+.mx-held:empty { display: none; }
 .mx-roles b { color: var(--fg); font-weight: normal; }
 .mx-roles.pending b { animation: blink 0.5s steps(2) infinite; }
 

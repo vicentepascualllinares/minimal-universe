@@ -270,8 +270,12 @@ sus opciones van de menos a más calidad; AUTO, que se mueve solo por esa escala
 
 ## MIXER (volumen por instrumento)
 
-Botón **MIXER** en la cabecera (o tecla **M**; Esc cierra). Un fader por instrumento que
-afecta a todos los universos a la vez. Siempre arranca en 0 dB = la mezcla por defecto.
+Botón **MIXER** en la cabecera (o tecla **M**; Esc cierra). Un fader por instrumento y, al
+lado de cada fader, un **medidor** con lo que suena ahora. En **DJ** salen **A y B** en cada
+instrumento, **VINCULADOS** por defecto: mover un instrumento en un universo lo mueve igual en el
+otro (conservando la diferencia que tuvieran, como un grupo de faders; doble clic, los dos a 0 dB).
+El botón VINCULADOS los separa. En el móvil, en DJ, no se ven los dB (no caben).
+Siempre arranca en 0 dB = la mezcla por defecto.
 Arriba +6 dB, abajo hasta −48 dB y silencio. Doble clic = 0 dB. RESTABLECER = todo a 0 dB.
 La música sigue sonando mientras está abierto. (Todavía no se guarda: vendrá con las cuentas.)
 

@@ -70,7 +70,7 @@ const setPanel = (panel, open) => {
 const setMixer = (open) => setPanel(mixPanel, open);
 const toggleMixer = () => setMixer(mixPanel.hidden);
 const closePanels = () => setPanel(null, false);
-instMixer(mixPanel, engine, closePanels);
+const mixView = instMixer(mixPanel, engine, closePanels);
 const optView = optionsPanel(optPanel, engine, closePanels);
 $('#mixbtn').addEventListener('click', toggleMixer);
 $('#optbtn').addEventListener('click', () => setPanel(optPanel, optPanel.hidden));
@@ -114,6 +114,7 @@ $('#modes')?.addEventListener('click', async (ev) => {
 
 function start(mode) {
   engine.setMode(mode);
+  mixView.render(); // MIXER: en DJ, A y B
   document.body.classList.add(`mode-${mode}`);
   if (mode === 'solo') {
     views = [deckView($('#deckA'), A, 'UNIVERSO')];
@@ -161,6 +162,7 @@ let scopeBuf = null;
 function frame() {
   views.forEach((v) => v.frame(engine));
   if (!optPanel.hidden) optView.frame();
+  if (!mixPanel.hidden) mixView.frame();
   root.style.setProperty('--glowA', views[0].color);
   root.style.setProperty('--ga', engine.mix[0].fader);
   if (views[1]) {

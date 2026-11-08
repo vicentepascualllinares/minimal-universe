@@ -105,7 +105,7 @@ export class Deck {
     this.ch = {};
     for (const k of INSTRUMENTS) {
       this.ch[k] = new Channel(ctx, k, this.sum, Q.oversample ? '2x' : 'none');
-      this.ch[k].user.gain.value = this.engine.inst[k];
+      this.ch[k].user.gain.value = this.engine.instFor?.(this)?.[k] ?? 1; // MIXER
     }
 
     // CALIDAD: hats grabados (sampler) y, en LIGERA, un panorama fijo por carril de percusión
@@ -582,6 +582,23 @@ export class Deck {
         emit('pad', t, ev.vel);
       }
     }
+  }
+
+  // MIXER: nivel de pico de un instrumento ahora (lo que sale de su canal). El medidor se crea
+  // la primera vez que se pide: sin el MIXER abierto no cuesta nada
+  instLevel(k) {
+    const ch = this.ch?.[k];
+    if (!ch) return 0;
+    if (!ch.meter) {
+      ch.meter = this.ctx.createAnalyser();
+      ch.meter.fftSize = 256;
+      ch.meterBuf = new Float32Array(ch.meter.fftSize);
+      ch.out.connect(ch.meter);
+    }
+    ch.meter.getFloatTimeDomainData(ch.meterBuf);
+    let p = 0;
+    for (const v of ch.meterBuf) p = Math.max(p, Math.abs(v));
+    return p;
   }
 
   // SIDECHAIN: un kick (de este universo o, con EASY EQ, del otro) empuja a este bajo

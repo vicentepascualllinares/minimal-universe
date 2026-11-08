@@ -86,8 +86,9 @@ export class Engine {
     ];
     this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
     this.eqType = 'iso'; // EQ de la mesa DJ: 'iso' (silencia, −∞) | 'eq' (atenúa, −26 dB)
-    // MIXER global: ganancia por instrumento, igual para todos los universos (1 = 0 dB = el perfil por defecto)
-    this.inst = Object.fromEntries(INSTRUMENTS.map((k) => [k, 1]));
+    // MIXER: ganancia por instrumento de cada universo (1 = 0 dB = el perfil por defecto).
+    // En DJ van vinculados por defecto (lo decide la vista: ver instMixer)
+    this.inst = [0, 1].map(() => Object.fromEntries(INSTRUMENTS.map((k) => [k, 1])));
     // estado de la mesa (lo que muestran los controles)
     this.mix = [
       { fader: 1, hi: 0.5, mid: 0.5, lo: 0.5, filter: 0.5 },
@@ -332,12 +333,13 @@ export class Engine {
     return merge;
   }
 
-  // MIXER global: volumen de un instrumento en todos los universos
-  setInst(k, gain) {
-    this.inst[k] = gain;
-    if (!this.ready) return;
-    for (const d of this.active) glide(d.ch[k].user.gain, gain, this.ctx.currentTime, 0.02);
+  // MIXER: volumen de un instrumento en el universo i (0 = A, 1 = B)
+  setInst(i, k, gain) {
+    this.inst[i][k] = gain;
+    const d = this.decks[i];
+    if (this.ready && d.ch) glide(d.ch[k].user.gain, gain, this.ctx.currentTime, 0.02);
   }
+  instFor(deck) { return this.inst[this.decks.indexOf(deck)]; }
 
   // OPCIONES → DJ: tipo de EQ de la mesa (como en rekordbox)
   setEqType(t) {

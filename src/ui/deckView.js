@@ -41,9 +41,7 @@ function template(label) {
       ${opts('t-form stack', [['golpe', 'DE GOLPE'], ['prog', 'PROGRESIVA']], 'prog')}
       ${opts('t-flow stack', [['escalonado', 'ESCALONADA'], ['suave', 'SUAVE']], 'suave')}
       <div class="spacer"></div>
-      ${opts('t-who', [['click', 'CLIC'], ['cut', 'CORTE']], 'click')}
-      ${opts('t-len', [['0', 'YA'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
-      <div class="t-q gone" title="el CORTE es instantáneo y entra en la siguiente corchea: nunca a mitad de un golpe">AL INSTANTE · 1/8</div>
+      ${opts('t-len', [['0', 'INSTANTÁNEO'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
       <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
     </section>
   </div>
@@ -111,22 +109,16 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       onPick(b.dataset.v);
     });
   };
-  // TRANSICIÓN: lo de cada gesto (se ve el de la pestaña CLIC / CORTE). CLIC: compases del
-  // viaje y FX. CORTE: siempre instantáneo, a la corchea, y FX
-  let editing = 'click';
+  // TRANSICIÓN: compases y FX del CLIC (el CORTE no se ajusta: instantáneo, a la corchea, sin FX)
   const fxBtn = q('.t-fx');
   const showGesture = () => {
-    const g = deck.gesture[editing];
-    q('.t-len').classList.toggle('gone', editing === 'cut');
-    q('.t-q').classList.toggle('gone', editing !== 'cut');
+    const g = deck.gesture.click;
     q('.t-len').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === g.bars));
     fxBtn.classList.toggle('on', g.fx);
   };
-  options('.t-who', (v) => { editing = v; showGesture(); });
   options('.t-len', (v) => (deck.gesture.click.bars = Number(v)));
   fxBtn.addEventListener('pointerdown', () => {
-    const g = deck.gesture[editing];
-    g.fx = !g.fx;
+    deck.gesture.click.fx = !deck.gesture.click.fx;
     showGesture();
   });
   showGesture();

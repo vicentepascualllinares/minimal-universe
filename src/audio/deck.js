@@ -18,7 +18,10 @@ const glideAll = glide;
 
 const newSeed = () => (Math.random() * 1e9) | 0;
 
-export const HOLD_MS = 300; // un pad apoyado más que esto = CORTE
+// un pad apoyado más que esto = CORTE. 200 ms es lo que usan los teclados que distinguen tocar
+// de mantener (QMK, TAPPING_TERM): un toque normal dura menos. Los sistemas (400–500 ms)
+// son para menús, demasiado lento para tocar. El CORTE suena tras esto + hasta una corchea
+export const HOLD_MS = 200;
 
 export class Deck {
   constructor(engine, id, { scene, v, a }) {
@@ -29,7 +32,7 @@ export class Deck {
     this.form = 'prog';
     this.flow = 'suave';
     // los dos gestos de ESTRUCTURA y si llevan efectos. CLIC = cambiar de escena: un viaje de
-    // `bars` compases (0 = YA, en la siguiente negra). CORTE = mantener pulsado: dura lo que
+    // `bars` compases (0 = INSTANTÁNEO, en la siguiente negra). CORTE = mantener pulsado: dura lo que
     // dura el dedo y es siempre instantáneo, en la siguiente corchea (nunca a mitad de un
     // golpe). `quant` = rejilla de lo instantáneo, en pasos: 4 = negra, 2 = corchea
     this.gesture = {

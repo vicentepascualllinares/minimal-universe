@@ -254,13 +254,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .ph-ticks i { width: 6px; height: 2px; background: var(--faint); }
 .ph-ticks i.now { background: var(--fg); }
 .t-len { flex-wrap: wrap; justify-content: center; row-gap: 3px; max-width: var(--col); }
-/* CLIC: compases del viaje; CORTE: siempre instantáneo, a la corchea */
-.t-len.gone, .t-q.gone { display: none; }
-.t-q { color: var(--fg); font-size: 9px; letter-spacing: 0.12em; white-space: nowrap; }
-/* qué gesto se está ajustando: CLIC (cambiar de escena) o CORTE (mantener) */
-.t-who { margin-top: 2px; }
-.opts.t-who button { font-size: 9px; letter-spacing: 0.12em; border-bottom: 1px solid transparent; }
-.opts.t-who button.on { border-bottom-color: var(--fg); }
+.t-len button[data-v="0"] { flex-basis: 100%; font-size: 9px; letter-spacing: 0.1em; }
 .t-fx { font-size: 9px; letter-spacing: 0.25em; padding: 3px 7px 3px 9px; border: 1px solid var(--faint); touch-action: none; }
 .t-fx.on { color: var(--fg); border-color: var(--dim); }
 

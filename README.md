@@ -58,7 +58,7 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | Control | Qué hace |
 |---|---|
 | **ESTRUCTURA** (8 escenas) | Los momentos de un tema, uno por botón (ver abajo). **Clic** = cambiar a esa escena. **Mantener** = CORTE: suena mientras lo mantienes y al soltar vuelve. |
-| **TRANSICIÓN** | La **forma** de los viajes de CLIC, con dos interruptores. **DE GOLPE**: la estructura se aguanta y todo cambia a la vez en el 1 de la llegada. **PROGRESIVA**: cambia durante el viaje; entonces el segundo elige **SUAVE** (todos a la vez, a lo largo del viaje) o **ESCALONADA** (uno tras otro, cada uno en su compás). Ver "Formas del viaje". Debajo, **CLIC · CORTE**: qué gesto ajustas. CLIC: cuánto dura el viaje (YA, 1, 2, 4, 8, 16, 32 compases). CORTE: siempre instantáneo, en la siguiente corchea (nunca a mitad de un golpe). Los dos: **FX**, si el cambio lleva efectos de transición. Por defecto CLIC = 4 compases con FX, CORTE sin FX. |
+| **TRANSICIÓN** | La **forma** de los viajes de CLIC, con dos interruptores. **DE GOLPE**: la estructura se aguanta y todo cambia a la vez en el 1 de la llegada. **PROGRESIVA**: cambia durante el viaje; entonces el segundo elige **SUAVE** (todos a la vez, a lo largo del viaje) o **ESCALONADA** (uno tras otro, cada uno en su compás). Ver "Formas del viaje". Debajo, cuánto dura el viaje de CLIC (INSTANTÁNEO, 1, 2, 4, 8, 16, 32 compases) y **FX**: si lleva efectos de transición. Por defecto, 4 compases con FX. El CORTE no se ajusta: siempre instantáneo, en la siguiente corchea, sin FX. |
 | **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
 | **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
 | **COMPLEJIDAD** (4 faders) | KICK · PERCS · BASS · INSTR.: cuánta información dice cada grupo (ver abajo). Se aplica en el siguiente compás. Doble clic = 0,5. |
@@ -105,7 +105,8 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
     densidad): kick y bajo con un high-pass, acordes con un low-pass resonante, hats, clap,
     percusión y pad sobre todo con volumen. Cada universo lo mueve un poco.
 - **CLIC** (pulsar y soltar): cambia a esa escena con los compases y el FX de CLIC.
-- **CORTE** (mantener más de ⅓ de segundo): cambia a esa escena al instante (en la
+- **CORTE** (mantener más de 0,2 s, lo que usan los teclados que distinguen tocar de
+  mantener): cambia a esa escena al instante (en la
   siguiente corchea, y con el FX de CORTE) mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
   no cambia. Se pueden mantener varias a la vez (manda la última; al soltarla, la anterior).
 - **Viajar a una escena**: tarda los compases elegidos y
@@ -115,7 +116,7 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
   primer compás. Junto a ESTRUCTURA, un trazo por compás de la frase (el que suena,
   encendido) y, **antes de pulsar**, "ENTRA YA" o "ENTRA EN N": cuándo empezaría un viaje
   con los compases de CLIC. Después, "→ ESCENA · ENTRA EN N" mientras espera y
-  "→ ESCENA · N COMP." durante el viaje. YA = en la siguiente negra. Pulsa la **misma
+  "→ ESCENA · N COMP." durante el viaje. INSTANTÁNEO = en la siguiente negra. Pulsa la **misma
   escena** otra vez para **pausar** y otra más para seguir (si aún no había empezado,
   vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
 - Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
@@ -136,7 +137,7 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
 | **Se va la música** (TODO → SOLO DRUMS, TODO → SIN BAJO…) | un reverse corto, redoble del último tiempo y plato |
 | **Sin kick** (entre escenas de la fila de arriba) | solo un barrido suave |
 
-- **Cuantos más compases, más capas**: con YA solo hay golpe o plato al llegar; con 1–2,
+- **Cuantos más compases, más capas**: con INSTANTÁNEO solo hay golpe o plato al llegar; con 1–2,
   un redoble corto y un soplo de ruido; con 4, riser y tensión; con 8 o más, todo (el
   riser dura como mucho 16 compases y el redoble 4).
 - **Paleta por universo**: qué riser (ruido, tono o los dos, cuánto sube, si late), qué

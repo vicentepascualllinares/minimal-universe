@@ -4,7 +4,7 @@
 
 import { makeNoise } from './voices.js';
 import { Deck } from './deck.js';
-import { Strip } from './strip.js';
+import { Strip, easyGains } from './strip.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS } from '../music/arrangement.js';
 import { glide, ceiling } from './dsp.js';
@@ -92,6 +92,38 @@ export class Engine {
       { fader: 1, hi: 0.5, mid: 0.5, lo: 0.5, filter: 0.5 },
       { fader: 0, hi: 0.5, mid: 0.5, lo: 0.5, filter: 0.5 },
     ];
+    // EASY EQ (DJ): en vez de la EQ de cada canal, una perilla por banda que cruza de A (0) a
+    // B (1). Empieza todo en A, como los faders de siempre. Se recuerda entre sesiones.
+    this.easyEq = store.get('mu.easyEq') !== '0';
+    this.xf = { hi: 0, mid: 0, lo: 0 };
+  }
+
+  get easyOn() { return this.easyEq && this.mode === 'dj'; }
+
+  // EASY EQ sí / no. Al encenderlo, los faders suben a tope: mandan las perillas
+  setEasyEq(on) {
+    this.easyEq = on;
+    store.set('mu.easyEq', on ? '1' : '0');
+    if (on) for (let i = 0; i < 2; i++) this.setMix(i, 'fader', 1);
+    this.applyEq();
+  }
+
+  setXf(band, x) {
+    this.xf[band] = x;
+    this.applyEq([band]);
+  }
+
+  // la ganancia de cada banda en los canales: de las perillas EASY EQ o de la EQ de cada uno
+  applyEq(bands = ['hi', 'mid', 'lo']) {
+    if (!this.ready) return;
+    for (const k of bands) {
+      if (this.easyOn) {
+        const g = easyGains(k, this.xf[k]);
+        this.strips.forEach((s, i) => s.setBandGain(k, g[i]));
+      } else {
+        this.strips.forEach((s, i) => s.set(k, this.mix[i][k]));
+      }
+    }
   }
 
   get stepDur() { return 60 / this.bpm / 4; }
@@ -234,7 +266,10 @@ export class Engine {
 
     this.strips = this.active.map((d, i) => {
       const s = new Strip(ctx, this.sum, this.eqType);
-      for (const [k, v] of Object.entries(this.mix[i])) s.set(k, v);
+      for (const [k, v] of Object.entries(this.mix[i])) {
+        if (this.easyOn && k in this.xf) s.setBandGain(k, easyGains(k, this.xf[k])[i]); // EASY EQ
+        else s.set(k, v);
+      }
       d.initAudio(ctx, s.input);
       return s;
     });
@@ -283,11 +318,14 @@ export class Engine {
   setEqType(t) {
     this.eqType = t;
     if (this.ready) this.strips.forEach((s) => s.setEqType(t));
+    if (this.easyOn) this.applyEq(); // con EASY EQ mandan sus perillas
   }
 
   setMix(i, key, v) {
     this.mix[i][key] = v;
-    if (this.ready) this.strips[i].set(key, v);
+    if (!this.ready) return;
+    if (this.easyOn && key in this.xf) return; // con EASY EQ la EQ del canal no suena
+    this.strips[i].set(key, v);
   }
 
   // preparar el audio SIN generar música (al elegir modo): así se puede armar GRABAR antes

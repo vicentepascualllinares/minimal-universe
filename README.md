@@ -201,7 +201,8 @@ la tónica y el swing no pasa del 58 %. El color del universo en pantalla lo ref
 
 | Control | Qué hace |
 |---|---|
-| HI / MID / LOW | EQ de 3 bandas por canal (cortes en 250 Hz y 3,5 kHz). Centro = 0 dB (plano), derecha hasta +6 dB. A la izquierda, según OPCIONES → DJ: **ISOLATOR** (por defecto) silencia la banda del todo (−∞); **EQ** baja hasta −26 dB. |
+| **EASY EQ** (botón, encendido por defecto; se recuerda) | La forma fácil de mezclar. En vez de la EQ de cada canal, **una perilla por banda (HI · MID · LOW) que pasa de A (izquierda) a B (derecha)**; en el centro suenan los dos. Al encenderlo los dos faders suben a tope y las perillas empiezan en A. **HI y MID**: sin hueco, en el centro los dos enteros y cada lado solo baja el otro. **LOW**: intercambio de bajo, nunca dos bajos enteros; cruzan en un tramo estrecho del centro (los dos a −3 dB) y en cuanto sales de él suena uno solo. Como el modo Frequency Mix del Pioneer DJM-2000. Doble clic = centro. Apagado: la EQ de siempre. |
+| HI / MID / LOW (sin EASY EQ) | EQ de 3 bandas por canal (cortes en 250 Hz y 3,5 kHz). Centro = 0 dB (plano), derecha hasta +6 dB. A la izquierda, según OPCIONES → DJ: **ISOLATOR** (por defecto) silencia la banda del todo (−∞); **EQ** baja hasta −26 dB. |
 | FILTRO | Centro abierto. Izquierda = low pass, derecha = high pass, con algo de resonancia. |
 | Faders | Volumen de cada universo, con medidor al lado. A empieza arriba y B abajo. |
 

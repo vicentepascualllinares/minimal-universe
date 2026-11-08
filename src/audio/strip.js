@@ -26,6 +26,23 @@ export function bandGain(v, type) {
   return Math.pow(10, (EQ_TYPES.eq.floor * x) / 20); // lineal en dB hasta −26
 }
 
+// EASY EQ: una perilla por banda que cruza de A (x = 0) a B (x = 1); en el centro, los dos.
+// Como el "Frequency Mix" del Pioneer DJM-2000, con las curvas de la mezcla con EQ:
+//   HI y MID  sin hueco: en el centro los dos enteros; cada lado solo baja el otro
+//             (a 3/4 del recorrido, el que se va está a −3 dB)
+//   LOW       intercambio de bajo: nunca dos bajos enteros. Cruce estrecho (LO_SWAP del
+//             recorrido) a potencia constante: en el centro los dos a −3 dB, y en cuanto
+//             sales de él suena un solo bajo
+const LO_SWAP = 0.12;
+export function easyGains(band, x) {
+  const q = Math.PI / 2;
+  if (band === 'lo') {
+    const t = Math.min(1, Math.max(0, (x - 0.5) / LO_SWAP + 0.5));
+    return [Math.cos(t * q), Math.sin(t * q)];
+  }
+  return [x <= 0.5 ? 1 : Math.cos(((x - 0.5) / 0.5) * q), x >= 0.5 ? 1 : Math.cos(((0.5 - x) / 0.5) * q)];
+}
+
 // fader con curva suave (la mitad del recorrido ≈ -11 dB)
 export const faderGain = (v) => (v <= 0 ? 0 : Math.pow(v, 1.8));
 
@@ -68,6 +85,9 @@ export class Strip {
     bands.connect(this.lp).connect(this.hp).connect(this.fader).connect(dest);
     this.fader.connect(this.meter);
   }
+
+  // EASY EQ: la ganancia de una banda la pone la mesa (ver easyGains), no el knob del canal
+  setBandGain(key, g) { glide(this[key].gain, g, this.ctx.currentTime, 0.02); }
 
   setEqType(type) {
     this.eqType = type;

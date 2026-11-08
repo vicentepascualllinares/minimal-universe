@@ -124,10 +124,27 @@ function start(mode) {
       const k = el.dataset.k;
       new Knob(el, { value: engine.mix[d][k], onChange: (v) => engine.setMix(d, k, v) });
     });
-    document.querySelectorAll('#mixer .fader').forEach((el) => {
-      const d = Number(el.dataset.d);
-      new VSlider(el, { value: engine.mix[d].fader, onChange: (v) => engine.setMix(d, 'fader', v) });
+    // EASY EQ: una perilla por banda de A (izquierda) a B (derecha); doble clic = los dos
+    document.querySelectorAll('.mx-grid [data-x]').forEach((el) => {
+      const k = el.dataset.x;
+      new Knob(el, { value: engine.xf[k], onChange: (v) => engine.setXf(k, v) });
     });
+    if (engine.easyEq) engine.setEasyEq(true); // faders a tope: mandan las perillas
+    const faders = [...document.querySelectorAll('#mixer .fader')].map((el) => {
+      const d = Number(el.dataset.d);
+      return new VSlider(el, { value: engine.mix[d].fader, onChange: (v) => engine.setMix(d, 'fader', v) });
+    });
+    const easyBtn = $('.mx-easy-btn');
+    const showEasy = () => {
+      $('#mixer').classList.toggle('easy', engine.easyEq);
+      easyBtn.classList.toggle('on', engine.easyEq);
+    };
+    easyBtn.addEventListener('pointerdown', () => {
+      engine.setEasyEq(!engine.easyEq);
+      faders.forEach((f, d) => f.set(engine.mix[d].fader)); // al encender, suben a tope
+      showEasy();
+    });
+    showEasy();
   }
   requestAnimationFrame(frame);
 }

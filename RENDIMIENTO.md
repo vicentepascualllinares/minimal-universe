@@ -15,7 +15,9 @@ gestos al instante (MIDI, CORTE en YA).
 
 ### El medidor de la cabecera
 
-Se ve en todos los perfiles (ordenador y móvil). Clic = poner a cero.
+Se ve en todos los perfiles (ordenador y móvil). Clic = poner a cero. En **OPCIONES →
+RENDIMIENTO** se enciende o apaga cada medidor (CORTES, TARDE); apagados siguen midiendo, y
+sin ninguno el medidor desaparece de la cabecera. Aún no se guarda: al recargar vuelven los dos.
 
 | Muestra | Qué significa | Causa típica |
 |---|---|---|
@@ -36,7 +38,22 @@ empieza o acaba de golpe, o un parámetro que salta sin rampa (ver §3).
 ### Perfiles por la dirección
 
 - `?pc` / `?movil`: forzar el perfil (ver `src/core/profile.js`).
-- `?estable`: móvil con el búfer más grande posible.
+- `?estable`: búfer MÁXIMO (sin tocar lo guardado en OPCIONES).
+
+### Búfer de audio (OPCIONES → RENDIMIENTO)
+
+AUTO (por defecto) · BAJO · ESTABLE · MÁXIMO; se guarda en ese navegador. El navegador fija
+el búfer al crear el contexto de audio, así que cambiarlo **rehace el audio** sin recargar
+(`engine.rebuildAudio`): se cierra el contexto, se crea otro y cada universo vuelve a montar
+sus canales (`deck.initAudio`); la música (escenas, viajes, mezcla, loop) sigue y vuelve al
+empezar el siguiente compás. AUTO sube un escalón (~50 → ~100 → ~170 ms) con 3 CORTES en 60 s,
+con 10 s de gracia tras cada cambio; nunca baja solo. El detector de CORTES ignora los 2 s
+siguientes a arrancar o rehacer el audio (si no, el propio cambio contaba como corte).
+
+Lo que pide cada modo (`latencyHint`) y lo que dio el PC de desarrollo (Chrome, Windows):
+BAJO `'interactive'` ≈ 11 ms · ESTABLE `0.05` ≈ 53 ms · `0.1` ≈ 107 ms · MÁXIMO `0.2` ≈ 171 ms
+(el tope: 0,3 y 0,5 dan lo mismo). Ojo: `'playback'` daba solo ≈ 21 ms en Windows, por eso
+MÁXIMO se pide en número.
 
 ### Prueba de estrés (hacerla tras cada funcionalidad gorda)
 
@@ -87,9 +104,11 @@ Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
 
 - **Coste principal**: nodos creados por segundo (cada golpe de kick, hat, perc, bajo,
   acorde…) y lo que suenan a la vez. Los canales, la mesa y el master son fijos.
-- **Móvil**: hats como sample (2 nodos por golpe en vez de 9), acordes y pad con un
-  oscilador por voz en vez de dos, bajo sin cuadrada inaudible, sin sobremuestreo, margen
-  adaptativo, canvas a menor resolución.
+- **CALIDAD** (`src/audio/quality.js`, OPCIONES → RENDIMIENTO): ALTA = todo al momento;
+  NORMAL (PC) = hats grabados (2 nodos por golpe en vez de 9) y el filtro del pad por bloques
+  (`automationRate = 'k-rate'`; SOLO ese, ver §7); LIGERA (móvil)
+  = además sin sobremuestreo, un oscilador por nota en acordes y pad, bajo sin cuadrada
+  inaudible, panorama fijo por carril. Medido en §5.
 - **Latencia de un gesto** = margen de programación + búfer + salida. Hoy en PC:
   120 ms + 11 ms + ~48 ms ≈ **180 ms** como mucho. No se nota porque casi todo se cuantiza
   a la negra, el compás o la frase. Importará con MIDI y con CORTE en YA.
@@ -103,12 +122,12 @@ Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
 
 | Señal | Primero probar | Si no basta |
 |---|---|---|
-| **CORTES** en ordenador normal | Tope de voces por instrumento (robar la más vieja). Cortar antes las colas inaudibles (decays largos, pad). Quitar nodos que no suman (como ya hace el perfil móvil). | Reutilizar nodos fijos en vez de crear por golpe (bancos de osciladores, como el `HatSampler`). Después, **AudioWorklet** (§4.3). |
-| **CORTES** solo en ordenadores flojos | Opción **CALIDAD** en OPCIONES: AUTO / ALTA / LIGERA. LIGERA = los ajustes del perfil móvil sobre PC (ya existen en `PROFILE`, solo hay que poder elegirlos). AUTO: si hay CORTES el primer minuto, proponer LIGERA. | Bajar polifonía en LIGERA. |
-| **TARDE** | Activar también en PC el margen adaptativo (`adaptLookahead`, hoy solo móvil). Revisar qué hace la interfaz por fotograma (escribir en el DOM solo si cambia; menos canvas). No crear objetos en el bucle de cada paso si se puede evitar. | Generar los compases (`prepareBar`) fuera del hilo principal: en un Worker o en el AudioWorklet (§4.3). |
+| **CORTES** en ordenador normal | Bajar CALIDAD (OPCIONES). Después: tope de voces por instrumento (robar la más vieja). Cortar antes las colas inaudibles (decays largos, pad). Quitar nodos que no suman (como ya hace el perfil móvil). | Reutilizar nodos fijos en vez de crear por golpe (bancos de osciladores, como el `HatSampler`). Después, **AudioWorklet** (§4.3). |
+| **CORTES** solo en ordenadores flojos | CALIDAD LIGERA y búfer (AUTO ya sube solo; MÁXIMO a mano). Idea pendiente: que AUTO proponga LIGERA si hay CORTES el primer minuto. | Bajar polifonía en LIGERA. |
+| **TARDE** | MARGEN en AUTO (ya sube solo) o LARGO (OPCIONES). Revisar qué hace la interfaz por fotograma (escribir en el DOM solo si cambia; menos canvas). No crear objetos en el bucle de cada paso si se puede evitar. | Generar los compases (`prepareBar`) fuera del hilo principal: en un Worker o en el AudioWorklet (§4.3). |
 | **Chasquido sin contadores** | Toda voz con ataque y release de al menos 2–5 ms; nunca saltos de parámetro sin rampa (`setTargetAtTime` / rampas, no `value =` mientras suena); al cortar un sonido, bajar ganancia antes de `stop()`. | Revisar el limitador y la saturación del master. |
 | **Se cuelga o va a peor con el tiempo** (sesión larga) | Mirar memoria en el administrador de tareas del navegador (Shift+Esc en Chrome): si sube sin parar, algo no se suelta (nodos sin `stop()` ni `disconnect()`, listas que crecen como `events` o `history`). | Perfil de memoria de DevTools. |
-| **Se nota la latencia** | Bajar el margen en PC (de 120 ms a 60–80 ms) cuando el medidor lo permita. | AudioWorklet con el reloj dentro del audio (§4.3). |
+| **Se nota la latencia** | MARGEN CORTO y búfer BAJO (OPCIONES) si el medidor lo permite: con CALIDAD NORMAL, el búfer BAJO ya no dio cortes en el PC de desarrollo. | AudioWorklet con el reloj dentro del audio (§4.3). |
 
 ---
 
@@ -186,17 +205,164 @@ hilo principal: si la interfaz se atasca, el audio sigue.
 | 2026-11-08 | 8 escenas (e3d9a09) | PC de desarrollo, Chrome, `?pc` | DJ, los dos en TODO | ~200 | 0,1 ms / 2,2 ms (máx 2,6) | 120 + 11 + 48 ms | 0 / 0 (8 s, prueba corta) |
 | 2026-11-08 | 8 escenas (e3d9a09) | PC de desarrollo, Chrome, `?movil` | DJ, los dos en TODO | ~180 | — | 150 + 53 + 88 ms | 0 / 0 (8 s, prueba corta) |
 
-Pendiente: el README dice que el perfil móvil crea "unos la mitad de nodos por segundo".
-Esta medida (universos distintos en cada toma) da solo ~10 % menos. Repetir con la misma
-semilla antes de fiarse de cualquiera de las dos cifras.
+**Búfer en PC (2026-11-08)**, DJ con los dos universos en TODO, 30 s cada toma, en el PC de
+desarrollo (navegador del panel de Claude):
+
+| `latencyHint` | Búfer real | CORTES en 30 s |
+|---|---|---|
+| `'interactive'` (lo que había) | ~11 ms | 11–17 |
+| `0.025` | ~32 ms | 1 |
+| `0.05` (**el nuevo valor por defecto**) | ~53 ms | 0 (con COMPLEJIDAD a tope: ~1 cada 30–40 s) |
+
+Con ~53 ms aún sale algún CORTE suelto, también con poca carga (BREAK) y a rachas: encaja
+con picos del propio ordenador (otras aplicaciones), no con el programa. Si en otras máquinas
+siguen saliendo con la carga normal, AUTO sube el búfer solo; si ni con MÁXIMO basta, es el
+momento de §3 (bajar coste del DSP). La latencia de un gesto en PC pasa a ser ~120 + 53 + 88 ms ≈ 260 ms
+como mucho: no se nota con las acciones cuantizadas, pero sí importará con MIDI (§4.2).
+
+También: la compensación de volumen de las saturaciones (`setDrive`) ya va con rampa de
+10 ms; antes saltaba en seco al cambiar de curva (al cambiar de universo), un posible
+chasquido pequeño.
+
+**Coste del motor medido con render offline (2026-11-08).** Método: un `OfflineAudioContext`
+con los dos universos, programando las notas sobre la marcha con `suspend()`/`resume()` cada
+~40 ms (como en directo; si se programan todas antes, el navegador arrastra miles de nodos
+pendientes y la cifra sale inflada), y se cronometra el render. Coste = tiempo de render /
+duración del audio (1 = el 100 % del tiempo disponible). Sin la mesa DJ ni el master (son
+fijos y baratos: en silencio todo el motor gasta ~4 %).
+
+Por instrumento (DJ, los dos en TODO, COMPLEJIDAD a tope, CALIDAD ALTA; total ~50 %):
+hats cerrado + abierto **~18 %**, bajo ~6 %, pad ~6 %, percusión ~6 %, kick ~4 %, acordes ~4 %,
+clap ~3 %. Filtros por bloques: −17 %. Sin sobremuestreo: −15 %. COMPLEJIDAD a 0,5: 28 %.
+
+Por CALIDAD, con los mismos universos (semillas fijas; con universos al azar la cifra baila
+mucho):
+
+| CALIDAD | Coste | |
+|---|---|---|
+| ALTA (lo de antes) | ~42 % | |
+| **NORMAL** (PC por defecto) | **~27 %** | −37 % |
+| LIGERA (móvil por defecto) | ~19 % | −55 % |
+
+Después (§7) los filtros por bloques quedaron solo en el pad, y la medida pasó a incluir la
+mesa, el master y el techo: **ALTA ~46 %, NORMAL ~32 %, LIGERA ~25 %**. En directo con NORMAL
+y búfer de ~53 ms, DJ en TODO a complejidad máxima: 0 CORTES y 0 TARDE en ~40 s.
+
+En directo con NORMAL, DJ en TODO y COMPLEJIDAD a tope: **0 CORTES en ~40 s con búfer de
+~53 ms y también con el BAJO (~11 ms)**, que antes daba 11–17 cada 30 s. Los cortes y
+chasquidos eran sobre todo el motor sin margen, no el búfer.
+
+(Resuelto: el README decía que el perfil móvil creaba "la mitad de nodos por segundo"; contar
+nodos engaña, porque no todos cuestan lo mismo. La medida buena es el coste de render de arriba:
+LIGERA gasta ~55 % menos que ALTA.)
 
 ---
 
 ## 6. Reglas desde ya (no cuestan nada)
 
 - `src/music/` sin Web Audio, DOM ni `window` (§2).
+- **Número de canales fijo** (`fixChannels` en `dsp.js`) en todo lo que alimente una saturación o
+  un filtro: si cambia (estéreo ↔ mono), Chrome reinicia esos nodos y el WaveShaper con
+  sobremuestreo tira el sonido que tiene dentro (§8).
+- **Nunca** cambiar la curva de un WaveShaper con sonido pasando: para saturar, `Saturator`
+  (`dsp.js`), que mueve la cantidad con ganancias con rampa.
+- Nada debe llegar a la saturación por encima de lo que aguanta: `Saturator` aguanta hasta
+  ±4,3 veces suave; un WaveShaper a pelo recorta en seco a partir de ±1.
+- Cancelar una rampa en curso con `cancelAndHoldAtTime` (o calculando dónde iba), nunca con
+  `cancelScheduledValues` a secas: el valor salta.
+- Si algo se programa por adelantado (hasta el MARGEN), cancelarlo debe borrar también lo
+  pendiente (`cancelScheduledValues(desde)`), no solo poner el valor "bueno".
+- Filtros rápidos o resonantes, muestra a muestra (no `k-rate`): por bloques hacen cremallera.
+- Toda voz se para ya en silencio (≥ 7 constantes de tiempo de su release).
 - Cada voz nueva: ataque y release con rampa, `stop()` con hora de fin, nada que quede
   sonando o conectado para siempre.
 - En la interfaz, escribir en el DOM solo cuando el valor cambia (el patrón que ya se usa).
 - Cualquier mando nuevo de estructura entra por `deck.down` / `deck.up`, no por la vista.
 - Tras cada funcionalidad gorda: prueba de estrés (§1) y una fila en §5.
+
+---
+
+## 7. Chasquidos (2026-11-08): qué eran y cómo se midieron
+
+Con CALIDAD LIGERA y búfer MÁXIMO **seguía habiendo chasquidos**: no eran cortes (carga),
+eran del propio sonido. Se buscaron con render offline (como §5) y "micrófonos" en cada punto
+de la cadena (un `ChannelMerger` de 32 canales con una toma por punto).
+
+**Detector de clics**: por instrumento, la salida del canal pasada por un paso alto de 10 kHz
+(36 dB/oct); se mide la energía en ventanas de 1 ms y se marca un clic cuando una ventana
+sube **más de 12 dB** sobre las dos anteriores, por encima de −60 dB del pico del
+instrumento y **fuera de los 20 ms siguientes a un ataque de nota** (60 ms en el clap, que
+son varios golpes). Las colas y las notas sostenidas no saltan así; un clic sí.
+
+| Causa | Medido | Arreglo |
+|---|---|---|
+| **Recorte en seco en la saturación**: la curva solo cubría ±1 y lo que pasaba se cortaba | pad con picos de 1,3–1,5 (hasta 3 490 muestras recortadas en 12 s), kick 1,04 en casi cada golpe | `Saturator` (`dsp.js`): una curva tanh fija que cubre ±48 y el drive con dos ganancias (`pre = k/48`, `post = comp/tanh(k)`). Idéntico hasta ±1; por encima satura suave hasta ×4,3 |
+| **Cambio de curva de golpe** al cambiar el carácter (NUEVO UNIVERSO, deriva) | 5 clics de −43 a −48 dB en kick, bajo y percusión en 12 s con cambios de universo | el mismo `Saturator`: la curva no cambia nunca; el drive se mueve con rampa de 50 ms → 0 clics |
+| **Filtros por bloques (`k-rate`) en envolventes rápidas y resonantes** (bajo, acordes) | +8 dB de agudos espurios en el bajo, +4,5 dB en acordes; clics a −58 dB | bloques solo en el filtro del pad (LFO lento) |
+| **Silencio antes del drop que no se quitaba**: cancelar la transición entre programar el silencio y que sonara dejaba "volver a 1" antes que "bajar a 0" | el universo se quedaba en 0 más de 6 s ("se rompe, silencio y sigue") | `TransitionFx.kill` borra lo pendiente (`cancelScheduledValues`) antes de restaurar |
+| **Plato al revés cancelado a medias**: `cancelScheduledValues` borraba la rampa y el volumen saltaba | (por código) | `cancelAndHoldAtTime` (y cálculo de dónde iba la rampa en Firefox) |
+| **Caída de ruido parada al 1 %** | (por código) | se para a ~9 constantes de tiempo |
+| **Panorama por carril** (LIGERA) que saltaba y se desconectaba con golpes sonando | (por código) | rampa de 4 ms y desconexión 4 s después |
+| **Salida sin techo**: el limitador no es de muro y la salida llegaba a 0,97–0,98 | sin margen: con EQ a +6 dB se recortaría en la tarjeta | `ceiling` (`dsp.js`) tras el limitador: transparente hasta ±0,95, nunca pasa de ±1 |
+
+Resultado con el detector, NORMAL y ALTA, varios universos (estable, cambios de escena,
+transiciones con FX, NUEVO UNIVERSO cada 4 s, después del sidechain): **0 clics**. En LIGERA,
+los acordes (una sola sierra por nota, sin desafinar) dan picos periódicos de agudos dentro de
+cada nota (−42 a −54 dB): es la textura de sierras en fase, no un salto de la señal (forma de
+onda revisada: sin saltos ni recortes); desafinar no lo cambia.
+
+---
+
+## 8. El chasquido de verdad: huecos de 4 ms (2026-11-08)
+
+Tras todo lo de §7 seguía habiendo chasquidos. La **grabación** del propio programa lo
+destapó (el grabador captura dentro del motor, así que lo que se oye en el WAV no puede ser un
+corte de la tarjeta): **huecos de exactamente 4,0 ms** en los que la salida caía a cero de
+golpe, dos por compás, siempre en las mismas posiciones, justo antes de un golpe.
+
+- Render offline con tomas en cada punto: el hueco nace **dentro del WaveShaper de la
+  saturación del universo** (entrada sin hueco, salida con hueco). Pasaba igual con la curva
+  antigua (estaba desde el principio). Sin sobremuestreo, 0 huecos; con 2x duran 2,7 ms y con
+  4x 4,0 ms: lo que retiene dentro el sobremuestreo.
+- Las muestras: en el inicio exacto de un bloque de 128 la salida se pone a 0 y vuelve a crecer
+  desde 1e-13: el sobremuestreo se **reinicia**.
+- Causa: la suma del universo tenía `channelCountMode = 'max'`. La percusión es la única voz
+  estéreo (paneo por golpe); cuando acababa su último golpe, la suma pasaba de 2 a 1 canales y
+  Chrome **reinicializa** el WaveShaper (y los filtros) de detrás al cambiar el número de
+  canales.
+- Arreglo: `fixChannels` — suma del universo y entrada de la mesa siempre en estéreo; la
+  entrada de cada canal fija (percusión estéreo, el resto mono). Sin ningún cambio de sonido.
+- Comprobado: render de la cadena completa, 4 universos en un universo y DJ (NORMAL y LIGERA):
+  0 huecos (antes 3–7 cada 5 s). Grabación en directo de 22 s en DJ: 0 huecos (el WAV del
+  usuario tenía 9 en 7,8 s) y todos los picos de agudos restantes caen en la rejilla de
+  semicorcheas (ataques de nota).
+
+Cómo buscar esto en un WAV: tramos de ≥ 1 ms por debajo de 0,003 con nivel > 0,1 justo antes
+(huecos), y picos de la 3.ª diferencia (agudos) más de 1000 veces sobre la mediana local que
+**no** caigan en la rejilla de semicorcheas.
+
+---
+
+## 9. Auditoría: ¿los arreglos cambiaron el sonido? (2026-11-08)
+
+Método: la versión anterior a los arreglos (commit 97dbc9a) y la actual, renderizadas offline
+con el mismo universo, el mismo azar (`Math.random` con semilla) y tomas en la salida de cada
+instrumento y del universo. Una versión contra sí misma difiere < −80 dB (render determinista).
+
+- **Generación**: `src/music/` sin cambios; las 112 notas de 8 s idénticas (instrumento,
+  tiempo y velocidad).
+- **Niveles**: iguales (±0,2 dB) en los 8 instrumentos.
+- **Forma de onda** (ALTA, con la saturación redondeada como antes): bajo −72 dB, clap −97,
+  hat −84, open −86, acordes −67, kick y percusión −83/−81 tras el primer segundo: idénticos.
+  Diferencias reales solo donde el antiguo fallaba: pad −54 dB (antes recortaba en seco por
+  encima de 1) y el universo, cuyo 91 % de diferencia está en los 15 huecos de 4 ms que tenía
+  la versión vieja en 8 s.
+- La saturación usa ahora el valor exacto que pide el universo en vez de redondearlo a pasos
+  de 0,05: diferencia −33 a −45 dB, más fiel al diseño.
+- **NORMAL vs ALTA**: mismas notas; nivel ±0,1 dB y brillo −10…+6 %, dentro de lo que ALTA varía
+  contra sí misma con otro azar (±0,5 dB, hasta −16 %). Suena igual.
+- **LIGERA** tenía los acordes 6,1 dB y el pad 2,4 dB más bajos (la mitad de osciladores sin
+  compensar; venía del perfil móvil). Compensado: ahora −0,4…−0,7 dB y −0,1…0 dB. Su timbre
+  sigue siendo más simple (por diseño).
+- Arreglo menor: el primer valor de saturación tras crear o rehacer el audio entra al momento
+  (antes subía con una rampa de 50 ms).

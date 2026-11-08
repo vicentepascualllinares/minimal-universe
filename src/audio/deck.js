@@ -3,12 +3,13 @@
 // los pone el Engine (globales), así dos universos siempre encajan.
 
 import * as V from './voices.js';
-import { Channel, driveCurve, glide } from './dsp.js';
+import { Channel, Saturator, glide, fixChannels } from './dsp.js';
 import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS, SCENES } from '../music/arrangement.js';
 import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
+import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, GROUPS } from '../music/complexity.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
@@ -64,14 +65,23 @@ export class Deck {
     this.fxRng = new Rng(seed ^ 0x6a09e667);
   }
 
+  // monta el audio del universo. Se vuelve a llamar si el motor rehace el audio
+  // (cambio de búfer): lo que sonaba en el contexto viejo se olvida, la música no.
   initAudio(ctx, out) {
     this.ctx = ctx;
+    this.padVoice = null;
+    this.lastOpen = null;
+    this.events = [];
     this.sum = ctx.createGain();
     this.sum.gain.value = 0.8;
-    this.shaper = ctx.createWaveShaper();
-    this.shaper.oversample = PROFILE.oversample ?? '4x';
-    this.post = ctx.createGain();
-    this.driveQ = -1;
+    // SIEMPRE estéreo. Si no, la suma pasaba de estéreo a mono cuando acababa el último golpe
+    // de percusión (la única voz con paneo) y Chrome REINICIABA la saturación de detrás: tiraba
+    // los ~4 ms de sonido que tiene dentro el sobremuestreo → chasquido (medido en una
+    // grabación: dos huecos de 4,0 ms por compás). Ver fixChannels en dsp.js.
+    fixChannels(this.sum, 2);
+    // saturación del universo entero (sin recortes ni saltos: ver Saturator en dsp.js)
+    const Q = this.engine.q; // CALIDAD DEL MOTOR (ver quality.js)
+    this.sat = new Saturator(ctx, Q.oversample ? '4x' : 'none', 0.5);
     // tensión de las transiciones: HP (build), LP (downfilter) y silencio antes del drop.
     // Las voces de transición van aparte, directas a la salida: no se filtran.
     const tHp = ctx.createBiquadFilter();
@@ -79,21 +89,21 @@ export class Deck {
     const tLp = ctx.createBiquadFilter();
     tLp.type = 'lowpass'; tLp.frequency.value = 20000; tLp.Q.value = 4;
     const gap = ctx.createGain();
-    this.sum.connect(this.shaper).connect(this.post).connect(tHp).connect(tLp).connect(gap).connect(out);
+    this.sum.connect(this.sat.input);
+    this.sat.output.connect(tHp).connect(tLp).connect(gap).connect(out);
     this.fx = new TransitionFx(this, ctx, out, { hp: tHp, lp: tLp, gap });
 
     this.ch = {};
     for (const k of INSTRUMENTS) {
-      this.ch[k] = new Channel(ctx, k, this.sum, PROFILE.oversample ?? '2x');
+      this.ch[k] = new Channel(ctx, k, this.sum, Q.oversample ? '2x' : 'none');
       this.ch[k].user.gain.value = this.engine.inst[k];
     }
 
-    // perfil móvil: hats grabados (sampler) y un panorama fijo por carril de percusión
-    if (PROFILE.lite) {
-      this.hats = new V.HatSampler(ctx, this.engine.noise);
-      this.lanePans = new Map();
-      this.paramCache = new Map();
-    }
+    // CALIDAD: hats grabados (sampler) y, en LIGERA, un panorama fijo por carril de percusión
+    this.hats = Q.hatSampler ? new V.HatSampler(ctx, this.engine.noise) : null;
+    this.lanePans = Q.lean ? new Map() : null;
+    // móvil: no reenviar a los parámetros valores que no cambian (ahorra hilo principal)
+    this.paramCache = PROFILE.lite ? new Map() : null;
   }
 
   // móvil: no reenviar a un parámetro el valor que ya tiene
@@ -104,15 +114,19 @@ export class Deck {
     glide(param, v, now, tc);
   }
 
-  lanePan(lane, pan) {
+  // `t` = cuándo suena el golpe. Si el carril cambió de panorama, se mueve con una rampa
+  // corta en ese momento: el golpe anterior aún suena por aquí y un salto sería un clic
+  lanePan(lane, pan, t) {
     let p = this.lanePans.get(lane);
     if (!p) {
       p = this.ctx.createStereoPanner();
+      p.pan.value = pan;
       p.connect(this.ch.perc.input);
-      this.lanePans.set(lane, p);
+      this.lanePans.set(lane, { node: p, pan });
+      return p;
     }
-    if (p.pan.value !== pan) p.pan.value = pan;
-    return p;
+    if (p.pan !== pan) { p.pan = pan; p.node.pan.setTargetAtTime(pan, t, 0.004); }
+    return p.node;
   }
 
   reseed() { this.pendingSeed = newSeed(); }
@@ -321,7 +335,7 @@ export class Deck {
   updateSound(now) {
     const e = this.e;
     const glide = PROFILE.lite ? this.glideLite.bind(this) : glideAll;
-    if (PROFILE.lite) {
+    if (this.hats) {
       this.hats.update('closed', e.hat, e.hat.decay);
       this.hats.update('open', e.hat, e.ohat.decay);
     }
@@ -345,14 +359,7 @@ export class Deck {
       glideAll(pv.airGain.gain, e.pad.air, now, 0.5);
     }
 
-
-    const q = Math.round(m.drive * 20) / 20;
-    if (q !== this.driveQ) {
-      this.driveQ = q;
-      const { curve, comp } = driveCurve(q * 0.6);
-      this.shaper.curve = curve;
-      this.post.gain.value = comp;
-    }
+    this.sat.set(m.drive * 0.6);
   }
 
   prepareBar(b, absStep, t0) {
@@ -372,9 +379,11 @@ export class Deck {
       this.gen = makeGenerators(this.seed);
       this.newCharacter(this.seed);
       this.newFxPalette(this.seed);
-      if (this.lanePans) { // móvil: soltar los panoramas de los carriles viejos
-        for (const p of this.lanePans.values()) p.disconnect();
+      if (this.lanePans) { // LIGERA: soltar los panoramas de los carriles viejos...
+        const old = [...this.lanePans.values()];
         this.lanePans.clear();
+        // ...cuando sus últimos golpes ya hayan sonado: desconectarlos ya los cortaría en seco
+        setTimeout(() => old.forEach((p) => p.node.disconnect()), 4000);
       }
     }
     const G = this.gen;
@@ -491,15 +500,14 @@ export class Deck {
     if ((ev = B.hat[s]) && A.audible('hat', t)) {
       const th = Math.max(t + hum(), ctx.currentTime);
       if (this.lastOpen && this.lastOpen.end > th) this.lastOpen.gain.setTargetAtTime(0, th, 0.007);
-      if (PROFILE.lite) this.hats.play('closed', C.hat.input, th, ev.vel);
-      else V.hat(ctx, C.hat.input, th, ev.vel, e.hat, e.hat.decay, noise);
+      // grabado si la CALIDAD lo pide y ya está listo; si no, sintetizado (mismo sonido)
+      if (!this.hats?.play('closed', C.hat.input, th, ev.vel)) V.hat(ctx, C.hat.input, th, ev.vel, e.hat, e.hat.decay, noise);
       emit('hat', th, ev.vel);
     }
     if ((ev = B.ohat[s]) && A.audible('ohat', t)) {
       const th = t + hum() * 0.5;
-      this.lastOpen = PROFILE.lite
-        ? this.hats.play('open', C.ohat.input, th, ev.vel)
-        : V.hat(ctx, C.ohat.input, th, ev.vel, e.hat, e.ohat.decay, noise);
+      this.lastOpen = this.hats?.play('open', C.ohat.input, th, ev.vel)
+        || V.hat(ctx, C.ohat.input, th, ev.vel, e.hat, e.ohat.decay, noise);
       emit('ohat', th, ev.vel);
     }
     if ((ev = B.perc[s]) && A.audible('perc', t)) {
@@ -519,7 +527,7 @@ export class Deck {
           pan: so.pan,
         };
         const tp = Math.max(t + hum(), ctx.currentTime);
-        const pn = PROFILE.lite ? this.lanePan(h.lane, so.pan) : null;
+        const pn = this.lanePans ? this.lanePan(h.lane, so.pan, tp) : null;
         V.perc(ctx, C.perc.input, tp, h.vel * 0.9, sound, noise, pn);
         emit('perc', tp, h.vel);
       }
@@ -527,14 +535,14 @@ export class Deck {
     if ((ev = B.bass[s]) && A.audible('bass', t)) {
       const semis = degreeToSemis(ev.deg, scale) + 12;
       const dur = Math.max(sd * 0.55, ev.len * sd * e.bass.lenMul - 0.01);
-      V.bass(ctx, C.bass.input, t, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, PROFILE.lite);
+      V.bass(ctx, C.bass.input, t, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, this.engine.q.lean);
       emit('bass', t, ev.vel);
     }
     // acordes y pad: dos octavas sobre la tónica del kick
     const freqsOf = (notes) => notes.map((d) => root * Math.pow(2, (degreeToSemis(d, scale) + 24) / 12));
     if ((ev = B.chord[s]) && A.audible('chord', t)) {
       const dur = Math.max(sd * 0.5, ev.len * sd * e.chord.lenMul - 0.01);
-      V.chord(ctx, C.chord.input, t, ev.vel, freqsOf(ev.notes), dur, e.chord, PROFILE.lite);
+      V.chord(ctx, C.chord.input, t, ev.vel, freqsOf(ev.notes), dur, e.chord, this.engine.q.lean);
       emit('chord', t, ev.vel);
     }
     if ((ev = B.pad[s]) && A.audible('pad', t)) {
@@ -545,7 +553,8 @@ export class Deck {
       if (!pv || pv.key !== key || pv.holdEnd <= t + 0.01) {
         if (pv) pv.release(t, Math.max(0.4, e.pad.attack));
         const hold = ev.bars * this.engine.barDur;
-        this.padVoice = V.pad(ctx, C.pad.input, t, ev.vel, freqs, hold, e.pad, noise, PROFILE.lite);
+        this.padVoice = V.pad(ctx, C.pad.input, t, ev.vel, freqs, hold, e.pad, noise, this.engine.q.lean);
+        if (this.engine.q.blockFilters) blockRate(this.padVoice.filter); // CALIDAD: el filtro lento del pad, por bloques
         this.padVoice.key = key;
         emit('pad', t, ev.vel);
       }

@@ -7,10 +7,46 @@ import { Deck } from './deck.js';
 import { Strip } from './strip.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS } from '../music/arrangement.js';
-import { glide } from './dsp.js';
+import { glide, ceiling } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
+import { QUALITY_MODES } from './quality.js';
+import { Recorder } from './recorder.js';
 
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+// ── BÚFER DE AUDIO (OPCIONES → RENDIMIENTO)
+// El navegador fija el búfer al crear el contexto de audio y no deja cambiarlo
+// después. Para cambiarlo se rehace solo el audio (como Ableton al cambiar el
+// búfer): la música (universos, escenas, mezcla) sigue igual y vuelve en un compás.
+// AUTO empieza en ESTABLE y sube un escalón si hay cortes seguidos; nunca baja solo.
+// Lo elegido se guarda en ESE navegador: es un ajuste del aparato, no de la cuenta.
+export const BUFFER_MODES = {
+  auto: { label: 'AUTO', desc: 'se ajusta solo: empieza estable y sube si hay cortes' },
+  bajo: { label: 'BAJO', desc: '~10 ms · ordenadores potentes y MIDI · puede dar cortes' },
+  estable: { label: 'ESTABLE', desc: '~50 ms · el equilibrio · no se nota al tocar' },
+  maximo: { label: 'MÁXIMO', desc: '~170 ms · ordenadores flojos · más retraso al tocar' },
+};
+// MÁXIMO en número, no 'playback': en Chrome para Windows 'playback' da ~21 ms (menos que
+// ESTABLE). Pedir 0,2 s da el tope del equipo (~171 ms en el PC de desarrollo).
+const MAX_HINT = 0.2;
+const AUTO_STEPS = [PROFILE.stableHint, 0.1, MAX_HINT]; // escalones de AUTO
+const AUTO_TRIGGER = { cortes: 3, window: 60000, calm: 10000 }; // 3 cortes en 60 s; 10 s de gracia tras rehacer
+
+// MARGEN DE PROGRAMACIÓN (OPCIONES → RENDIMIENTO): cuánto se adelanta el programa al
+// preparar las notas. Más margen = aguanta mejor que el ordenador se atasque (menos TARDE),
+// pero un gesto tarda más en oírse. AUTO empieza en el del perfil y sube solo si hay atascos.
+export const MARGIN_MODES = {
+  auto: { label: 'AUTO', desc: 'empieza en ~120 ms y sube solo si el ordenador se atasca' },
+  corto: { label: 'CORTO', desc: '60 ms · responde antes · más riesgo de notas TARDE' },
+  normal: { label: 'NORMAL', desc: '120 ms · el de siempre' },
+  largo: { label: 'LARGO', desc: '250 ms · ordenadores que se atascan' },
+};
+const MARGIN_S = { corto: 0.06, normal: 0.12, largo: 0.25 };
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
 
 export class Engine {
   constructor() {
@@ -23,7 +59,24 @@ export class Engine {
     this.step = 0;
     this.glitches = 0;  // CORTES: el audio se quedó sin datos (DSP demasiado pesado)
     this.late = 0;      // TARDE: pasos programados tarde (hilo principal atascado)
-    this.lookahead = PROFILE.lookahead; // s programados por adelantado (adaptativo en móvil)
+    this.rec = new Recorder(); // GRABAR (ver recorder.js)
+    this.generated = false;    // ¿se ha pulsado GENERAR alguna vez? (hasta entonces no suena nada)
+    this.meters = { cortes: true, tarde: true }; // OPCIONES → RENDIMIENTO: qué se ve en la cabecera (miden siempre)
+    // búfer y salida de audio (ver BUFFER_MODES)
+    const bm = store.get('mu.buffer');
+    this.bufferMode = PROFILE.forceMaxBuffer ? 'maximo' : BUFFER_MODES[bm] ? bm : 'auto';
+    this.autoStep = Math.min(AUTO_STEPS.length - 1, Math.max(0, Number(store.get('mu.bufferAuto')) || 0));
+    this.bufferNote = '';     // aviso para OPCIONES (p. ej. AUTO subió)
+    this.glitchTimes = [];    // cuándo hubo cortes (para AUTO)
+    this.lastRebuild = 0;
+    this.rebuilding = false;
+    this.sinkId = store.get('mu.sink') || ''; // salida de audio ('' = la del sistema)
+    // CALIDAD DEL MOTOR (ver quality.js): NORMAL en ordenador, LIGERA en móvil. Se guarda en el navegador
+    const qm = store.get('mu.quality');
+    this.qualityMode = QUALITY_MODES[qm] ? qm : PROFILE.lite ? 'ligera' : 'normal';
+    const mm = store.get('mu.margin');
+    this.marginMode = MARGIN_MODES[mm] ? mm : 'auto';
+    this.lookahead = MARGIN_S[this.marginMode] ?? PROFILE.lookahead; // s programados por adelantado
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
       new Deck(this, 'A', { scene: 'esqueleto', v: -0.3, a: -0.25 }), // kick, bajo y hat
@@ -53,9 +106,106 @@ export class Engine {
     if (m === 'solo') this.mix[0].fader = 1;
   }
 
+  // qué se le pide al navegador según el modo de búfer
+  latencyHint() {
+    const m = this.bufferMode;
+    if (m === 'bajo') return 'interactive';
+    if (m === 'maximo') return MAX_HINT;
+    if (m === 'estable') return PROFILE.stableHint;
+    return AUTO_STEPS[this.autoStep];
+  }
+
+  // elegir modo de búfer en OPCIONES: se guarda y se rehace el audio
+  setBufferMode(m) {
+    if (!BUFFER_MODES[m]) return;
+    this.bufferMode = m;
+    store.set('mu.buffer', m);
+    if (m === 'auto') { // elegir AUTO a mano: vuelve a aprender desde ESTABLE
+      this.autoStep = 0;
+      store.set('mu.bufferAuto', '0');
+    }
+    this.bufferNote = '';
+    this.rebuildAudio();
+  }
+
+  get q() { return QUALITY_MODES[this.qualityMode]; }
+
+  // elegir MARGEN en OPCIONES: se aplica al momento (no hace falta rehacer el audio)
+  setMarginMode(m) {
+    if (!MARGIN_MODES[m]) return;
+    this.marginMode = m;
+    store.set('mu.margin', m);
+    this.lookahead = MARGIN_S[m] ?? PROFILE.lookahead;
+  }
+
+  // elegir CALIDAD en OPCIONES: se guarda y se rehace el audio (como el búfer)
+  setQualityMode(m) {
+    if (!QUALITY_MODES[m] || m === this.qualityMode) return;
+    this.qualityMode = m;
+    store.set('mu.quality', m);
+    this.rebuildAudio();
+  }
+
+  // lo que ha dado de verdad este equipo (s); null si aún no hay audio
+  latencyInfo() {
+    if (!this.ready) return null;
+    const base = this.ctx.baseLatency || 0;
+    const out = this.ctx.outputLatency || 0;
+    return { base, out, lookahead: this.lookahead, total: base + out + this.lookahead };
+  }
+
+  // SALIDA DE AUDIO (Chrome / Edge): tarjeta o auriculares. '' = la del sistema
+  get canPickOutput() { return typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype; }
+  async setOutput(id) {
+    this.sinkId = id;
+    store.set('mu.sink', id);
+    if (this.ready && this.ctx.setSinkId) await this.ctx.setSinkId(id);
+  }
+
+  // Rehacer el audio con el búfer actual sin tocar la música: se cierra el contexto
+  // de audio, se crea otro y cada universo vuelve a montar sus canales. Si sonaba,
+  // vuelve a sonar al empezar el siguiente compás (hueco de unas décimas).
+  async rebuildAudio() {
+    if (!this.ready || this.rebuilding) return;
+    this.rebuilding = true;
+    const wasPlaying = this.playing;
+    this.playing = false;
+    this.ready = false;
+    this.worker.postMessage('stop');
+    this.worker.terminate();
+    try { await this.ctx.close(); } catch {}
+    try {
+      await this.init();
+      this.glitchTimes = [];
+      this.lastRebuild = performance.now();
+      if (wasPlaying) await this.play();
+    } finally {
+      this.rebuilding = false;
+    }
+  }
+
+  // AUTO: varios cortes seguidos = subir un escalón de búfer
+  autoBuffer() {
+    const now = performance.now();
+    if (this.bufferMode !== 'auto' || now - this.lastRebuild < AUTO_TRIGGER.calm) return;
+    this.glitchTimes = this.glitchTimes.filter((t) => now - t < AUTO_TRIGGER.window);
+    this.glitchTimes.push(now);
+    if (this.glitchTimes.length < AUTO_TRIGGER.cortes || this.autoStep >= AUTO_STEPS.length - 1) return;
+    this.autoStep++;
+    store.set('mu.bufferAuto', String(this.autoStep));
+    this.bufferNote = `AUTO subió el búfer por cortes (escalón ${this.autoStep + 1} de ${AUTO_STEPS.length})`;
+    this.bufferNoteAt = performance.now(); // la cabecera lo avisa unos segundos: el hueco no es un fallo
+    this.rebuildAudio();
+  }
+
   async init() {
     if (this.ready) return;
-    const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: PROFILE.latencyHint }));
+    const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: this.latencyHint() }));
+    // salida elegida antes (si ya no existe, vuelve a la del sistema)
+    if (this.sinkId && ctx.setSinkId) ctx.setSinkId(this.sinkId).catch(() => { this.sinkId = ''; store.set('mu.sink', ''); });
+    this.driftBase = undefined;
+    this.driftWin = [];
+    this.lastWall = 0; // el MARGEN en AUTO no cuenta como atasco el hueco de rehacer el audio
     this.noise = makeNoise(ctx);
 
     // master: suma -> graves en mono -> glue -> limitador
@@ -75,7 +225,11 @@ export class Engine {
     limiter.attack.value = 0.002; limiter.release.value = 0.12;
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 2048;
-    monoLow.connect(glue).connect(limiter).connect(this.analyser).connect(ctx.destination);
+    // TECHO: red de seguridad tras el limitador (ver dsp.js): nunca pasa de ±1
+    const ceil = ceiling(ctx);
+    monoLow.connect(glue).connect(limiter).connect(ceil.input);
+    ceil.output.connect(this.analyser).connect(ctx.destination);
+    this.rec.attach(ctx, ceil.output); // GRABAR escucha justo lo que sale
 
     this.strips = this.active.map((d, i) => {
       const s = new Strip(ctx, this.sum, this.eqType);
@@ -135,14 +289,22 @@ export class Engine {
     if (this.ready) this.strips[i].set(key, v);
   }
 
-  async play() {
+  // preparar el audio SIN generar música (al elegir modo): así se puede armar GRABAR antes
+  async prepare() {
     await this.init();
     if (this.ctx.state !== 'running') await this.ctx.resume();
+  }
+
+  // GENERAR / seguir
+  async play() {
+    await this.prepare();
     if (this.playing) return;
+    this.generated = true;
     // retomar siempre en el inicio de un compás: las frases siguen alineadas
     this.step = Math.ceil(this.step / 16) * 16;
     this.nextGrid = this.ctx.currentTime + 0.08;
     this.driftBase = undefined;
+    this.settleUntil = performance.now() + 2000; // el detector de CORTES espera a que se asiente
     this.playing = true;
   }
 
@@ -164,7 +326,10 @@ export class Engine {
   // un temblor de hasta ~1 búfer (solo hacia arriba), así que se compara el
   // MÍNIMO de cada ventana de ~0,5 s: el temblor no lo mueve, un corte sí.
   watchGlitches() {
-    if (!this.ctx.getOutputTimestamp || !this.playing || document.visibilityState !== 'visible') {
+    // (también los 2 s después de arrancar o rehacer el audio: mientras se asienta, el reloj
+    // salta y daría un CORTE falso)
+    if (!this.ctx.getOutputTimestamp || !this.playing || document.visibilityState !== 'visible'
+        || performance.now() < this.settleUntil) {
       this.driftBase = undefined;
       this.driftWin = [];
       return;
@@ -181,16 +346,18 @@ export class Engine {
     else if (winMin - this.driftBase > 0.02) {
       this.glitches++;
       this.driftBase = winMin;
+      this.autoBuffer();
     }
   }
 
-  // Margen adaptativo (móvil): si el hilo principal se atasca y el reloj llega
+  // MARGEN en AUTO: si el hilo principal se atasca y el reloj llega
   // tarde, programa más por adelantado; tras 20 s tranquilos, vuelve a bajar.
   adaptLookahead() {
     const w = performance.now();
     const gap = this.lastWall ? w - this.lastWall : 0;
     this.lastWall = w;
-    if (document.visibilityState !== 'visible') return;
+    // pestaña oculta o recién arrancado (el arranque atasca un instante y no es un problema)
+    if (document.visibilityState !== 'visible' || w < (this.settleUntil || 0)) return;
     if (gap > PROFILE.tickMs * 3) {
       this.lookahead = Math.min(PROFILE.lookaheadMax, this.lookahead + 0.05);
       this.calmSince = w;
@@ -205,7 +372,7 @@ export class Engine {
     const dt = Math.min(0.1, Math.max(0, now - this.lastNow));
     this.lastNow = now;
     this.watchGlitches(); // en todos los perfiles: el medidor de la cabecera (ver RENDIMIENTO.md)
-    if (PROFILE.lite) this.adaptLookahead();
+    if (this.marginMode === 'auto') this.adaptLookahead();
 
     const act = this.active;
     for (const d of act) d.update(now, dt);

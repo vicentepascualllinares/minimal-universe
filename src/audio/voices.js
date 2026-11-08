@@ -231,7 +231,7 @@ export function perc(ctx, out, t, vel, s, noise, panNode = null) {
 }
 
 // ───────────────────────── BASS
-// `lite` (perfil móvil): no crea el oscilador cuadrado si casi no se oye
+// `lite` (CALIDAD LIGERA): no crea el oscilador cuadrado si casi no se oye
 export function bass(ctx, out, t, vel, freq, dur, p, lite = false) {
   const saw = ctx.createOscillator();
   saw.type = 'sawtooth';
@@ -277,10 +277,13 @@ export function bass(ctx, out, t, vel, freq, dur, p, lite = false) {
 
 // ───────────────────────── ACORDES DUB (stab)
 // `freqs` = las notas del acorde ya resueltas. Dos osciladores desafinados por
-// nota (uno en móvil) -> un solo filtro con envolvente: el stab clásico.
+// nota (uno en CALIDAD LIGERA) -> un solo filtro con envolvente: el stab clásico.
+// LIGERA lleva la mitad de osciladores: se compensa el volumen para que la mezcla (y lo que
+// entra en la saturación) quede igual que en NORMAL/ALTA. Medido: −6,1 dB sin compensar; con 2,3, ≈ 0.
+const LEAN_CHORD = 2.3;
 export function chord(ctx, out, t, vel, freqs, dur, p, lite = false) {
   const mix = ctx.createGain();
-  mix.gain.value = 0.42 / Math.sqrt(freqs.length);
+  mix.gain.value = (0.42 / Math.sqrt(freqs.length)) * (lite ? LEAN_CHORD : 1);
   const oscs = [];
   for (const f of freqs) {
     for (let j = 0; j < (lite ? 1 : 2); j++) {
@@ -311,9 +314,10 @@ export function chord(ctx, out, t, vel, freqs, dur, p, lite = false) {
 // Una voz larga (varios compases) con ataque lento, filtro que respira (LFO) y
 // un poco de "aire" (ruido filtrado). Devuelve sus controles para que el Deck
 // la siga moviendo con la emoción y la suelte cuando llegue la siguiente.
+const LEAN_PAD = 1.38; // LIGERA: compensa el oscilador que falta (medido: −2,4 dB sin compensar)
 export function pad(ctx, out, t, vel, freqs, hold, p, noise, lite = false) {
   const mix = ctx.createGain();
-  mix.gain.value = 0.5 / Math.sqrt(freqs.length);
+  mix.gain.value = (0.5 / Math.sqrt(freqs.length)) * (lite ? LEAN_PAD : 1);
   const srcs = [];
   for (const f of freqs) {
     for (let j = 0; j < (lite ? 1 : 2); j++) {

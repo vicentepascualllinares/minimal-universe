@@ -140,6 +140,10 @@ export class TransitionFx {
     if (P) for (const ly of P.layers) if (ly.voice && !ly.ended) { ly.voice.kill(at); ly.voice = null; }
     for (const v of this.live) v.kill(at);
     this.live = [];
+    // el silencio antes del drop se programa por adelantado (hasta ~0,12 s). Si se corta
+    // justo entre programarlo y que suene, "volver a 1" quedaba ANTES que "bajar a 0" y
+    // el universo se quedaba mudo hasta la siguiente transición. Se borra lo pendiente.
+    this.f.gap.gain.cancelScheduledValues(at);
     this.f.gap.gain.setTargetAtTime(1, at, 0.02);
   }
 

@@ -236,9 +236,16 @@ export function reverse(ctx, out, t, dur, vel, p, noise) {
   g.gain.linearRampToValueAtTime(0, end + 0.006); // corte seco al llegar
   return {
     end,
+    // cortar a medias: hay que SUJETAR el volumen donde va. cancelScheduledValues a
+    // secas borra la rampa en curso y el volumen salta de golpe a 0,0001 (chasquido)
     kill(at) {
       if (at >= end) return;
-      g.gain.cancelScheduledValues(at);
+      if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(at);
+      else { // Firefox: se calcula dónde iba la rampa exponencial
+        const q = Math.min(1, Math.max(0, (at - t) / (end - t)));
+        g.gain.cancelScheduledValues(at);
+        g.gain.setValueAtTime(0.0001 * Math.pow(vel / 0.0001, q), at);
+      }
       g.gain.setTargetAtTime(0, at, 0.03);
     },
   };
@@ -256,5 +263,5 @@ export function downlifter(ctx, out, t, dur, vel, p, noise) {
   g.gain.setTargetAtTime(0, t + 0.01, dur / 3.5);
   n.connect(bp).connect(g).connect(out);
   n.start(t, off(noise));
-  n.stop(t + dur * 1.3);
+  n.stop(t + 0.01 + dur * 2.6); // ~9 constantes de tiempo: se para ya en silencio (antes, al 1 %: clic)
 }

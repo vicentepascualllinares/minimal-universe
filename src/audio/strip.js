@@ -7,7 +7,7 @@
 // Las tres bandas salen de un crossover Linkwitz-Riley de 4.º orden: con los
 // tres knobs en el centro suma plano, y cada banda se puede quitar entera.
 
-import { glide } from './dsp.js';
+import { glide, fixChannels } from './dsp.js';
 
 export const EQ_TYPES = {
   iso: { label: 'ISOLATOR', floor: -Infinity, desc: 'a la izquierda del todo, la banda se silencia (−∞ … +6 dB)' },
@@ -36,7 +36,8 @@ export class Strip {
     this.ctx = ctx;
     this.eqType = eqType;
     this.eqVal = { lo: 0.5, mid: 0.5, hi: 0.5 };
-    this.input = ctx.createGain();
+    // canales fijos: el universo es estéreo y las voces de transición mono (ver fixChannels)
+    this.input = fixChannels(ctx.createGain(), 2);
     // Butterworth (Q = 1/√2). Ojo: en Web Audio la Q de lowpass/highpass va en dB
     // (−3,01 dB = 1/√2); en allpass es lineal.
     const bq = (type, f) => {

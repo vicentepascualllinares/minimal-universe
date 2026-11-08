@@ -4,29 +4,114 @@ import { clamp } from '../core/rng.js';
 
 export const glide = (param, v, t, tc = 0.04) => param.setTargetAtTime(v, t, tc);
 
-// Saturación tanh. `comp` iguala el VOLUMEN (RMS) de una senoide de amplitud
-// `ref` (el nivel típico de ese instrumento): saturar añade densidad y
-// armónicos, no volumen. Así la emoción cambia el color, no el balance.
-export function driveCurve(amount, ref = 0.5) {
-  const k = 1 + amount * 10;
-  const n = 2048;
-  const c = new Float32Array(n);
-  const norm = Math.tanh(k);
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * 2 - 1;
-    c[i] = Math.tanh(k * x) / norm;
+// Fijar el número de canales de un nodo. Por defecto Chrome usa el máximo de lo que le
+// llega en cada momento, y cuando ese número CAMBIA (p. ej. acaba la única voz estéreo)
+// reinicia los nodos con memoria que hay detrás (WaveShaper con sobremuestreo, filtros):
+// el WaveShaper tira el sonido que tenía dentro (2,7 ms con 2x, 4 ms con 4x) → chasquido.
+// Todo lo que alimenta una saturación o un filtro tiene que tener un número fijo.
+export function fixChannels(node, n) {
+  node.channelCount = n;
+  node.channelCountMode = 'explicit';
+  node.channelInterpretation = 'speakers'; // mono → estéreo: igual en los dos lados
+  return node;
+}
+
+// ── SATURACIÓN tanh, sin recortes y sin saltos
+//   y = comp · tanh(k·x) / tanh(k)        k = 1 + 10·drive
+// `comp` iguala el VOLUMEN (RMS) de una senoide de amplitud `ref` (el nivel típico de
+// ese instrumento): saturar añade densidad y armónicos, no volumen.
+//
+// Antes había una curva por cada cantidad de drive y cambiar el drive era CAMBIAR LA
+// CURVA DE GOLPE con el sonido pasando (chasquido al cambiar de universo). Y la curva
+// solo cubría ±1: lo que pasaba de ahí se RECORTABA EN SECO (el pad llegaba a 1,5:
+// sonido roto). Ahora hay UNA curva fija que cubre ±SAT_RANGE y el drive son dos
+// ganancias con rampa alrededor de ella:
+//   y = post · curva(pre · x),  pre = k / SAT_RANGE,  curva(u) = tanh(SAT_RANGE·u),
+//   post = comp / tanh(k)
+// Hasta ±1 es exactamente lo mismo que antes; por encima sigue saturando suave (sin
+// recorte hasta ±SAT_RANGE/k: ≥ 4,3 veces el nivel máximo, +13 dB).
+const SAT_RANGE = 48;
+const SAT_POINTS = 16385; // con 16 385 puntos el error de la curva queda por debajo de −110 dB
+let satCurve = null;
+function satCurveShared() {
+  if (!satCurve) {
+    satCurve = new Float32Array(SAT_POINTS);
+    for (let i = 0; i < SAT_POINTS; i++) satCurve[i] = Math.tanh(SAT_RANGE * ((i / (SAT_POINTS - 1)) * 2 - 1));
   }
+  return satCurve;
+}
+export const driveK = (amount) => 1 + clamp(amount) * 10;
+export function driveComp(k, ref = 0.5) {
+  const norm = Math.tanh(k);
   let si = 0, so = 0;
   for (let i = 0; i < 64; i++) {
     const x = ref * Math.sin((i / 64) * 2 * Math.PI);
     const y = Math.tanh(k * x) / norm;
     si += x * x; so += y * y;
   }
-  return { curve: c, comp: Math.sqrt(si / so) };
+  return Math.sqrt(si / so);
+}
+
+export class Saturator {
+  constructor(ctx, oversample = '2x', ref = 0.5, amount = 0) {
+    this.ctx = ctx;
+    this.ref = ref;
+    this.pre = ctx.createGain();
+    this.shaper = ctx.createWaveShaper();
+    this.shaper.curve = satCurveShared();
+    this.shaper.oversample = oversample;
+    this.post = ctx.createGain();
+    this.pre.connect(this.shaper).connect(this.post);
+    this.input = this.pre;
+    this.output = this.post;
+    this.amount = -1;
+    this.set(amount);
+    this.fresh = true; // el primer valor que pida el universo entra al momento (aún no suena nada)
+  }
+
+  // cantidad de saturación 0..1. Con rampa (tc s): cambiar el color no hace clic
+  set(amount, tc = 0.05) {
+    amount = clamp(amount);
+    if (Math.abs(amount - this.amount) < 0.002) return;
+    const first = this.amount < 0 || this.fresh;
+    this.fresh = false;
+    this.amount = amount;
+    const k = driveK(amount);
+    const pre = k / SAT_RANGE;
+    const post = driveComp(k, this.ref) / Math.tanh(k);
+    if (first) { this.pre.gain.value = pre; this.post.gain.value = post; return; }
+    const now = this.ctx.currentTime;
+    glide(this.pre.gain, pre, now, tc);
+    glide(this.post.gain, post, now, tc);
+  }
+}
+
+// ── TECHO de la salida: transparente hasta ±0,95 y nunca pasa de ±1. Es la red de
+// seguridad tras el limitador (que no es de muro): sin él, un pico de más se
+// recortaría en seco en la tarjeta de sonido. Cubre hasta ±4 (12 dB de más).
+const CEIL_RANGE = 4, CEIL_KNEE = 0.95;
+export function ceiling(ctx) {
+  const pre = ctx.createGain();
+  pre.gain.value = 1 / CEIL_RANGE;
+  const sh = ctx.createWaveShaper();
+  const n = 16385;
+  const c = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = ((i / (n - 1)) * 2 - 1) * CEIL_RANGE;
+    const a = Math.abs(x);
+    c[i] = a <= CEIL_KNEE ? x : Math.sign(x) * (CEIL_KNEE + (1 - CEIL_KNEE) * Math.tanh((a - CEIL_KNEE) / (1 - CEIL_KNEE)));
+  }
+  sh.curve = c;
+  sh.oversample = '2x'; // si llega a actuar, sin aliasing
+  pre.connect(sh);
+  return { input: pre, output: sh };
 }
 
 // nivel típico que llega a la saturación de cada canal (para igualar volumen)
 const DRIVE_REF = { kick: 0.9, bass: 0.7, clap: 0.6, hat: 0.35, ohat: 0.35, perc: 0.5, chord: 0.4, pad: 0.35 };
+
+// canales que reciben voces estéreo (la percusión lleva paneo); los demás son mono
+const STEREO_IN = new Set(['perc']);
 
 // cómo entra/sale cada instrumento cuando la transición es por filtro
 const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc: 'lp', chord: 'lp', pad: 'lp' };
@@ -47,10 +132,10 @@ export class Channel {
   constructor(ctx, name, dest, oversample = '2x') {
     this.name = name;
     this.sweep = SWEEP[name];
-    this.input = ctx.createGain();
-    this.shaper = ctx.createWaveShaper();
-    this.shaper.oversample = oversample;
-    this.post = ctx.createGain();
+    // canales fijos (ver fixChannels): la percusión es estéreo (paneo por golpe), el resto mono
+    this.input = fixChannels(ctx.createGain(), STEREO_IN.has(name) ? 2 : 1);
+    this.sat = new Saturator(ctx, oversample, DRIVE_REF[name]);
+    this.post = this.sat.output; // tras la saturación (para medir)
     this.hp = ctx.createBiquadFilter();
     this.hp.type = 'highpass';
     this.hpBase = CLEAN_HP[name] ?? 20;
@@ -66,7 +151,8 @@ export class Channel {
     this.level = LEVEL[name];
     this.out.gain.value = this.level;
 
-    let chain = this.input.connect(this.shaper).connect(this.post).connect(this.hp).connect(this.lp);
+    this.input.connect(this.sat.input);
+    let chain = this.sat.output.connect(this.hp).connect(this.lp);
     if (MUD[name]) {
       const [f, g, q] = MUD[name];
       this.mud = ctx.createBiquadFilter();
@@ -75,19 +161,11 @@ export class Channel {
       chain = chain.connect(this.mud);
     }
     chain.connect(this.fade).connect(this.duck).connect(this.user).connect(this.out).connect(dest);
-    this.driveQ = -1;
-    this.setDrive(0);
     this.last = { f: -1, vol: -1, m: -1 };
   }
 
-  setDrive(amount) {
-    const q = Math.round(clamp(amount) * 20) / 20;
-    if (q === this.driveQ) return;
-    this.driveQ = q;
-    const { curve, comp } = driveCurve(q, DRIVE_REF[this.name]);
-    this.shaper.curve = curve;
-    this.post.gain.value = comp;
-  }
+  // saturación del canal (la pone el carácter del universo): continua y con rampa
+  setDrive(amount) { this.sat.set(amount); }
 
   // progress 0..1 de la transición; mode 0 = volumen, 1 = filtro
   // `tc` (opcional) = rapidez del cambio: el DROP lo pide casi seco

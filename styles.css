@@ -82,6 +82,11 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 #mode.pending { color: var(--fg); animation: blink 0.5s steps(2) infinite; }
 #state { color: var(--dim); padding: 2px 0; }
 #state.live { color: var(--fg); }
+#state.go { color: var(--fg); animation: blink 1s steps(2) infinite; } /* aún no ha empezado: GENERAR */
+/* GRABAR */
+#rec { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+#rec.armed { color: #d9776a; animation: blink 0.6s steps(2) infinite; }
+#rec.on { color: #e0705f; }
 #mixbtn { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; }
 #mixbtn.on { color: var(--fg); }
 #optbtn { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; }
@@ -99,7 +104,24 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .op-choice.on { border-color: var(--fg); }
 .op-choice.on b { color: var(--fg); }
 .op-choice.on small { color: var(--dim); }
-.op-note { color: var(--faint); font-size: 9px; letter-spacing: 0.06em; }
+.op-note { color: var(--faint); font-size: 9px; letter-spacing: 0.06em; line-height: 1.5; }
+.op-note.op-lat { color: var(--dim); }
+.op-row[hidden] { display: none; }
+/* RENDIMIENTO: solo el nombre, en fila (también en el móvil) */
+.op-choice.op-plain { align-items: center; padding: 10px 6px; }
+.op-choices:has(> .op-plain) { flex-direction: row; flex-wrap: wrap; }
+.op-out-row { display: flex; gap: 12px; align-items: center; }
+.op-select {
+  flex: 1; min-width: 0;
+  font: inherit; font-size: 10px; letter-spacing: 0.08em;
+  color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); padding: 8px 10px;
+}
+.op-mini { font-size: 9px; letter-spacing: 0.14em; padding: 8px 10px; border: 1px solid var(--line); white-space: nowrap; }
+.op-mini:hover { color: var(--fg); }
+/* OPCIONES crece hacia abajo y se desplaza si no cabe */
+.instmix.options { justify-content: flex-start; overflow-y: auto; padding-bottom: 24px; }
+.instmix.options > :first-child { margin-top: 28px; }
 
 /* ───────── MIXER global (encima del escenario) */
 .instmix {

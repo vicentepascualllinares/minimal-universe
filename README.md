@@ -33,23 +33,22 @@ Requiere [Node.js](https://nodejs.org). Alternativa manual: `node serve.mjs` y a
 
 El mismo programa elige solo su perfil:
 
-- **Ordenador**: el motor completo, sin cambios.
-- **Móvil** (Android / iPhone / iPad): misma música, optimizada para que el audio no se corte:
-  búfer de audio de ~45 ms, margen de programación adaptativo (150–300 ms, sube solo si el
-  móvil se atasca), hats grabados en segundo plano con el mismo motor del PC y reproducidos
-  como sample (2 nodos por golpe en vez de 9; se regraban si el color cambia el timbre),
-  un panorama fijo por carril de percusión, bajo sin osciladores inaudibles,
-  saturación sin sobremuestreo, ajustes solo cuando cambian, canvas a menor resolución y sin
-  osciloscopio. Unos la mitad de nodos de audio por segundo (pendiente de volver a medir,
-  ver RENDIMIENTO.md).
+- **Ordenador**: CALIDAD **NORMAL** (hats grabados del mismo motor: suena igual y gasta ~⅓
+  menos que antes) y búfer de ~50 ms.
+- **Móvil** (Android / iPhone / iPad): CALIDAD **LIGERA** (además, saturación sin
+  sobremuestreo, un oscilador por nota en acordes y pad, bajo sin osciladores inaudibles,
+  panorama fijo por carril de percusión), búfer de ~45 ms, margen de 150 ms que sube solo si
+  el móvil se atasca, ajustes solo cuando cambian, canvas a menor resolución y sin osciloscopio.
+
+Todo esto se cambia en **OPCIONES → RENDIMIENTO** (ver abajo y RENDIMIENTO.md).
 
 En la cabecera, en los dos perfiles, el medidor de salud del audio: **AUDIO OK**, **CORTES n**
 (el audio se quedó sin datos) o **TARDE n** (notas programadas fuera de tiempo). Clic = poner
-a cero. Qué vigilar, cómo medir y qué hacer cuando haga falta optimizar (incluido el motor en
+a cero. En **OPCIONES → RENDIMIENTO** se elige cuáles se ven (siguen midiendo aunque no se vean). Qué vigilar, cómo medir y qué hacer cuando haga falta optimizar (incluido el motor en
 el hilo de audio y lo que hay que decidir antes de samples y MIDI): **[RENDIMIENTO.md](RENDIMIENTO.md)**.
 
 Para forzar un perfil: añade `?movil` o `?pc` a la dirección. Si en algún móvil hay cortes,
-`?estable` usa el búfer más grande posible (más latencia, máxima estabilidad).
+`?estable` usa el búfer MÁXIMO (más latencia, máxima estabilidad) sin tocar lo guardado.
 
 Con auriculares Bluetooth el propio Bluetooth añade unos 150–250 ms que el programa no puede
 quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
@@ -193,15 +192,65 @@ la tónica y el swing no pasa del 58 %. El color del universo en pantalla lo ref
 
 Knobs: arrastrar en vertical (Shift = fino), rueda, doble clic = centro.
 
+## GENERAR y GRABAR
+
+- Al elegir modo (UN UNIVERSO o DJ) el programa se prepara pero **no hace música** hasta que
+  pulsas **GENERAR** en la cabecera (o ESPACIO). Después ese botón es EN VIVO / PAUSA.
+- **● GRABAR** (o R) graba exactamente lo que sale por los altavoces (los dos universos y la
+  mesa, tras el master) en **WAV estéreo de 24 bits** a la frecuencia del audio (normalmente
+  48 kHz), sin pérdidas.
+  - Al pulsarlo queda **armado** ("ESPERANDO SONIDO") y no guarda nada hasta la primera muestra
+    con sonido: se puede armar antes de GENERAR y el archivo empieza justo en el primer golpe,
+    sin silencio delante.
+  - Mientras graba enseña el tiempo y el tamaño (unos 17 MB por minuto).
+  - Al pulsarlo otra vez se para y se **descarga** el archivo
+    (`minimal-universe-AAAAMMDD-HHMMSS.wav`). Si no llegó a sonar nada, no se descarga nada.
+  - Sigue en el mismo archivo aunque cambies el búfer o la calidad (el audio se rehace) o
+    pongas PAUSA (eso queda grabado como silencio).
+  - La captura va en el hilo de audio (AudioWorklet), así que no pierde muestras aunque la
+    pantalla se atasque. Abierto desde el móvil por la wifi (sin HTTPS) el navegador no deja
+    usar AudioWorklet y graba con un método más antiguo, en el hilo principal.
+
 ## OPCIONES
 
-Botón **OPCIONES** en la cabecera (Esc cierra). La música sigue sonando. De momento no se
-guardan (vendrá con las cuentas).
+Botón **OPCIONES** en la cabecera (Esc cierra). La música sigue sonando. Calidad, búfer, margen
+y salida de audio se guardan en ese navegador (son del aparato, no de la persona); el resto todavía no
+se guarda (vendrá con las cuentas).
 
 - **DJ → EQ de la mesa**: las mismas dos opciones que «EQ Type» en rekordbox (y los
   mixers Pioneer DJM):
   - **ISOLATOR** — a la izquierda del todo la banda desaparece (−∞ … +6 dB).
   - **EQ** — atenúa sin llegar a silenciar (−26 … +6 dB).
+En RENDIMIENTO cada ajuste muestra solo el nombre (la descripción sale al pasar el ratón) y
+sus opciones van de menos a más calidad; AUTO, que se mueve solo por esa escala, va al final.
+
+- **RENDIMIENTO → Calidad del motor**: cuánto trabaja el audio por nota. **Si hay cortes, lo
+  primero es bajar aquí.** Al cambiarla, el audio se rehace (hueco corto).
+  - **ALTA** — todo sintetizado al momento y filtros recalculados muestra a muestra. La de
+    antes; la que más gasta.
+  - **NORMAL** (por defecto en ordenador) — los hats se graban con el mismo motor y cada
+    golpe reproduce la grabación (y el filtro lento del pad se recalcula cada ~3 ms). Suena igual.
+  - **LIGERA** (por defecto en móvil) — además, saturación sin sobremuestreo y voces más
+    sencillas.
+- **RENDIMIENTO → Búfer de audio**: cuánto audio prepara el navegador por adelantado. Más
+  búfer = menos cortes y un poco más de retraso al tocar (casi no se nota: los cambios caen a
+  la negra o al compás).
+  - **AUTO** (por defecto) — empieza en ESTABLE y, si hay 3 cortes en un minuto, sube un
+    escalón (~50 → ~100 → ~170 ms) y lo recuerda. Nunca baja solo; elegir AUTO otra vez lo
+    vuelve a empezar desde ESTABLE.
+  - **BAJO** (~10 ms) — ordenadores potentes y, en el futuro, MIDI. Puede dar cortes.
+  - **ESTABLE** (~50 ms) — el equilibrio.
+  - **MÁXIMO** (~170 ms) — ordenadores flojos.
+  - Al cambiarlo, el audio se rehace sin recargar la página y vuelve en el siguiente compás,
+    con un hueco corto (como Ableton al cambiar el búfer). Debajo se lee lo que ha dado de
+    verdad el equipo: búfer, salida, margen y respuesta al tocar.
+- **RENDIMIENTO → Margen**: cuánto se adelanta el programa al preparar las notas (contra las
+  notas TARDE). **AUTO** (por defecto) empieza en ~120 ms y sube solo si el ordenador se atasca;
+  **CORTO** 60 ms; **NORMAL** 120 ms; **LARGO** 250 ms. Se aplica al momento.
+- **RENDIMIENTO → Salida de audio** (solo Chrome y Edge): tarjeta, auriculares, etc. Para ver
+  los nombres de las salidas el navegador pide permiso de micrófono (solo para eso, no se
+  graba nada). Si la salida guardada desaparece, vuelve a la del sistema.
+- **RENDIMIENTO → Medidores**: qué se ve en la cabecera (CORTES, TARDE).
 
 ## MIXER (volumen por instrumento)
 

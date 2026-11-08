@@ -52,6 +52,9 @@ const toggle = async () => {
 $('#state').addEventListener('click', toggle);
 $('#mode').addEventListener('click', () => engine.cycleScale());
 $('#health').addEventListener('click', () => { engine.glitches = 0; engine.late = 0; }); // poner a cero para medir
+// GRABAR: armar (empieza en el primer sonido) / parar y guardar el WAV
+const toggleRec = () => engine.rec.toggle();
+$('#rec').addEventListener('click', toggleRec);
 
 // ───────── MIXER global (volumen por instrumento)
 // ───────── paneles encima del escenario: MIXER y OPCIONES (solo uno a la vez)
@@ -68,14 +71,14 @@ const setMixer = (open) => setPanel(mixPanel, open);
 const toggleMixer = () => setMixer(mixPanel.hidden);
 const closePanels = () => setPanel(null, false);
 instMixer(mixPanel, engine, closePanels);
-optionsPanel(optPanel, engine, closePanels);
+const optView = optionsPanel(optPanel, engine, closePanels);
 $('#mixbtn').addEventListener('click', toggleMixer);
 $('#optbtn').addEventListener('click', () => setPanel(optPanel, optPanel.hidden));
 
 const [A, B] = engine.decks;
 const KEYS = {
-  solo: { Space: toggle, KeyM: toggleMixer, Escape: closePanels, KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
-  dj: { Space: toggle, KeyM: toggleMixer, Escape: closePanels, KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
+  solo: { Space: toggle, KeyR: toggleRec, KeyM: toggleMixer, Escape: closePanels, KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
+  dj: { Space: toggle, KeyR: toggleRec, KeyM: toggleMixer, Escape: closePanels, KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
 };
 window.addEventListener('keydown', (ev) => {
   const k = KEYS[engine.mode][ev.code];
@@ -104,7 +107,9 @@ $('#modes')?.addEventListener('click', async (ev) => {
   try { localStorage.setItem('mu.mode', mode); } catch {}
   start(mode);
   $('#enter').classList.add('gone');
-  await engine.play(); // dentro del clic: el navegador permite arrancar el audio
+  // dentro del clic (el navegador lo permite) se prepara el audio, pero NO se genera música
+  // hasta pulsar GENERAR: así se puede armar GRABAR antes y no grabar silencio
+  await engine.prepare();
 });
 
 function start(mode) {
@@ -136,6 +141,7 @@ let scopeBuf = null;
 
 function frame() {
   views.forEach((v) => v.frame(engine));
+  if (!optPanel.hidden) optView.frame();
   root.style.setProperty('--glowA', views[0].color);
   root.style.setProperty('--ga', engine.mix[0].fader);
   if (views[1]) {
@@ -150,16 +156,37 @@ function frame() {
   $('#mode').classList.toggle('pending', !!nextScale);
   const st = Math.max(0, engine.step - 1);
   $('#pos').textContent = `${String(Math.floor(st / 16) + 1).padStart(3, '0')}.${Math.floor((st % 16) / 4) + 1}`;
-  { // medidor de salud del audio (ver RENDIMIENTO.md): CORTES = el audio sin datos, TARDE = notas fuera de tiempo
-    const g = engine.glitches, l = engine.late;
-    const txt = g || l ? [g && `CORTES ${g}`, l && `TARDE ${l}`].filter(Boolean).join(' · ') : 'AUDIO OK';
+  { // medidor de salud del audio (ver RENDIMIENTO.md): CORTES = el audio sin datos, TARDE = notas fuera de tiempo.
+    // En OPCIONES → RENDIMIENTO se elige cuáles se ven; sin ninguno, desaparece de la cabecera.
+    const M = engine.meters;
+    const g = M.cortes ? engine.glitches : 0, l = M.tarde ? engine.late : 0;
+    // AUTO acaba de subir el búfer (el hueco que se oyó): se avisa unos segundos
+    const autoUp = engine.bufferNoteAt && performance.now() - engine.bufferNoteAt < 6000;
+    const txt = engine.rebuilding ? 'REHACIENDO AUDIO…'
+      : autoUp ? 'AUTO: BÚFER ↑'
+      : g || l ? [g && `CORTES ${g}`, l && `TARDE ${l}`].filter(Boolean).join(' · ') : 'AUDIO OK';
     const h = $('#health');
     if (h.textContent !== txt) h.textContent = txt;
-    h.classList.toggle('bad', g + l > 0);
+    h.classList.toggle('bad', g + l > 0 || autoUp);
+    const shown = M.cortes || M.tarde || autoUp || engine.rebuilding;
+    h.hidden = !shown;
+    $('#health-sep').hidden = !shown;
   }
   const sState = $('#state');
-  sState.textContent = engine.playing ? 'EN VIVO' : 'PAUSA';
+  const stTxt = engine.playing ? 'EN VIVO' : engine.generated ? 'PAUSA' : 'GENERAR';
+  if (sState.textContent !== stTxt) sState.textContent = stTxt;
   sState.classList.toggle('live', engine.playing);
+  sState.classList.toggle('go', !engine.generated && engine.ready); // aún sin empezar: que se vea
+  // GRABAR
+  const R = engine.rec;
+  const t = Math.floor(R.seconds);
+  const recTxt = R.state === 'armed' ? '● ESPERANDO SONIDO'
+    : R.state === 'rec' ? `■ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')} · ${(R.bytes / 1048576).toFixed(1).replace('.', ',')} MB`
+    : R.state === 'saving' ? 'GUARDANDO…' : '● GRABAR';
+  const rb = $('#rec');
+  if (rb.textContent !== recTxt) rb.textContent = recTxt;
+  rb.classList.toggle('armed', R.state === 'armed');
+  rb.classList.toggle('on', R.state === 'rec');
 
   if (engine.ready && engine.mode === 'dj') {
     engine.strips.forEach((s, i) => {

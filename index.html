@@ -21,12 +21,14 @@
         <span class="sep hide-compact"></span>
         <span id="pos" class="hide-compact">001.1</span>
         <span class="sep"></span>
-        <button id="state" title="ESPACIO">PAUSA</button>
+        <button id="state" title="ESPACIO">GENERAR</button>
+        <span class="sep"></span>
+        <button id="rec" title="grabar lo que suena en WAV de 24 bits · empieza en el primer sonido · otra vez = parar y guardar · R">● GRABAR</button>
         <span class="sep"></span>
         <button id="mixbtn" title="volumen por instrumento · M">MIXER</button>
         <span class="sep"></span>
         <button id="optbtn" title="preferencias">OPCIONES</button>
-        <span class="sep"></span>
+        <span class="sep" id="health-sep"></span>
         <button id="health" title="CORTES: el audio se quedó sin datos · TARDE: notas programadas fuera de tiempo · clic = poner a cero">AUDIO OK</button>
       </div>
     </header>
@@ -81,7 +83,7 @@
       </button>
     </div>
     <div class="enter-keys">
-      ESPACIO play / pausa &nbsp;·&nbsp; M mixer<br />
+      ESPACIO generar / pausa &nbsp;·&nbsp; R grabar &nbsp;·&nbsp; M mixer<br />
       <span class="k-solo">L loop &nbsp;·&nbsp; N nuevo universo</span><br />
       <span class="k-dj">DJ: Q loop A &nbsp;·&nbsp; W nuevo A &nbsp;|&nbsp; O nuevo B &nbsp;·&nbsp; P loop B</span>
     </div>

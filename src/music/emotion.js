@@ -92,7 +92,7 @@ export function mapEmotion(v, a, drift = 0) {
       click: 0.06 + 0.5 * an * (0.4 + 0.6 * vn) + 0.2 * tension,
       clickFreq: 2500 + 4000 * vn,
       drive: 0.06 + 0.55 * tense + 0.25 * tension + 0.1 * dark,
-      duck: 0.45 + 0.35 * an,
+      duck: 0.3 + 0.25 * an,                      // sidechain al bajo: ≈ -3 dB (quieto) .. -7 dB (intenso)
     },
 
     clap: {
@@ -145,6 +145,39 @@ export function mapEmotion(v, a, drift = 0) {
       detune: 3 + 10 * tension,
       drive: 0.08 + 0.55 * tense + 0.2 * dark,
       lenMul: 0.7 + 0.9 * calm,
+    },
+
+    // acordes dub: stab corto con filtro que se cierra y mucho delay
+    chord: {
+      cutoff: 280 + 1400 * vn + 1600 * an * (0.3 + 0.7 * vn) + 150 * drift,
+      env: 1.5 + 3 * an + 1.5 * tension,
+      res: 1 + 5 * tension + 2 * abyss,
+      filtDecay: 0.04 + 0.16 * (1 - an) + 0.1 * abyss,
+      decay: 0.06 + 0.2 * (1 - an),
+      sustain: 0.1 + 0.3 * calm,
+      release: 0.05 + 0.25 * (1 - an) + 0.2 * abyss,
+      lenMul: 0.6 + 0.8 * calm,
+      detune: 5 + 12 * tension + 5 * abyss,
+      wave2: tension > 0.25 || euphoria > 0.4 ? 'sawtooth' : 'square',
+      drive: 0.04 + 0.4 * tense + 0.15 * tension,
+      reverb: 0.15 + 0.35 * (1 - an) + 0.25 * abyss,
+      delay: 0.3 + 0.35 * (1 - an) + 0.15 * abyss + 0.1 * tension,
+    },
+
+    // pad / atmósfera: sigue a la emoción en vivo mientras suena
+    pad: {
+      cutoff: 260 + 1400 * vn + 900 * an + 450 * abyss + 200 * drift,
+      lfo: 0.05 + 0.2 * an,                 // Hz: respiración del filtro
+      lfoDepth: 0.2 + 0.35 * calm,          // fracción del corte
+      attack: 0.4 + 1.6 * (1 - an) + 0.6 * abyss,
+      release: 0.8 + 2.2 * (1 - an) + 1 * abyss,
+      detune: 6 + 10 * tension + 6 * abyss,
+      wave: vn > 0.55 ? 'triangle' : 'sawtooth',
+      air: 0.03 + 0.22 * abyss + 0.08 * calm, // ruido filtrado: el "aire" de la sala
+      level: 0.45 + 0.55 * calm,            // al fondo cuando es intenso
+      drive: 0.02 + 0.2 * tension,
+      reverb: 0.35 + 0.35 * (1 - an) + 0.2 * abyss,
+      delay: 0.05 + 0.15 * calm,
     },
 
     master: {

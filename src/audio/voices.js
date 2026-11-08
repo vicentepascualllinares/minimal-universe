@@ -274,3 +274,106 @@ export function bass(ctx, out, t, vel, freq, dur, p, lite = false) {
   const end = t + dur + p.release * 2 + 0.05;
   for (const o of [saw, sq, sub]) if (o) { o.start(t); o.stop(end); }
 }
+
+// ───────────────────────── ACORDES DUB (stab)
+// `freqs` = las notas del acorde ya resueltas. Dos osciladores desafinados por
+// nota (uno en móvil) -> un solo filtro con envolvente: el stab clásico.
+export function chord(ctx, out, t, vel, freqs, dur, p, lite = false) {
+  const mix = ctx.createGain();
+  mix.gain.value = 0.42 / Math.sqrt(freqs.length);
+  const oscs = [];
+  for (const f of freqs) {
+    for (let j = 0; j < (lite ? 1 : 2); j++) {
+      const o = ctx.createOscillator();
+      o.type = j === 0 ? 'sawtooth' : p.wave2;
+      o.frequency.value = f;
+      o.detune.value = (j === 0 ? 1 : -1) * p.detune * (lite ? 0 : 1);
+      o.connect(mix);
+      oscs.push(o);
+    }
+  }
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.Q.value = p.res;
+  lp.frequency.setValueAtTime(Math.min(14000, p.cutoff * (1 + p.env * vel)), t);
+  lp.frequency.setTargetAtTime(p.cutoff, t, p.filtDecay / 3);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vel, t + 0.003);
+  g.gain.setTargetAtTime(vel * p.sustain, t + 0.003, p.decay / 3);
+  g.gain.setTargetAtTime(0, t + dur, p.release / 3.5);
+  mix.connect(lp).connect(g).connect(out);
+  const end = t + dur + p.release * 2 + 0.05;
+  for (const o of oscs) { o.start(t); o.stop(end); }
+}
+
+// ───────────────────────── PAD / ATMÓSFERA
+// Una voz larga (varios compases) con ataque lento, filtro que respira (LFO) y
+// un poco de "aire" (ruido filtrado). Devuelve sus controles para que el Deck
+// la siga moviendo con la emoción y la suelte cuando llegue la siguiente.
+export function pad(ctx, out, t, vel, freqs, hold, p, noise, lite = false) {
+  const mix = ctx.createGain();
+  mix.gain.value = 0.5 / Math.sqrt(freqs.length);
+  const srcs = [];
+  for (const f of freqs) {
+    for (let j = 0; j < (lite ? 1 : 2); j++) {
+      const o = ctx.createOscillator();
+      o.type = p.wave;
+      o.frequency.value = f;
+      o.detune.value = (j === 0 ? 1 : -1) * p.detune * (lite ? 0.4 : 1);
+      o.connect(mix);
+      srcs.push(o);
+    }
+  }
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.Q.value = 0.9;
+  filter.frequency.value = p.cutoff;
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = p.lfo;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = p.cutoff * p.lfoDepth;
+  lfo.connect(lfoGain).connect(filter.frequency);
+  srcs.push(lfo);
+
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  mix.connect(filter).connect(g);
+
+  const n = ctx.createBufferSource();
+  n.buffer = noise;
+  n.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 900 + p.cutoff * 1.5;
+  bp.Q.value = 0.7;
+  const airGain = ctx.createGain();
+  airGain.gain.value = p.air;
+  n.connect(bp).connect(airGain).connect(g);
+  srcs.push(n);
+
+  g.gain.setValueAtTime(0, t);
+  g.gain.setTargetAtTime(vel, t, p.attack / 3);
+  g.gain.setTargetAtTime(0, t + hold, p.release / 3.5);
+  g.connect(out);
+
+  const voice = {
+    filter, lfoGain, airGain,
+    start: t,
+    holdEnd: t + hold,
+    end: t + hold + p.release * 2.5,
+    // soltarla antes de tiempo (llega otro acorde, pausa...)
+    release(at, rel = p.release) {
+      at = Math.max(at, this.start + 0.005); // aún no había empezado: que no suene
+      if (at >= this.holdEnd) return;
+      g.gain.cancelScheduledValues(at);
+      g.gain.setTargetAtTime(0, at, rel / 3.5);
+      this.holdEnd = at;
+      this.end = at + rel * 2.5;
+      for (const s of srcs) s.stop(this.end);
+    },
+  };
+  for (const s of srcs) s.start(t, s === n ? Math.random() * noise.duration : 0);
+  for (const s of srcs) s.stop(voice.end);
+  return voice;
+}

@@ -7,6 +7,7 @@ import { Channel, driveCurve, makeIR, glide } from './dsp.js';
 import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS } from '../music/arrangement.js';
+import { shapeComplexity, shareDensity } from '../music/complexity.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
@@ -20,6 +21,7 @@ export class Deck {
     this.id = id;
     this.transitionMode = 1;  // 1 filtro .. 0 volumen
     this.transitionBars = 4;
+    this.complexity = 0.4;    // 0 simple .. 1 complejo (se aplica compás a compás)
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement();
     this.arr.set(x, y);
@@ -60,7 +62,8 @@ export class Deck {
     this.revTone = ctx.createBiquadFilter();
     this.revTone.type = 'lowpass';
     this.revRet = ctx.createGain();
-    this.revIn.connect(revHp).connect(conv).connect(this.revTone).connect(this.revRet).connect(this.sum);
+    this.revDuck = ctx.createGain(); // sidechain de la reverb: la cola se aparta del kick
+    this.revIn.connect(revHp).connect(conv).connect(this.revTone).connect(this.revRet).connect(this.revDuck).connect(this.sum);
 
     // delay dub
     this.dlyIn = ctx.createGain();
@@ -82,6 +85,7 @@ export class Deck {
     this.ch = {};
     for (const k of INSTRUMENTS) {
       this.ch[k] = new Channel(ctx, k, this.sum, this.revIn, this.dlyIn, PROFILE.oversample ?? '2x');
+      this.ch[k].user.gain.value = this.engine.inst[k];
     }
 
     // perfil móvil: hats grabados (sampler) y un panorama fijo por carril de percusión
@@ -179,6 +183,8 @@ export class Deck {
     C.ohat.setDrive(e.hat.drive);
     C.perc.setDrive(e.perc.drive);
     C.bass.setDrive(e.bass.drive);
+    C.chord.setDrive(e.chord.drive);
+    C.pad.setDrive(e.pad.drive);
     const tc = 0.25;
     glide(C.clap.rev.gain, e.clap.reverb, now, tc);
     glide(C.clap.dly.gain, e.clap.delay, now, tc);
@@ -190,6 +196,18 @@ export class Deck {
     glide(C.perc.dly.gain, e.perc.delay, now, tc);
     glide(C.kick.rev.gain, 0.02 + 0.06 * e.abyss, now, tc);
     glide(C.bass.rev.gain, 0.03 * e.warmth, now, tc);
+    glide(C.chord.rev.gain, e.chord.reverb, now, tc);
+    glide(C.chord.dly.gain, e.chord.delay, now, tc);
+    glide(C.pad.rev.gain, e.pad.reverb, now, tc);
+    glide(C.pad.dly.gain, e.pad.delay, now, tc);
+    glide(C.pad.out.gain, C.pad.level * e.pad.level, now, 0.6);
+    // el pad que está sonando sigue a la emoción en vivo
+    const pv = this.padVoice;
+    if (pv && pv.end > now) {
+      glideAll(pv.filter.frequency, e.pad.cutoff, now, 0.5);
+      glideAll(pv.lfoGain.gain, e.pad.cutoff * e.pad.lfoDepth, now, 0.5);
+      glideAll(pv.airGain.gain, e.pad.air, now, 0.5);
+    }
 
     glide(this.revRet.gain, m.reverbReturn, now, tc);
     glide(this.revTone.frequency, m.reverbTone, now, tc);
@@ -227,7 +245,8 @@ export class Deck {
       }
     }
     const G = this.gen;
-    const e = this.e;
+    const cx = shapeComplexity(this.complexity, this.e);
+    const e = { ...this.e, gen: cx.gen, cx }; // la emoción, vista a través de la complejidad
     const r = G.rng;
     const mu = e.gen.mutation;
     if (b > 0 && b % 4 === 0) {
@@ -240,8 +259,17 @@ export class Deck {
       if (r.chance(0.2)) G.ohat.mutate();
     }
     if (b > 0 && b % 32 === 0) G.perc.mutate(2);
+    if (b > 0 && b % 16 === 0 && r.chance(mu * 0.6)) G.harmony.mutate();
 
-    const d = (k) => this.arr.state[k].density;
+    // protagonismo: si hay más instrumentos de los que la complejidad admite, ceden densidad
+    const S = this.arr.state;
+    const dens = {}, prog = {};
+    for (const k of INSTRUMENTS) {
+      dens[k] = S[k].density;
+      prog[k] = Math.max(S[k].progress, S[k].target ? 1 : 0);
+    }
+    const shared = shareDensity(dens, prog, cx.budget);
+    const d = (k) => shared[k];
     this.bars = {
       kick: G.kick.bar(b, d('kick'), e),
       clap: G.clap.bar(b, d('clap'), e),
@@ -249,9 +277,40 @@ export class Deck {
       ohat: G.ohat.bar(b, d('ohat'), e),
       perc: G.perc.bar(b, d('perc'), e, absStep),
       bass: G.bass.bar(b, d('bass'), e),
+      chord: G.harmony.chordBar(b, d('chord'), e),
+      pad: G.harmony.padBar(b, d('pad'), e),
     };
+    if (cx.avoid) this.takeTurns(this.bars, prog);
     this.history.push({ b, bars: this.bars });
     if (this.history.length > 16) this.history.shift();
+  }
+
+  // TURNOS (complejidad baja): los acordes esquivan al bajo y la percusión deja
+  // libres los golpes de acordes y clap. Menos choques = cada cosa se oye.
+  takeTurns(B, prog) {
+    if (prog.chord > 0 && prog.bass > 0) {
+      for (let s = 0; s < 16; s++) {
+        if (!B.chord[s] || !B.bass[s]) continue;
+        const ev = B.chord[s];
+        B.chord[s] = null;
+        const t = s + 2; // una corchea más tarde, si está libre: respuesta en vez de choque
+        if (t < 16 && !B.bass[t] && !B.chord[t] && !B.chord[t + 1] && !B.chord[t + 2]) {
+          B.chord[t] = ev;
+          s = t;
+        }
+      }
+      let prev = null; // recalcular duraciones
+      for (let s = 0; s < 16; s++) {
+        if (!B.chord[s]) continue;
+        if (prev !== null) B.chord[prev] = { ...B.chord[prev], len: Math.min(B.chord[prev].len, s - prev) };
+        prev = s;
+      }
+    }
+    if (prog.perc > 0) {
+      for (let s = 0; s < 16; s++) {
+        if ((prog.chord > 0 && B.chord[s]) || (prog.clap > 0 && B.clap[s])) B.perc[s] = null;
+      }
+    }
   }
 
   scheduleStep(n, gridT) {
@@ -277,6 +336,15 @@ export class Deck {
       const depth = e.kick.duck * ev.vel * A.state.kick.progress;
       C.bass.duck.gain.setTargetAtTime(1 - depth, t, 0.003);
       C.bass.duck.gain.setTargetAtTime(1, t + 0.045, 0.055);
+      this.revDuck.gain.setTargetAtTime(1 - 0.45 * depth, t, 0.006);
+      this.revDuck.gain.setTargetAtTime(1, t + 0.06, 0.12);
+      // un poco de bombeo en la armonía (sidechain)
+      for (const [k, amt] of [['chord', 0.25], ['pad', 0.35]]) {
+        const dk = depth * amt * A.state[k].progress;
+        if (dk < 0.01) continue;
+        C[k].duck.gain.setTargetAtTime(1 - dk, t, 0.004);
+        C[k].duck.gain.setTargetAtTime(1, t + 0.05, 0.09);
+      }
       emit('kick', t, ev.vel);
     }
     if ((ev = B.clap[s]) && A.audible('clap', t)) {
@@ -326,5 +394,31 @@ export class Deck {
       V.bass(ctx, C.bass.input, t, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, PROFILE.lite);
       emit('bass', t, ev.vel);
     }
+    // acordes y pad: dos octavas sobre la tónica del kick
+    const freqsOf = (notes) => notes.map((d) => root * Math.pow(2, (degreeToSemis(d, scale) + 24) / 12));
+    if ((ev = B.chord[s]) && A.audible('chord', t)) {
+      const dur = Math.max(sd * 0.5, ev.len * sd * e.chord.lenMul - 0.01);
+      V.chord(ctx, C.chord.input, t, ev.vel, freqsOf(ev.notes), dur, e.chord, PROFILE.lite);
+      emit('chord', t, ev.vel);
+    }
+    if ((ev = B.pad[s]) && A.audible('pad', t)) {
+      const freqs = freqsOf(ev.notes); // sin tónica grave: esa octava es del bajo
+      const key = freqs.map((f) => f.toFixed(2)).join('|');
+      const pv = this.padVoice;
+      // si ya suena este mismo acorde, se deja sonar; si no, fundido al nuevo
+      if (!pv || pv.key !== key || pv.holdEnd <= t + 0.01) {
+        if (pv) pv.release(t, Math.max(0.4, e.pad.attack));
+        const hold = ev.bars * this.engine.barDur;
+        this.padVoice = V.pad(ctx, C.pad.input, t, ev.vel, freqs, hold, e.pad, noise, PROFILE.lite);
+        this.padVoice.key = key;
+        emit('pad', t, ev.vel);
+      }
+    }
+  }
+
+  // pausa: soltar lo que se sostiene (el pad)
+  release(at) {
+    if (this.padVoice) this.padVoice.release(at, 1.2);
+    this.padVoice = null;
   }
 }

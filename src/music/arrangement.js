@@ -6,7 +6,7 @@
 
 import { clamp } from '../core/rng.js';
 
-export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat'];
+export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'chord', 'pad'];
 
 const CORNERS = {
   //        nada  deep  nodeep todo
@@ -16,10 +16,12 @@ const CORNERS = {
   perc: [0, 0, 1, 1],
   clap: [0, 0, 1, 1],
   ohat: [0, 0, 1, 1],
+  chord: [0, 0, 0.8, 1],  // stabs: más en TODO
+  pad:  [0, 0, 1, 0.75],  // atmósfera: manda en NO DEEP (los breaks)
 };
 
 // orden de entrada: el kick primero, el open hat el último
-const THRESHOLD = { kick: 0.12, bass: 0.3, hat: 0.22, perc: 0.38, clap: 0.48, ohat: 0.6 };
+const THRESHOLD = { kick: 0.12, bass: 0.3, hat: 0.22, perc: 0.38, clap: 0.48, ohat: 0.6, chord: 0.52, pad: 0.28 };
 const HYST = 0.035;
 
 export function presence(x, y) {

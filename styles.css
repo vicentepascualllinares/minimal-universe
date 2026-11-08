@@ -79,6 +79,29 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .u, #mode { margin-left: -6px; }
 #state { color: var(--dim); padding: 2px 0; }
 #state.live { color: var(--fg); }
+#mixbtn { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; }
+#mixbtn.on { color: var(--fg); }
+
+/* ───────── MIXER global (encima del escenario) */
+.instmix {
+  position: absolute; left: 0; right: 0; top: 52px; bottom: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  background: rgba(6, 6, 7, 0.94);
+  backdrop-filter: blur(6px);
+}
+.instmix[hidden] { display: none; }
+.im-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.im-title { color: var(--fg); letter-spacing: 0.5em; }
+.im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
+.im-row { display: flex; gap: 18px; height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
+.im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 54px; }
+.im-ch .fader { flex: 1; min-height: 0; }
+.im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
+.im-ch.moved .im-db { color: var(--fg); }
+.im-name { color: var(--fg); font-size: 9px; letter-spacing: 0.16em; }
+.im-zero { position: absolute; left: 50%; top: 25%; width: 20px; height: 1px; background: var(--dim); transform: translateX(-50%); }
+.im-foot { display: flex; gap: 28px; }
+.im-foot button { font-size: 10px; letter-spacing: 0.14em; padding: 6px 0; }
 .only-lite { display: none; }
 body.lite .only-lite { display: inline-block; }
 #health { color: var(--faint); font-size: 9px; }
@@ -106,6 +129,29 @@ body.mode-dj .deck.left .row { flex-direction: row-reverse; }   /* pads hacia la
 .deck.right .deck-head { flex-direction: row-reverse; }
 .deck-name { color: var(--fg); letter-spacing: 0.4em; }
 .seed { font-size: 10px; padding: 4px 0; }
+
+/* complejidad: barra horizontal en la cabecera del universo */
+.cx { flex: 1; max-width: 340px; margin: 0 28px; display: flex; align-items: center; gap: 10px; }
+.cx-lab { font-size: 9px; letter-spacing: 0.16em; color: var(--fg); transition: opacity 0.2s; }
+.cx-lab.lo { opacity: calc(0.25 + (1 - var(--v, 0.5)) * 0.75); }
+.cx-lab.hi { opacity: calc(0.25 + var(--v, 0.5) * 0.75); }
+.h-track { position: relative; flex: 1; height: 24px; cursor: ew-resize; touch-action: none; }
+.h-line, .h-fill { position: absolute; left: 0; top: 50%; height: 1px; }
+.h-line { right: 0; background: var(--faint); }
+.h-fill { width: calc(var(--v, 0.5) * 100%); background: rgba(var(--glow, 200, 200, 205), 0.7); }
+.h-handle {
+  position: absolute; top: 50%;
+  width: 2px; height: 14px;
+  background: var(--fg);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+}
+.cx.active .h-handle { height: 20px; }
+/* DJ en ordenador: la cabecera es estrecha, las etiquetas pasan a − / + */
+body.mode-dj .cx { margin: 0 14px; gap: 8px; }
+body.mode-dj .cx-lab { font-size: 0; letter-spacing: 0; }
+body.mode-dj .cx-lab.lo::after { content: "−"; font-size: 12px; }
+body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .seed.pending { color: var(--fg); animation: blink 0.5s steps(2) infinite; }
 
 .pad { display: flex; flex-direction: column; gap: 8px; }
@@ -183,11 +229,11 @@ body.mode-dj .deck.left .row { flex-direction: row-reverse; }   /* pads hacia la
 @keyframes blink { 50% { opacity: 0.25; } }
 
 /* ───────── instrumentos */
-.strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 4px; }
+.strip { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-top: 4px; }
 .inst { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .inst .irow { display: flex; align-items: center; gap: 6px; }
 .inst .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--fg); opacity: 0.08; flex: none; }
-.inst .name { color: var(--dim); font-size: 9px; letter-spacing: 0.16em; transition: color 0.4s; }
+.inst .name { color: var(--dim); font-size: 9px; letter-spacing: 0.16em; transition: color 0.4s; overflow: hidden; text-overflow: clip; white-space: nowrap; }
 .inst.on .name { color: var(--fg); }
 .inst.pend .name { animation: blink 0.8s steps(2) infinite; }
 .inst .bar { position: relative; height: 1px; background: var(--line); }
@@ -307,6 +353,11 @@ body.mode-dj .deck.left .row { flex-direction: row-reverse; }   /* pads hacia la
   .deck.right .deck-head { flex-direction: row; }
   .deck .row { gap: 10px; }
   .seed { padding: 8px 0; }
+  .cx, body.mode-dj .cx { margin: 0 12px; gap: 8px; }
+  .deck-name { letter-spacing: 0.2em; }
+  .cx-lab { font-size: 0; letter-spacing: 0; }
+  .cx-lab.lo::after { content: "−"; font-size: 13px; }
+  .cx-lab.hi::after { content: "+"; font-size: 13px; }
 
   .unit { display: none; }
   .col { gap: 5px; }
@@ -317,6 +368,11 @@ body.mode-dj .deck.left .row { flex-direction: row-reverse; }   /* pads hacia la
   .t-track { width: 64px; }
   .t-handle { width: 34px; height: 3px; }
   .strip { gap: 6px; }
+  .instmix { top: 0; padding-top: 70px; }
+  .im-row { gap: 4px; }
+  .im-ch { width: 40px; }
+  .im-name { letter-spacing: 0.04em; }
+  .inst .name { letter-spacing: 0.06em; }
 
   /* DJ: pestañas, se ve un panel cada vez */
   body.mode-dj .tabs { display: flex; border-bottom: 1px solid var(--line); }

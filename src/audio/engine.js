@@ -6,6 +6,8 @@ import { makeNoise } from './voices.js';
 import { Deck } from './deck.js';
 import { Strip, faderGain } from './strip.js';
 import { SCALES } from '../music/emotion.js';
+import { INSTRUMENTS } from '../music/arrangement.js';
+import { glide } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -26,6 +28,8 @@ export class Engine {
       new Deck(this, 'A', { x: 0.62, y: 0.14, v: -0.3, a: -0.25 }),
       new Deck(this, 'B', { x: 0.8, y: 0.55, v: 0.2, a: 0.15 }),
     ];
+    // MIXER global: ganancia por instrumento, igual para todos los universos (1 = 0 dB = el perfil por defecto)
+    this.inst = Object.fromEntries(INSTRUMENTS.map((k) => [k, 1]));
     // estado de la mesa (lo que muestran los controles)
     this.mix = [
       { fader: 1, hi: 0.5, mid: 0.5, lo: 0.5, filter: 0.5 },
@@ -51,18 +55,24 @@ export class Engine {
     const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: PROFILE.latencyHint }));
     this.noise = makeNoise(ctx);
 
-    // master: suma -> glue -> limitador
+    // master: suma -> graves en mono -> glue -> limitador
     this.sum = ctx.createGain();
-    this.sum.gain.value = 0.85;
-    const glue = ctx.createDynamicsCompressor();
-    glue.threshold.value = -16; glue.ratio.value = 2.4; glue.knee.value = 8;
-    glue.attack.value = 0.012; glue.release.value = 0.18;
-    const limiter = ctx.createDynamicsCompressor();
+    this.sum.gain.value = 0.72; // headroom: el master ronda -12 LUFS, picos por debajo de -1 dBFS
+    this.sum.channelCount = 2;
+    this.sum.channelCountMode = 'explicit';     // lo mono se reparte a L y R antes del M/S
+    this.sum.channelInterpretation = 'speakers';
+    const monoLow = this.monoBelow(ctx, this.sum, 120);
+    // glue: compresión de bus suave (≈1–2 dB), ataque lento para dejar pasar el golpe del kick
+    const glue = (this.glue = ctx.createDynamicsCompressor());
+    glue.threshold.value = -16; glue.ratio.value = 2; glue.knee.value = 6;
+    glue.attack.value = 0.02; glue.release.value = 0.15;
+    // limitador de seguridad: techo ≈ -1 dBFS (estándar -1 dBTP)
+    const limiter = (this.limiter = ctx.createDynamicsCompressor());
     limiter.threshold.value = -2; limiter.ratio.value = 20; limiter.knee.value = 0;
     limiter.attack.value = 0.002; limiter.release.value = 0.12;
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 2048;
-    this.sum.connect(glue).connect(limiter).connect(this.analyser).connect(ctx.destination);
+    monoLow.connect(glue).connect(limiter).connect(this.analyser).connect(ctx.destination);
 
     this.strips = this.active.map((d, i) => {
       const s = new Strip(ctx, this.sum);
@@ -78,6 +88,37 @@ export class Engine {
     this.lastNow = ctx.currentTime;
     this.ready = true;
     this.worker.postMessage('go');
+  }
+
+  // Mid/Side: la parte lateral (L−R) pasa por un high-pass, así por debajo de
+  // `hz` todo es mono (los equipos de club suman los graves; nada se cancela).
+  monoBelow(ctx, input, hz) {
+    const g = (v) => { const n = ctx.createGain(); n.gain.value = v; return n; };
+    const split = ctx.createChannelSplitter(2);
+    const merge = ctx.createChannelMerger(2);
+    input.connect(split);
+    const mid = g(1), side = g(1);
+    const lm = g(0.5), rm = g(0.5), ls = g(0.5), rs = g(-0.5);
+    split.connect(lm, 0); split.connect(rm, 1); split.connect(ls, 0); split.connect(rs, 1);
+    lm.connect(mid); rm.connect(mid); ls.connect(side); rs.connect(side);
+    let s = side;
+    for (let i = 0; i < 2; i++) { // 24 dB/oct
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = hz; hp.Q.value = 0.707;
+      s = s.connect(hp);
+    }
+    const neg = g(-1);
+    s.connect(neg);
+    mid.connect(merge, 0, 0); mid.connect(merge, 0, 1);
+    s.connect(merge, 0, 0); neg.connect(merge, 0, 1);
+    return merge;
+  }
+
+  // MIXER global: volumen de un instrumento en todos los universos
+  setInst(k, gain) {
+    this.inst[k] = gain;
+    if (!this.ready) return;
+    for (const d of this.active) glide(d.ch[k].user.gain, gain, this.ctx.currentTime, 0.02);
   }
 
   setMix(i, key, v) {
@@ -96,7 +137,10 @@ export class Engine {
     this.playing = true;
   }
 
-  stop() { this.playing = false; }
+  stop() {
+    this.playing = false;
+    if (this.ready) for (const d of this.active) d.release(this.ctx.currentTime);
+  }
 
   // Escala global: manda el universo que más se oye (valencia ponderada por fader).
   // Con histéresis para que no parpadee en las fronteras entre modos.

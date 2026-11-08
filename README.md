@@ -53,12 +53,50 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 
 | Control | Qué hace |
 |---|---|
-| **ESTRUCTURA** (XY) | TODO ↗ · DEEP ↘ (kick + bass) · NADA ↙ · NO DEEP ↖ (todo menos kick y bass). Cada instrumento entra al superar su umbral; lo que sobra es su densidad. |
+| **ESTRUCTURA** (XY) | TODO ↗ · DEEP ↘ (kick + bass) · NADA ↙ · NO DEEP ↖ (todo menos kick y bass: aquí manda el pad). Cada instrumento entra al superar su umbral; lo que sobra es su densidad. |
 | **TRANSICIÓN** (vertical) | Arriba: entradas/salidas con filtro (HP para kick/bass, LP para el resto, con resonancia). Abajo: con volumen. En medio: mezcla. Duración: 1–16 compases. Se cuantiza a la siguiente negra. |
 | **EMOCIÓN** (XY) | X oscuro → luminoso, Y quieto → intenso. Esquinas: TENSIÓN, EUFORIA, ABISMO, CALIDEZ. Tiene inercia (~2 s). |
 | **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
 | **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
+| **COMPLEJIDAD** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Cuánta información dice el universo entero (ver abajo). Se aplica en el siguiente compás. Rueda = fino, doble clic = valor inicial (0,4). En DJ y en móvil las etiquetas son − / +. |
 | **NUEVO UNIVERSO** | Otros motivos y otro kit de percusión para ese universo (en el siguiente compás; si está en loop, al soltarlo). |
+
+## Instrumentos
+
+KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **CHORD** · **PAD**.
+
+- **CHORD** — acordes dub: stabs cortos con filtro que se cierra y mucho delay. Ritmo en
+  contratiempo que nunca pisa al kick. Entra tarde en TODO y en NO DEEP.
+- **PAD** — la atmósfera: un acorde largo con filtro que respira y un poco de aire (ruido
+  filtrado). Manda en NO DEEP, para los breaks. Mientras suena sigue a la emoción en vivo.
+- Los dos comparten una progresión de 8 compases en grados de escala (un solo acorde, o la
+  casa y otro: iv, VI, VII o v). Si el modo cambia, se recolorean al compás siguiente.
+- La emoción decide el resto: ABISMO = acordes oscuros con cola larga y pad presente;
+  EUFORIA = stabs cortos y brillantes, pad al fondo; TENSIÓN = sierra, resonancia, desafinado.
+- El kick los hace bombear un poco (sidechain), y NUEVO UNIVERSO cambia también la armonía.
+
+## Complejidad
+
+Un solo control por universo que decide cuántas cosas pasan, sin tocar el sonido:
+
+| | SIMPLE | COMPLEJO |
+|---|---|---|
+| Rejilla | corcheas: el hat es el "tss" en contratiempo | semicorcheas en hats, bajo, acordes y percusión |
+| Percusión | 1 capa de polimetría | hasta 4 capas |
+| Bajo | tónica y octava, siempre el mismo motivo | todas las notas, variación cada 4 compases |
+| Acordes | 2 notas, un solo acorde, stabs muy espaciados | 4 notas, progresión, stabs seguidos |
+| Pad | respira cada 4–8 compases | cada 2–4 |
+| Clap / open hat | rectos | fantasmas, estilos desplazados, golpe extra |
+| Kick | sin kicks fantasma | kicks fantasma (tensión, euforia) |
+| Redobles y mutación | casi nada: hipnótico | frecuentes |
+
+Además, dos reglas para que no compita todo a la vez:
+
+- **Protagonismo**: hay un presupuesto de instrumentos "a tope" (≈2 en SIMPLE, todos en
+  COMPLEJO). Si en la estructura entran más, ceden densidad por orden: primero percusión,
+  acordes y open hat; luego clap y hat; el bajo casi nada. El kick y el pad no ceden.
+- **Turnos** (por debajo de 0,6): los acordes esquivan al bajo (se mueven una corchea, como
+  respuesta) y la percusión deja libres los golpes de acordes y clap.
 
 ## Mesa de mezcla (centro)
 
@@ -69,6 +107,42 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | Faders | Volumen de cada universo, con medidor al lado. A empieza arriba y B abajo. |
 
 Knobs: arrastrar en vertical (Shift = fino), rueda, doble clic = centro.
+
+## MIXER (volumen por instrumento)
+
+Botón **MIXER** en la cabecera (o tecla **M**; Esc cierra). Un fader por instrumento que
+afecta a todos los universos a la vez. Siempre arranca en 0 dB = la mezcla por defecto.
+Arriba +6 dB, abajo hasta −48 dB y silencio. Doble clic = 0 dB. RESTABLECER = todo a 0 dB.
+La música sigue sonando mientras está abierto. (Todavía no se guarda: vendrá con las cuentas.)
+
+## Mezcla por defecto
+
+Es el mismo género en todos los universos, así que el perfil es uno solo (`src/audio/dsp.js`).
+Medido con todo sonando y emoción neutra (loudness K-ponderado ≈ LUFS):
+
+| | Respecto al kick |
+|---|---|
+| Kick | pico ≈ −3 dBFS en su canal |
+| Bass | picos ≈ 3–5 dB por debajo; kick y bass mandan |
+| Clap | picos ≈ 6–8 dB por debajo |
+| Perc · acordes | ≈ 9–10 dB por debajo (los acordes, con mucho delay/reverb) |
+| Hats · open hat | ≈ 12–13 dB por debajo |
+| Pad | ≈ 16 LU por debajo: es el fondo |
+
+- **Master**: ≈ −13 LUFS con picos ≈ −4 dBFS. Deja margen: no va "a tope" (los masters de
+  club suelen estar entre −9 y −6 LUFS, pero esto es un instrumento en directo que entra en
+  una mesa). Limitador de seguridad con techo ≈ −1 dBFS.
+- **Graves en mono**: por debajo de 120 Hz todo es mono (Mid/Side en el master), como
+  piden los equipos de club.
+- **Limpieza**: high-pass en todo menos kick y bass (clap 160 Hz, perc/acordes 150, pad
+  140, hats 300), y un recorte de "barro" en acordes (−5 dB a 550 Hz) y pad (−3 dB a 380 Hz).
+  El pad ya no dobla la tónica grave: esa octava es del bajo.
+- **Sidechain**: el kick aparta al bajo ≈ 3 dB (quieto) a 7 dB (intenso), a acordes y pad un
+  poco, y también a la cola de la reverb.
+- **Compresión de bus** (glue): 2:1, ataque 20 ms para dejar pasar el golpe del kick,
+  ≈ 1–2 dB de reducción.
+- **Saturación**: cada canal satura según la emoción, pero compensando el volumen. La
+  emoción cambia el color, no el balance.
 
 ## Global (cabecera)
 
@@ -88,11 +162,12 @@ ESPACIO play/pausa (o tocar EN VIVO / PAUSA en la cabecera)
 Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 
 - `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (glue + limitador).
-- `src/audio/deck.js` — un universo: 6 canales, reverb y delay propios, loop, secuenciador.
+- `src/audio/deck.js` — un universo: 8 canales, reverb y delay propios, loop, secuenciador.
 - `src/audio/strip.js` — canal de mezcla: EQ 3 bandas, filtro DJ, fader, medidor.
 - `src/audio/dsp.js` — canal de instrumento (drive → HP → LP → fade → duck), saturación, reverb.
-- `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo.
+- `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo, acordes dub y pad.
 - `src/music/emotion.js` — el mapa emoción → mundo sonoro (valencia × activación).
-- `src/music/generators.js` — motivos estables con mutación lenta, percusión polimétrica, bajo en grados de escala.
+- `src/music/generators.js` — motivos estables con mutación lenta, percusión polimétrica, bajo y armonía en grados de escala.
 - `src/music/arrangement.js` — presencia por instrumento, umbrales, transiciones.
+- `src/music/complexity.js` — la complejidad: reglas por instrumento, presupuesto de protagonismo.
 - `src/ui/` — pads XY, sliders, knobs y la vista de universo (se instancia dos veces).

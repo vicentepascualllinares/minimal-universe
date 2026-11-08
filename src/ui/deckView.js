@@ -2,10 +2,10 @@
 // Se instancia dos veces (izquierda y derecha) sobre el mismo Deck API.
 
 import { XYPad } from './xypad.js';
-import { VSlider } from './slider.js';
+import { VSlider, HSlider } from './slider.js';
 import { INSTRUMENTS, CORNER_WEIGHTS } from '../music/arrangement.js';
 
-const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN' };
+const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
 
 const opts = (cls, values, on) =>
   `<div class="opts ${cls}">${values.map((v) => `<button data-v="${v[0]}"${v[0] === on ? ' class="on"' : ''}>${v[1]}</button>`).join('')}</div>`;
@@ -15,6 +15,11 @@ function template(label) {
   return `
   <div class="deck-head">
     <span class="deck-name">${label}</span>
+    <div class="cx" title="Complejidad: cuántas notas y lo rápido que es el ritmo de todo el universo">
+      <span class="cx-lab lo">SIMPLE</span>
+      <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><div class="h-handle"></div></div>
+      <span class="cx-lab hi">COMPLEJO</span>
+    </div>
     <button class="seed">NUEVO UNIVERSO</button>
   </div>
   <div class="rows">
@@ -84,6 +89,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     onChange: (x, y) => deck.emotion.setTarget(x * 2 - 1, y * 2 - 1),
   });
   new VSlider(q('.trans'), { value: deck.transitionMode, onChange: (v) => (deck.transitionMode = v) });
+  new HSlider(q('.cx'), { value: deck.complexity, onChange: (v) => (deck.complexity = v) });
 
   const options = (sel, onPick) => {
     const box = q(sel);

@@ -22,6 +22,8 @@
         <span id="pos" class="hide-compact">001.1</span>
         <span class="sep"></span>
         <button id="state" title="ESPACIO">PAUSA</button>
+        <span class="sep"></span>
+        <button id="mixbtn" title="volumen por instrumento · M">MIXER</button>
         <span class="sep only-lite"></span>
         <span id="health" class="only-lite" title="cortes de audio detectados">AUDIO OK</span>
       </div>
@@ -57,6 +59,9 @@
 
       <div class="deck right" id="deckB"></div>
     </main>
+
+    <!-- MIXER global: volumen por instrumento (se abre encima, la música sigue) -->
+    <section class="instmix" id="instmix" hidden></section>
   </div>
 
   <div id="enter">
@@ -72,7 +77,7 @@
       </button>
     </div>
     <div class="enter-keys">
-      ESPACIO play / pausa<br />
+      ESPACIO play / pausa &nbsp;·&nbsp; M mixer<br />
       <span class="k-solo">L loop &nbsp;·&nbsp; N nuevo universo</span><br />
       <span class="k-dj">DJ: Q loop A &nbsp;·&nbsp; W nuevo A &nbsp;|&nbsp; O nuevo B &nbsp;·&nbsp; P loop B</span>
     </div>

@@ -2,6 +2,7 @@ import { Engine } from './audio/engine.js';
 import { VSlider } from './ui/slider.js';
 import { Knob } from './ui/knob.js';
 import { deckView } from './ui/deckView.js';
+import { instMixer } from './ui/instMixer.js';
 import { PROFILE } from './core/profile.js';
 
 const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -48,10 +49,20 @@ const toggle = async () => {
 };
 $('#state').addEventListener('click', toggle);
 
+// ───────── MIXER global (volumen por instrumento)
+const mixPanel = $('#instmix');
+const setMixer = (open) => {
+  mixPanel.hidden = !open;
+  $('#mixbtn').classList.toggle('on', open);
+};
+const toggleMixer = () => setMixer(mixPanel.hidden);
+instMixer(mixPanel, engine, () => setMixer(false));
+$('#mixbtn').addEventListener('click', toggleMixer);
+
 const [A, B] = engine.decks;
 const KEYS = {
-  solo: { Space: toggle, KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
-  dj: { Space: toggle, KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
+  solo: { Space: toggle, KeyM: toggleMixer, Escape: () => setMixer(false), KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
+  dj: { Space: toggle, KeyM: toggleMixer, Escape: () => setMixer(false), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
 };
 window.addEventListener('keydown', (ev) => {
   const k = KEYS[engine.mode][ev.code];
@@ -95,7 +106,7 @@ function start(mode) {
       const k = el.dataset.k;
       new Knob(el, { value: engine.mix[d][k], onChange: (v) => engine.setMix(d, k, v) });
     });
-    document.querySelectorAll('.fader').forEach((el) => {
+    document.querySelectorAll('#mixer .fader').forEach((el) => {
       const d = Number(el.dataset.d);
       new VSlider(el, { value: engine.mix[d].fader, onChange: (v) => engine.setMix(d, 'fader', v) });
     });

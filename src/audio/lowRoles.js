@@ -15,7 +15,8 @@
 // bajo de B". Cada uno se suelta, en el siguiente tiempo, cuando el otro universo deja de
 // sonar en ese papel (bajas su LOW o su fader, o cambia a una escena sin él): así el cambio
 // de bajo hecho a mano lo completa el programa. También si mueves el LOW del universo callado
-// (lo reclamas: quieres oírlo). Si no se toca nada, suena igual siempre.
+// (lo reclamas: quieres oírlo). Si no se toca nada, suena igual siempre. Con la música
+// parada (antes de GENERAR o en PAUSA) no se hereda nada: cada universo vuelve a lo suyo.
 
 import { easyGains, bandGain, faderGain } from './strip.js';
 
@@ -37,6 +38,7 @@ export class LowRoles {
   // EASY → normal: los papeles callados se heredan
   leaveEasy() {
     this.held = [];
+    if (!this.E.playing) return; // parado (antes de GENERAR o en PAUSA): no hay nada que respetar
     const lo = this.E.mix.map((m) => m.lo); // LOW de cada canal ya traducido
     this.applied?.forEach((g, i) => { for (const r of ROLES) if (g[r] <= 0) this.held.push({ i, r, v: lo[i] }); });
   }

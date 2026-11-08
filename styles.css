@@ -134,22 +134,23 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .im-title { color: var(--fg); letter-spacing: 0.5em; }
 .im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
-.im-row { display: flex; gap: 18px; height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
-.im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 54px; }
-.instmix.dj .im-ch { width: 78px; }
+.im-row { display: flex; gap: 40px; height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
+.im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 60px; }
+.instmix.dj .im-ch { width: 86px; }
 .im-dbs { display: flex; gap: 10px; }
 .im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
 .instmix.dj .im-dbs { gap: 4px; }
 .instmix.dj .im-db { font-size: 9px; width: 34px; text-align: center; letter-spacing: 0; }
 .im-db.moved { color: var(--fg); }
 /* cada fader con su medidor al lado (lo que suena ahora); en DJ, A y B */
-.im-pair { flex: 1; min-height: 0; display: flex; gap: 8px; justify-content: center; }
+/* A y B de un instrumento algo separados; los instrumentos, más (.im-row) */
+.im-pair { flex: 1; min-height: 0; display: flex; gap: 14px; justify-content: center; }
 .im-fd { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .im-fdrow { flex: 1; min-height: 0; display: flex; gap: 4px; }
 .im-fdrow .fader { height: 100%; }
 .instmix.dj .im-fdrow .fader .t-track { width: 26px; }
 .instmix.dj .im-fdrow .fader .t-handle { width: 22px; }
-.im-meter { position: relative; width: 2px; background: var(--line); }
+.im-meter { position: relative; width: 5px; background: var(--line); }
 .im-meter i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--fg); transform-origin: bottom; transform: scaleY(0); }
 .im-u { color: var(--dim); font-size: 8px; letter-spacing: 0.1em; }
 .im-link { font-size: 9px; letter-spacing: 0.2em; padding: 4px 8px 4px 10px; border: 1px solid var(--faint); color: var(--dim); margin-top: 4px; }
@@ -391,7 +392,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   height: min(250px, calc(100vh - 470px));
   min-height: 110px;
   display: grid;
-  grid-template-columns: 6px 1fr 1fr 6px;
+  grid-template-columns: 8px 1fr 1fr 8px;
   gap: 8px;
   width: 100%;
   padding: 0 14px;
@@ -401,7 +402,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .fader .t-handle { width: 30px; height: 12px; background: #141417; border: 1px solid var(--fg); box-shadow: 0 0 12px rgba(255, 255, 255, 0.12); }
 .fader .t-handle::after { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: var(--fg); }
 .fader.active .t-handle { width: 34px; }
-.meter { position: relative; background: var(--line); width: 2px; justify-self: center; }
+.meter { position: relative; background: var(--line); width: 5px; justify-self: center; }
 .meter i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--fg); transform-origin: bottom; transform: scaleY(0); }
 
 #scope { width: 100%; height: 30px; opacity: 0.55; }
@@ -481,12 +482,14 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .instmix { top: 0; padding-top: 70px; }
   .im-row { gap: 4px; }
   .im-ch { width: 40px; }
-  .instmix.dj .im-ch { width: 42px; }
-  .instmix.dj .im-pair, .instmix.dj .im-dbs { gap: 3px; }
+  .instmix.dj .im-row { gap: 6px; }
+  .instmix.dj .im-ch { width: 40px; }
+  .instmix.dj .im-pair, .instmix.dj .im-dbs { gap: 5px; }
+  .im-meter { width: 3px; }
   .instmix.dj .im-dbs { display: none; } /* en el móvil no caben los dB de A y B */
-  .instmix.dj .im-fdrow { gap: 2px; }
-  .instmix.dj .im-fdrow .fader .t-track { width: 16px; }
-  .instmix.dj .im-fdrow .fader .t-handle { width: 15px; }
+  .instmix.dj .im-fdrow { gap: 1px; }
+  .instmix.dj .im-fdrow .fader .t-track { width: 13px; }
+  .instmix.dj .im-fdrow .fader .t-handle { width: 12px; }
   .op-choices { flex-direction: column; }
   .im-name { letter-spacing: 0.04em; }
   .inst .name { letter-spacing: 0.06em; }
@@ -506,7 +509,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .mx-faders { flex: 1; height: auto; min-height: 140px; max-height: 320px; padding: 12px 30px; gap: 14px; }
   .fader .t-track { width: 64px; }
   .fader .t-handle { width: 42px; height: 18px; }
-  .meter { width: 3px; }
+  .meter { width: 6px; }
 }
 
 /* vertical: estructura arriba, emoción abajo */

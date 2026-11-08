@@ -1,4 +1,4 @@
-// Piezas de DSP compartidas: saturación, reverb, y el canal de instrumento.
+// Piezas de DSP compartidas: saturación y el canal de instrumento.
 
 import { clamp } from '../core/rng.js';
 
@@ -28,21 +28,6 @@ export function driveCurve(amount, ref = 0.5) {
 // nivel típico que llega a la saturación de cada canal (para igualar volumen)
 const DRIVE_REF = { kick: 0.9, bass: 0.7, clap: 0.6, hat: 0.35, ohat: 0.35, perc: 0.5, chord: 0.4, pad: 0.35 };
 
-export function makeIR(ctx, dur = 3.6, decay = 2.8) {
-  const sr = ctx.sampleRate;
-  const len = Math.floor(dur * sr);
-  const buf = ctx.createBuffer(2, len, sr);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) {
-      const t = i / sr;
-      const fadeIn = t < 0.015 ? t / 0.015 : 1;
-      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t / dur, decay) * fadeIn;
-    }
-  }
-  return buf;
-}
-
 // cómo entra/sale cada instrumento cuando la transición es por filtro
 const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc: 'lp', chord: 'lp', pad: 'lp' };
 
@@ -59,7 +44,7 @@ const CLEAN_HP = { kick: 28, bass: 30, clap: 160, hat: 300, ohat: 300, perc: 150
 const MUD = { chord: [550, -5, 0.8], pad: [380, -3, 0.7] };
 
 export class Channel {
-  constructor(ctx, name, dest, rev, dly, oversample = '2x') {
+  constructor(ctx, name, dest, oversample = '2x') {
     this.name = name;
     this.sweep = SWEEP[name];
     this.input = ctx.createGain();
@@ -80,10 +65,6 @@ export class Channel {
     this.out = ctx.createGain();
     this.level = LEVEL[name];
     this.out.gain.value = this.level;
-    this.rev = ctx.createGain();
-    this.rev.gain.value = 0;
-    this.dly = ctx.createGain();
-    this.dly.gain.value = 0;
 
     let chain = this.input.connect(this.shaper).connect(this.post).connect(this.hp).connect(this.lp);
     if (MUD[name]) {
@@ -94,8 +75,6 @@ export class Channel {
       chain = chain.connect(this.mud);
     }
     chain.connect(this.fade).connect(this.duck).connect(this.user).connect(this.out).connect(dest);
-    this.out.connect(this.rev).connect(rev);
-    this.out.connect(this.dly).connect(dly);
     this.driveQ = -1;
     this.setDrive(0);
     this.last = { f: -1, vol: -1, m: -1 };

@@ -1,13 +1,13 @@
-// UNIVERSO — un mundo musical completo: sus 6 instrumentos, su emoción, su
-// estructura, su loop, su reverb y su delay. El reloj, el BPM y la tonalidad
+// UNIVERSO — un mundo musical completo: sus instrumentos, su emoción, su
+// estructura y su loop. Sin reverb ni delay: todo seco. El reloj, el BPM y la tonalidad
 // los pone el Engine (globales), así dos universos siempre encajan.
 
 import * as V from './voices.js';
-import { Channel, driveCurve, makeIR, glide } from './dsp.js';
+import { Channel, driveCurve, glide } from './dsp.js';
 import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS } from '../music/arrangement.js';
-import { shapeComplexity, shareDensity } from '../music/complexity.js';
+import { shapeComplexity, shareDensity, randomComplexity, GROUPS } from '../music/complexity.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
@@ -22,7 +22,10 @@ export class Deck {
     this.transitionMode = 1;  // 1 filtro .. 0 volumen
     this.transitionBars = 4;  // compases del viaje al pulsar una esquina (0 = instantáneo)
     this.nextBeat = 0;
-    this.complexity = 0.4;    // 0 simple .. 1 complejo (se aplica compás a compás)
+    // COMPLEJIDAD por grupos (0 simple .. 1 complejo) y un GLOBAL que los escala.
+    // Se aplica compás a compás. NUEVO UNIVERSO los cambia (luego se tocan a mano).
+    this.cx = { kick: 0.3, perc: 0.6, bass: 0.5, inst: 0.5, global: 0.8 };
+    this.cxVersion = 0; // la vista sabe cuándo los cambió el universo y no el usuario
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement();
     this.arr.set(x, y);
@@ -55,38 +58,9 @@ export class Deck {
     this.driveQ = -1;
     this.sum.connect(this.shaper).connect(this.post).connect(out);
 
-    // reverb propia: al bajar el fader, su cola se va con el universo
-    this.revIn = ctx.createGain();
-    const revHp = ctx.createBiquadFilter();
-    revHp.type = 'highpass'; revHp.frequency.value = 200;
-    const conv = ctx.createConvolver();
-    conv.buffer = makeIR(ctx, PROFILE.irSeconds);
-    this.revTone = ctx.createBiquadFilter();
-    this.revTone.type = 'lowpass';
-    this.revRet = ctx.createGain();
-    this.revDuck = ctx.createGain(); // sidechain de la reverb: la cola se aparta del kick
-    this.revIn.connect(revHp).connect(conv).connect(this.revTone).connect(this.revRet).connect(this.revDuck).connect(this.sum);
-
-    // delay dub
-    this.dlyIn = ctx.createGain();
-    this.delay = ctx.createDelay(3);
-    this.dlyFb = ctx.createGain();
-    this.dlyTone = ctx.createBiquadFilter();
-    this.dlyTone.type = 'lowpass';
-    const dlyHp = ctx.createBiquadFilter();
-    dlyHp.type = 'highpass'; dlyHp.frequency.value = 300;
-    const dlyRet = ctx.createGain();
-    dlyRet.gain.value = 0.55;
-    this.dlyIn.connect(this.delay);
-    this.delay.connect(this.dlyTone).connect(dlyHp).connect(this.dlyFb).connect(this.delay);
-    this.delay.connect(dlyRet).connect(this.sum);
-    const dlyToRev = ctx.createGain();
-    dlyToRev.gain.value = 0.3;
-    dlyRet.connect(dlyToRev).connect(this.revIn);
-
     this.ch = {};
     for (const k of INSTRUMENTS) {
-      this.ch[k] = new Channel(ctx, k, this.sum, this.revIn, this.dlyIn, PROFILE.oversample ?? '2x');
+      this.ch[k] = new Channel(ctx, k, this.sum, PROFILE.oversample ?? '2x');
       this.ch[k].user.gain.value = this.engine.inst[k];
     }
 
@@ -118,6 +92,17 @@ export class Deck {
   }
 
   reseed() { this.pendingSeed = newSeed(); }
+
+  // CARÁCTER del universo (sale de la semilla): color del sonido y complejidad
+  // de cada grupo. Sustituye al antiguo pad de EMOCIÓN: el timbre cambia con
+  // inercia (~2 s); el global no se toca (es del intérprete).
+  newCharacter(seed) {
+    const r = new Rng(seed ^ 0x9e3779b9);
+    this.emotion.setTarget(r.float(-0.8, 0.8), r.float(-0.7, 0.7));
+    Object.assign(this.cx, randomComplexity(r));
+    this.cxVersion++;
+  }
+  setComplexity(group, v) { this.cx[group] = v; }
 
   // pulsar el nombre de una esquina: viajar ahí; pulsar la misma a mitad = pausa / sigue
   goCorner(name) {
@@ -197,20 +182,6 @@ export class Deck {
     C.chord.setDrive(e.chord.drive);
     C.pad.setDrive(e.pad.drive);
     const tc = 0.25;
-    glide(C.clap.rev.gain, e.clap.reverb, now, tc);
-    glide(C.clap.dly.gain, e.clap.delay, now, tc);
-    glide(C.hat.rev.gain, e.hat.reverb, now, tc);
-    glide(C.hat.dly.gain, e.hat.delay, now, tc);
-    glide(C.ohat.rev.gain, e.ohat.reverb, now, tc);
-    glide(C.ohat.dly.gain, e.ohat.delay, now, tc);
-    glide(C.perc.rev.gain, e.perc.reverb, now, tc);
-    glide(C.perc.dly.gain, e.perc.delay, now, tc);
-    glide(C.kick.rev.gain, 0.02 + 0.06 * e.abyss, now, tc);
-    glide(C.bass.rev.gain, 0.03 * e.warmth, now, tc);
-    glide(C.chord.rev.gain, e.chord.reverb, now, tc);
-    glide(C.chord.dly.gain, e.chord.delay, now, tc);
-    glide(C.pad.rev.gain, e.pad.reverb, now, tc);
-    glide(C.pad.dly.gain, e.pad.delay, now, tc);
     glide(C.pad.out.gain, C.pad.level * e.pad.level, now, 0.6);
     // el pad que está sonando sigue a la emoción en vivo
     const pv = this.padVoice;
@@ -220,11 +191,6 @@ export class Deck {
       glideAll(pv.airGain.gain, e.pad.air, now, 0.5);
     }
 
-    glide(this.revRet.gain, m.reverbReturn, now, tc);
-    glide(this.revTone.frequency, m.reverbTone, now, tc);
-    glide(this.dlyFb.gain, m.delayFeedback, now, tc);
-    glide(this.dlyTone.frequency, m.delayTone, now, tc);
-    glide(this.delay.delayTime, (60 / this.engine.bpm) * m.delayBeats, now, 0.4);
 
     const q = Math.round(m.drive * 20) / 20;
     if (q !== this.driveQ) {
@@ -250,27 +216,32 @@ export class Deck {
       this.seed = this.pendingSeed;
       this.pendingSeed = null;
       this.gen = makeGenerators(this.seed);
+      this.newCharacter(this.seed);
       if (this.lanePans) { // móvil: soltar los panoramas de los carriles viejos
         for (const p of this.lanePans.values()) p.disconnect();
         this.lanePans.clear();
       }
     }
     const G = this.gen;
-    const cx = shapeComplexity(this.complexity, this.e);
-    const e = { ...this.e, gen: cx.gen, cx }; // la emoción, vista a través de la complejidad
+    const cx = shapeComplexity(this.cx);
+    // cada generador ve el carácter del universo (this.e) con la complejidad de su grupo
+    const eK = { ...this.e, gen: cx.kick.gen, cx: cx.kick.cx };
+    const eP = { ...this.e, gen: cx.perc.gen, cx: cx.perc.cx };
+    const eB = { ...this.e, gen: cx.bass.gen, cx: cx.bass.cx };
+    const eI = { ...this.e, gen: cx.inst.gen, cx: cx.inst.cx };
     const r = G.rng;
-    const mu = e.gen.mutation;
+    const muP = eP.gen.mutation;
     if (b > 0 && b % 4 === 0) {
-      if (r.chance(mu)) G.perc.mutate(1);
-      if (r.chance(mu * 0.5)) G.hat.mutate();
+      if (r.chance(muP)) G.perc.mutate(1);
+      if (r.chance(muP * 0.5)) G.hat.mutate();
     }
     if (b > 0 && b % 8 === 0) {
-      if (r.chance(mu * 0.7)) G.bass.mutate();
-      if (r.chance(0.15)) G.clap.mutate();
-      if (r.chance(0.2)) G.ohat.mutate();
+      if (r.chance(eB.gen.mutation * 0.7)) G.bass.mutate();
+      if (r.chance(muP * 0.35)) G.clap.mutate();
+      if (r.chance(muP * 0.4)) G.ohat.mutate();
     }
-    if (b > 0 && b % 32 === 0) G.perc.mutate(2);
-    if (b > 0 && b % 16 === 0 && r.chance(mu * 0.6)) G.harmony.mutate();
+    if (b > 0 && b % 32 === 0 && cx.eff.perc > 0.3) G.perc.mutate(2);
+    if (b > 0 && b % 16 === 0 && r.chance(eI.gen.mutation * 0.6)) G.harmony.mutate();
 
     // protagonismo: si hay más instrumentos de los que la complejidad admite, ceden densidad
     const S = this.arr.state;
@@ -282,14 +253,14 @@ export class Deck {
     const shared = shareDensity(dens, prog, cx.budget);
     const d = (k) => shared[k];
     this.bars = {
-      kick: G.kick.bar(b, d('kick'), e),
-      clap: G.clap.bar(b, d('clap'), e),
-      hat: G.hat.bar(b, d('hat'), e),
-      ohat: G.ohat.bar(b, d('ohat'), e),
-      perc: G.perc.bar(b, d('perc'), e, absStep),
-      bass: G.bass.bar(b, d('bass'), e),
-      chord: G.harmony.chordBar(b, d('chord'), e),
-      pad: G.harmony.padBar(b, d('pad'), e),
+      kick: G.kick.bar(b, d('kick'), eK),
+      clap: G.clap.bar(b, d('clap'), eP),
+      hat: G.hat.bar(b, d('hat'), eP),
+      ohat: G.ohat.bar(b, d('ohat'), eP),
+      perc: G.perc.bar(b, d('perc'), eP, absStep),
+      bass: G.bass.bar(b, d('bass'), eB),
+      chord: G.harmony.chordBar(b, d('chord'), eI),
+      pad: G.harmony.padBar(b, d('pad'), eI),
     };
     if (cx.avoid) this.takeTurns(this.bars, prog);
     this.history.push({ b, bars: this.bars });
@@ -347,8 +318,6 @@ export class Deck {
       const depth = e.kick.duck * ev.vel * A.state.kick.progress;
       C.bass.duck.gain.setTargetAtTime(1 - depth, t, 0.003);
       C.bass.duck.gain.setTargetAtTime(1, t + 0.045, 0.055);
-      this.revDuck.gain.setTargetAtTime(1 - 0.45 * depth, t, 0.006);
-      this.revDuck.gain.setTargetAtTime(1, t + 0.06, 0.12);
       // un poco de bombeo en la armonía (sidechain)
       for (const [k, amt] of [['chord', 0.25], ['pad', 0.35]]) {
         const dk = depth * amt * A.state[k].progress;

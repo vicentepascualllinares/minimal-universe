@@ -77,6 +77,9 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .meta .sep { width: 1px; height: 10px; background: var(--faint); }
 .drag { color: var(--fg); cursor: ns-resize; padding: 2px 0; touch-action: none; }
 .u, #mode { margin-left: -6px; }
+#mode { color: var(--dim); padding: 2px 0; letter-spacing: inherit; }
+#mode:hover { color: var(--fg); }
+#mode.pending { color: var(--fg); animation: blink 0.5s steps(2) infinite; }
 #state { color: var(--dim); padding: 2px 0; }
 #state.live { color: var(--fg); }
 #mixbtn { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; }
@@ -178,6 +181,15 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .corner.go.dest { opacity: 1 !important; animation: dest-blink 0.9s steps(2) infinite; }
 @keyframes dest-blink { 50% { color: var(--dim); } }
 .corner.go.paused { opacity: 1 !important; text-decoration: underline; text-underline-offset: 3px; }
+/* COMPLEJIDAD por grupos: 4 faders en el hueco del antiguo pad de emoción */
+.cx-box { display: flex; justify-content: space-around; align-items: stretch; padding: 12px 4px 10px; }
+.cxf { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
+.cxf .fader { flex: 1; min-height: 0; }
+.cxf .fader .t-track { width: 30px; }
+.cxf .fader .t-handle { width: 24px; height: 10px; }
+.cxf-eff { position: absolute; left: 50%; bottom: 0; width: 3px; transform: translateX(-50%); background: rgba(var(--glow, 200, 200, 205), 0.6); pointer-events: none; }
+.cxf-val { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; height: 12px; }
+.cxf-name { color: var(--fg); font-size: 9px; letter-spacing: 0.14em; white-space: nowrap; }
 .p-status { margin-left: 10px; color: var(--fg); letter-spacing: 0.08em; }
 .t-len { flex-wrap: wrap; justify-content: center; row-gap: 3px; max-width: var(--col); }
 

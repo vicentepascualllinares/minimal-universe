@@ -20,9 +20,10 @@ export class KickGen {
     for (const s of [0, 4, 8, 12]) st[s] = { vel: s === 0 ? 1 : 0.94 };
     const r = this.rng;
     // final de frase de 8: la clásica caída del kick en el último tiempo
-    if (b % 8 === 7 && r.chance(0.25 + 0.4 * e.gen.fills)) st[12] = null;
+    if (b % 8 === 7 && r.chance(e.gen.fills)) st[12] = null; // simple = negras sin caídas
     // kicks fantasma (tensión / euforia): groove roto
     if (r.chance(e.gen.ghostKick * 0.7)) st[r.pick([7, 10, 14, 15])] = { vel: 0.42 };
+    if (e.cx.doubleGhost && r.chance(e.gen.ghostKick * 0.5)) st[r.pick([3, 6, 11])] = { vel: 0.36 };
     if (d < 0.25 && b % 2 === 1) st[8] = null; // muy poca presencia: respira
     return st;
   }
@@ -46,8 +47,12 @@ export class ClapGen {
     else { st[4] = { vel: 0.95 }; st[12] = { vel: 1 }; }
     if (style === '24ghost' && !lowD) st[r.pick([7, 15, 10])] = { vel: 0.35 };
     // redoble de tensión al final de frase
-    if (b % 8 === 7 && e.tension > 0.25 && r.chance(e.gen.fills)) {
-      st[13] = { vel: 0.4 }; st[14] = { vel: 0.55 }; st[15] = { vel: 0.7 };
+    if (b % 8 === 7 && e.cx.clapRolls && r.chance(e.gen.fills * 0.8)) {
+      if (e.cx.longRolls && r.chance(0.6)) { // redoble largo: semicorcheas creciendo
+        for (let s = 10; s < 16; s++) st[s] = { vel: 0.3 + (s - 10) * 0.12 };
+      } else {
+        st[13] = { vel: 0.4 }; st[14] = { vel: 0.55 }; st[15] = { vel: 0.7 };
+      }
     }
     return st;
   }
@@ -104,7 +109,7 @@ export class OHatGen {
     const st = new Array(16).fill(null);
     const thr = 0.2 + 0.8 * d;
     [2, 6, 10, 14].forEach((s, i) => { if (this.w[i] < thr) st[s] = { vel: 0.85 + 0.15 * this.w[i] }; });
-    if (this.extra !== null && e.cx.ohatExtra && d > 0.6 && e.an > 0.45) st[this.extra] = { vel: 0.5 };
+    if (this.extra !== null && e.cx.ohatExtra && d > 0.6) st[this.extra] = { vel: 0.5 };
     return st;
   }
 }
@@ -127,8 +132,6 @@ function makePercSound(r) {
     nfreq: r.float(900, 6000),
     q: r.float(2, 14),
     pan: r.float(-0.75, 0.75),
-    reverb: r.float(0.3, 1),
-    delay: r.chance(0.5) ? r.float(0.3, 1) : 0,
   };
 }
 
@@ -232,7 +235,8 @@ export class BassGen {
   bar(b, d, e) {
     const cx = e.cx;
     const m = cx.bassVariant && b % 4 === 3 ? this.variant : this.home;
-    const thr = 0.1 + 0.42 * d * (0.55 + 0.45 * e.gen.density); // el bajo deja aire al kick
+    // simple = corcheas en contratiempo (el bajo clásico); más complejidad = semicorcheas
+    const thr = 0.12 + 0.5 * d * (0.6 + 0.4 * e.gen.density); // el bajo deja aire al kick
     const st = new Array(16).fill(null);
     let last = -10;
     for (let s = 0; s < 16; s++) {

@@ -4,14 +4,13 @@
 
 import { makeNoise } from './voices.js';
 import { Deck } from './deck.js';
-import { Strip, faderGain } from './strip.js';
+import { Strip } from './strip.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS } from '../music/arrangement.js';
 import { glide } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
-const scaleIdx = (v) => Math.max(0, Math.min(SCALES.length - 1, Math.floor(((v + 1) / 2) * SCALES.length)));
 
 export class Engine {
   constructor() {
@@ -19,7 +18,8 @@ export class Engine {
     this.playing = false;
     this.bpm = 124;
     this.rootMidi = 28 + Math.floor(Math.random() * 6); // E1..A1: el kick se afina aquí
-    this.scaleI = 1;
+    this.scaleI = 1;          // eólico
+    this.scaleNext = null;    // cambio de modo pedido: entra al empezar el siguiente compás
     this.step = 0;
     this.glitches = 0;
     this.lookahead = PROFILE.lookahead; // s programados por adelantado (adaptativo en móvil)
@@ -28,6 +28,7 @@ export class Engine {
       new Deck(this, 'A', { x: 0.7, y: 0.3, v: -0.3, a: -0.25 }), // casi SOLO DRUMS, con un poco de bajo
       new Deck(this, 'B', { x: 0.7, y: 0.7, v: 0.2, a: 0.15 }),
     ];
+    this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
     // MIXER global: ganancia por instrumento, igual para todos los universos (1 = 0 dB = el perfil por defecto)
     this.inst = Object.fromEntries(INSTRUMENTS.map((k) => [k, 1]));
     // estado de la mesa (lo que muestran los controles)
@@ -142,20 +143,12 @@ export class Engine {
     if (this.ready) for (const d of this.active) d.release(this.ctx.currentTime);
   }
 
-  // Escala global: manda el universo que más se oye (valencia ponderada por fader).
-  // Con histéresis para que no parpadee en las fronteras entre modos.
-  updateScale() {
-    const act = this.active;
-    let w = 0, v = 0;
-    act.forEach((d, i) => {
-      const g = faderGain(this.mix[i].fader);
-      w += g;
-      v += g * d.emotion.v;
-    });
-    v = w > 1e-3 ? v / w : act.reduce((s, d) => s + d.emotion.v, 0) / act.length;
-    const lo = scaleIdx(v - 0.06);
-    const hi = scaleIdx(v + 0.06);
-    if (lo === hi && lo !== this.scaleI) this.scaleI = lo;
+  // MODO global (cabecera): igual para todos los universos, así nunca chocan.
+  // Cada clic pasa al siguiente; entra al empezar el siguiente compás.
+  cycleScale() {
+    const n = ((this.scaleNext ?? this.scaleI) + 1) % SCALES.length;
+    if (this.playing) this.scaleNext = n === this.scaleI ? null : n;
+    else { this.scaleI = n; this.scaleNext = null; }
   }
 
   // Detector de cortes (móvil): si el audio se queda sin datos, su reloj se
@@ -208,13 +201,13 @@ export class Engine {
       this.adaptLookahead();
     }
 
-    this.updateScale();
     const nextBeat = this.playing ? this.nextGrid + ((4 - (this.step % 4)) % 4) * this.stepDur : now;
     const act = this.active;
     for (const d of act) d.update(now, dt, nextBeat);
 
     if (!this.playing) return;
     while (this.nextGrid < now + this.lookahead) {
+      if (this.step % 16 === 0 && this.scaleNext !== null) { this.scaleI = this.scaleNext; this.scaleNext = null; }
       for (const d of act) d.scheduleStep(this.step, this.nextGrid);
       this.nextGrid += this.stepDur;
       this.step++;

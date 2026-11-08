@@ -2,7 +2,7 @@
 // Ordenador: el motor completo, tal cual.
 // Móvil (Android / iPhone / iPad): misma música, pero optimizado para que el
 // audio no se corte: búfer grande, hats sobre un banco de osciladores fijo,
-// menos nodos por nota, reverb más corta, sin sobremuestreo, interfaz más ligera.
+// menos nodos por nota, sin sobremuestreo, interfaz más ligera.
 //
 // Forzar a mano para probar:  ?movil   o   ?pc   en la dirección.
 
@@ -25,6 +25,5 @@ export const PROFILE = {
   lookaheadMax: lite ? 0.3 : 0.12,
   tickMs: lite ? 25 : 20,
   oversample: lite ? 'none' : null,               // null = lo que use cada nodo en PC
-  irSeconds: lite ? 2.0 : 3.6,
   maxDpr: lite ? 1.5 : Infinity,                  // resolución de los canvas
 };

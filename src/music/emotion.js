@@ -5,7 +5,7 @@
 // Esquinas:  TENSIÓN (-,+)  EUFORIA (+,+)  ABISMO (-,-)  CALIDEZ (+,-)
 //
 // Nada aquí es un "parámetro de sonido" para el usuario: la emoción se traduce
-// a timbre, decay, saturación, espacio, densidad, swing y armonía de cada instrumento.
+// a timbre, decay, saturación, densidad, swing y armonía de cada instrumento.
 
 import { clamp, lerp } from '../core/rng.js';
 
@@ -78,13 +78,13 @@ export function mapEmotion(v, a, drift = 0) {
     // la escala es global: la decide el Engine según el universo que más suena
 
     groove: {
-      swing: 0.545 + 0.05 * vn + 0.03 * warmth - 0.03 * tension, // 0.5 = recto
+      swing: Math.min(0.58, 0.535 + 0.035 * vn + 0.02 * warmth - 0.02 * tension), // 0.5 = recto, máx. 58 %
       humanize: 0.0015 + 0.004 * (1 - an),                        // segundos
       clapNudge: 0.004 + 0.012 * (1 - an),                        // clap "tarde", relajado
     },
 
     kick: {
-      pitchRatio: 1 + 0.07 * v,                    // multiplica la tónica
+      pitchRatio: 1,                               // siempre en la tónica: nunca choca con el bajo
       punch: 2.6 + 3.2 * an + 1.2 * tension,       // caída de pitch inicial
       pitchDecay: 0.022 + 0.05 * (1 - an) + 0.02 * abyss,
       hold: 0.02 + 0.03 * calm,
@@ -101,8 +101,6 @@ export function mapEmotion(v, a, drift = 0) {
       spread: 0.0075 + 0.007 * (1 - an),
       decay: 0.11 + 0.32 * (1 - an) + 0.15 * abyss,
       drive: 0.05 + 0.5 * tense,
-      reverb: 0.12 + 0.45 * (1 - an) + 0.2 * abyss,
-      delay: 0.02 + 0.15 * calm,
     },
 
     hat: {
@@ -113,14 +111,10 @@ export function mapEmotion(v, a, drift = 0) {
       decay: 0.022 + 0.04 * (1 - an) + 0.03 * warmth + 0.006 * drift,
       accent: 0.25 + 0.6 * an,
       drive: 0.04 + 0.3 * tension,
-      reverb: 0.05 + 0.2 * (1 - an),
-      delay: 0.03 + 0.1 * calm,
     },
 
     ohat: {
       decay: 0.16 + 0.28 * vn + 0.12 * euphoria + 0.08 * abyss,
-      reverb: 0.08 + 0.25 * (1 - an),
-      delay: 0.02 + 0.12 * warmth,
     },
 
     perc: {
@@ -128,8 +122,6 @@ export function mapEmotion(v, a, drift = 0) {
       decayMul: lerp(1.7, 0.6, an) * (1 + 0.6 * abyss),
       pitchMul: 0.85 + 0.35 * vn,
       fmIndex: 0.6 + 2.2 * tension + 1.0 * an,
-      reverb: 0.1 + 0.35 * (1 - an),
-      delay: 0.08 + 0.4 * calm + 0.15 * warmth,
       drive: 0.03 + 0.35 * tense,
     },
 
@@ -147,7 +139,7 @@ export function mapEmotion(v, a, drift = 0) {
       lenMul: 0.7 + 0.9 * calm,
     },
 
-    // acordes dub: stab corto con filtro que se cierra y mucho delay
+    // acordes dub: stab corto con filtro que se cierra
     chord: {
       cutoff: 280 + 1400 * vn + 1600 * an * (0.3 + 0.7 * vn) + 150 * drift,
       env: 1.5 + 3 * an + 1.5 * tension,
@@ -160,8 +152,6 @@ export function mapEmotion(v, a, drift = 0) {
       detune: 5 + 12 * tension + 5 * abyss,
       wave2: tension > 0.25 || euphoria > 0.4 ? 'sawtooth' : 'square',
       drive: 0.04 + 0.4 * tense + 0.15 * tension,
-      reverb: 0.15 + 0.35 * (1 - an) + 0.25 * abyss,
-      delay: 0.3 + 0.35 * (1 - an) + 0.15 * abyss + 0.1 * tension,
     },
 
     // pad / atmósfera: sigue a la emoción en vivo mientras suena
@@ -176,24 +166,11 @@ export function mapEmotion(v, a, drift = 0) {
       air: 0.03 + 0.22 * abyss + 0.08 * calm, // ruido filtrado: el "aire" de la sala
       level: 0.45 + 0.55 * calm,            // al fondo cuando es intenso
       drive: 0.02 + 0.2 * tension,
-      reverb: 0.35 + 0.35 * (1 - an) + 0.2 * abyss,
-      delay: 0.05 + 0.15 * calm,
     },
 
     master: {
-      reverbReturn: 0.28 + 0.45 * (1 - an) + 0.2 * abyss,
-      reverbTone: 1600 + 9000 * vn,
-      delayFeedback: 0.28 + 0.32 * (1 - an),
-      delayTone: 1200 + 4200 * vn,
-      delayBeats: tension > 0.3 ? 0.5 : 0.75,  // corchea vs corchea con puntillo
       drive: 0.05 + 0.35 * tense,
     },
 
-    gen: {
-      density: 0.35 + 0.65 * an,        // cuánta información rítmica
-      mutation: 0.12 + 0.35 * an + 0.15 * tension,
-      fills: 0.15 + 0.6 * an,
-      ghostKick: tension * 0.6 + euphoria * 0.25,
-    },
   };
 }

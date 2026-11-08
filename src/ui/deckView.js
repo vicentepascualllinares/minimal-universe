@@ -1,9 +1,10 @@
-// Vista de un UNIVERSO: pads, transición, loop, nuevo universo e instrumentos.
+// Vista de un UNIVERSO: estructura, transición, complejidad, loop, nuevo universo e instrumentos.
 // Se instancia dos veces (izquierda y derecha) sobre el mismo Deck API.
 
 import { XYPad } from './xypad.js';
 import { VSlider, HSlider } from './slider.js';
 import { INSTRUMENTS, CORNER_WEIGHTS, CORNERS } from '../music/arrangement.js';
+import { GROUPS, GROUP_LABEL, shapeComplexity } from '../music/complexity.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
 
@@ -15,7 +16,7 @@ function template(label) {
   return `
   <div class="deck-head">
     <span class="deck-name">${label}</span>
-    <div class="cx" title="Complejidad: cuántas notas y lo rápido que es el ritmo de todo el universo">
+    <div class="cx" title="Complejidad global: escala a la vez los cuatro grupos de abajo">
       <span class="cx-lab lo">SIMPLE</span>
       <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><div class="h-handle"></div></div>
       <span class="cx-lab hi">COMPLEJO</span>
@@ -41,11 +42,14 @@ function template(label) {
     </section>
   </div>
   <div class="row">
-    <section class="pad p-emo">
-      <div class="pad-title">EMOCIÓN</div>
-      <div class="pad-box"><canvas></canvas>
-        <span class="corner tl" data-c="tension">TENSIÓN</span><span class="corner tr" data-c="euphoria">EUFORIA</span>
-        <span class="corner bl" data-c="abyss">ABISMO</span><span class="corner br" data-c="warmth">CALIDEZ</span>
+    <section class="pad p-cx">
+      <div class="pad-title">COMPLEJIDAD</div>
+      <div class="pad-box cx-box">${GROUPS.map((g) => `
+        <div class="cxf" data-g="${g}">
+          <span class="cxf-val"></span>
+          <div class="fader"><div class="t-track"><div class="t-line"></div><i class="cxf-eff"></i><div class="t-handle"></div></div></div>
+          <span class="cxf-name">${GROUP_LABEL[g]}</span>
+        </div>`).join('')}
       </div>
     </section>
     <section class="col loopcol">
@@ -64,7 +68,7 @@ function template(label) {
   <div class="strip"></div>`;
 }
 
-// color de la emoción (frío/violeta -> ámbar cálido; poca activación = más gris)
+// color del carácter del universo (frío/violeta -> ámbar cálido; poca energía = más gris)
 export function emoColor(v, a) {
   const vn = (v + 1) / 2;
   const an = (a + 1) / 2;
@@ -84,12 +88,17 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     value: { x: deck.arr.x, y: deck.arr.y },
     onChange: (x, y) => deck.arr.set(x, y),
   });
-  const emoPad = new XYPad(q('.p-emo'), {
-    value: { x: (deck.emotion.tv + 1) / 2, y: (deck.emotion.ta + 1) / 2 },
-    onChange: (x, y) => deck.emotion.setTarget(x * 2 - 1, y * 2 - 1),
-  });
   new VSlider(q('.trans'), { value: deck.transitionMode, onChange: (v) => (deck.transitionMode = v) });
-  new HSlider(q('.cx'), { value: deck.complexity, onChange: (v) => (deck.complexity = v) });
+  new HSlider(q('.cx'), { value: deck.cx.global, reset: 0.8, onChange: (v) => (deck.cx.global = v) });
+  // COMPLEJIDAD por grupos: un fader cada uno; la barra fina = lo que de verdad suena (× global)
+  const cxF = {};
+  for (const el of root.querySelectorAll('.cxf')) {
+    const g = el.dataset.g;
+    const s = new VSlider(el, { value: deck.cx[g], onChange: (v) => deck.setComplexity(g, v) });
+    el.querySelector('.t-track').addEventListener('dblclick', () => { s.set(0.5); deck.setComplexity(g, 0.5); });
+    cxF[g] = { s, el, val: el.querySelector('.cxf-val'), eff: el.querySelector('.cxf-eff') };
+  }
+  let cxSeen = deck.cxVersion;
 
   const options = (sel, onPick) => {
     const box = q(sel);
@@ -132,7 +141,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     });
   }
   const pStatus = q('.p-status');
-  const emoCorners = [...root.querySelectorAll('.p-emo .corner')];
 
   return {
     color: '200,200,205',
@@ -140,9 +148,19 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       const em = deck.emotion;
       const col = emoColor(em.v, em.a);
       this.color = col;
-      emoPad.follow = { x: (em.v + 1) / 2, y: (em.a + 1) / 2 };
-      emoPad.color = col;
       root.style.setProperty('--glow', col);
+
+      // complejidad: si NUEVO UNIVERSO cambió los valores, los faders los siguen
+      if (cxSeen !== deck.cxVersion) {
+        cxSeen = deck.cxVersion;
+        for (const g of GROUPS) cxF[g].s.set(deck.cx[g]);
+      }
+      const eff = shapeComplexity(deck.cx).eff;
+      for (const g of GROUPS) {
+        const t = String(Math.round(eff[g] * 100));
+        if (cxF[g].val.textContent !== t) cxF[g].val.textContent = t;
+        cxF[g].eff.style.height = `${eff[g] * 100}%`;
+      }
 
       const AR = deck.arr;
       const T = AR.travel;
@@ -162,10 +180,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       }
       if (pStatus.textContent !== st) pStatus.textContent = st;
       root.querySelector('.p-struct').classList.toggle('traveling', !!T && !T.paused);
-      const vx = (em.v + 1) / 2;
-      const ay = (em.a + 1) / 2;
-      const ew = { abyss: (1 - vx) * (1 - ay), warmth: vx * (1 - ay), tension: (1 - vx) * ay, euphoria: vx * ay };
-      emoCorners.forEach((el) => (el.style.opacity = 0.2 + 0.8 * ew[el.dataset.c]));
 
       // loop
       const L = deck.loop;
@@ -180,11 +194,9 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       const cur = L && !armed ? (heardBar - L.startBar) % L.n : -1;
       [...loopTicks.children].forEach((t, i) => t.classList.toggle('now', i === cur));
       structPad.ghost = L ? { x: L.frozen.x, y: L.frozen.y } : null;
-      emoPad.ghost = L ? { x: (L.frozen.v + 1) / 2, y: (L.frozen.a + 1) / 2 } : null;
       seedBtn.classList.toggle('pending', deck.pendingSeed !== null);
 
       structPad.draw();
-      emoPad.draw();
 
       // instrumentos: destellos sincronizados con el audio
       if (engine.ready) {

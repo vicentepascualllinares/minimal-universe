@@ -4,6 +4,7 @@ import { Knob } from './ui/knob.js';
 import { deckView } from './ui/deckView.js';
 import { instMixer } from './ui/instMixer.js';
 import { PROFILE } from './core/profile.js';
+import { SCALES } from './music/emotion.js';
 
 const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -48,6 +49,7 @@ const toggle = async () => {
   else await engine.play();
 };
 $('#state').addEventListener('click', toggle);
+$('#mode').addEventListener('click', () => engine.cycleScale());
 
 // ───────── MIXER global (volumen por instrumento)
 const mixPanel = $('#instmix');
@@ -131,7 +133,10 @@ function frame() {
   }
 
   $('#key').textContent = NOTE[engine.rootMidi % 12];
-  $('#mode').textContent = engine.scale.name.toUpperCase();
+  const nextScale = engine.scaleNext !== null ? SCALES[engine.scaleNext] : null;
+  const modeTxt = (nextScale || engine.scale).name.toUpperCase();
+  if ($('#mode').textContent !== modeTxt) $('#mode').textContent = modeTxt;
+  $('#mode').classList.toggle('pending', !!nextScale);
   const st = Math.max(0, engine.step - 1);
   $('#pos').textContent = `${String(Math.floor(st / 16) + 1).padStart(3, '0')}.${Math.floor((st % 16) / 4) + 1}`;
   if (PROFILE.lite) {

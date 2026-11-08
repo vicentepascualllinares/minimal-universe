@@ -18,7 +18,6 @@ const sceneBtn = (name) => {
   const text = SCENES[name].label.replace('ESQUELETO', 'ESQUE&shy;LETO'); // si no cabe, corta con guion
   return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span><span class="sc-lay">${lay}</span></button>`;
 };
-const HOLD_MS = 300; // más que esto apoyado = CORTE
 
 function template(label) {
   return `
@@ -151,27 +150,24 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   }
 
   // ESCENAS: apoyar = CLIC (ir ahí); seguir apoyado = CORTE (vuelve al soltar).
+  // El gesto lo decide el universo (deck.down / deck.up), igual que hará el MIDI.
   // Cada botón sigue a su propio dedo: se pueden mantener varios a la vez.
   const sceneEls = [...root.querySelectorAll('.scene')];
   for (const el of sceneEls) {
     const name = el.dataset.s;
-    let pid = null, timer = null, holding = false;
+    let pid = null;
     el.addEventListener('pointerdown', (ev) => {
       if (pid !== null) return;
       pid = ev.pointerId;
       try { el.setPointerCapture(pid); } catch {} // algunos navegadores fallan con punteros sintéticos
       el.classList.add('press');
-      if (deck.press(name) === 'go') {
-        timer = setTimeout(() => { timer = null; holding = true; deck.hold(name); }, HOLD_MS);
-      }
+      deck.down(name);
     });
     const up = (ev) => {
       if (ev.pointerId !== pid) return;
       pid = null;
       el.classList.remove('press');
-      clearTimeout(timer);
-      timer = null;
-      if (holding) { holding = false; deck.unhold(name); }
+      deck.up(name);
     };
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);

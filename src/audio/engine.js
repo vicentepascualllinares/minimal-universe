@@ -21,7 +21,8 @@ export class Engine {
     this.scaleI = 1;          // eólico
     this.scaleNext = null;    // cambio de modo pedido: entra al empezar el siguiente compás
     this.step = 0;
-    this.glitches = 0;
+    this.glitches = 0;  // CORTES: el audio se quedó sin datos (DSP demasiado pesado)
+    this.late = 0;      // TARDE: pasos programados tarde (hilo principal atascado)
     this.lookahead = PROFILE.lookahead; // s programados por adelantado (adaptativo en móvil)
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
@@ -158,7 +159,7 @@ export class Engine {
     else { this.scaleI = n; this.scaleNext = null; }
   }
 
-  // Detector de cortes (móvil): si el audio se queda sin datos, su reloj se
+  // Detector de cortes: si el audio se queda sin datos, su reloj se
   // queda atrás respecto al reloj real PARA SIEMPRE. La marca de tiempo tiene
   // un temblor de hasta ~1 búfer (solo hacia arriba), así que se compara el
   // MÍNIMO de cada ventana de ~0,5 s: el temblor no lo mueve, un corte sí.
@@ -203,16 +204,17 @@ export class Engine {
     const now = this.ctx.currentTime;
     const dt = Math.min(0.1, Math.max(0, now - this.lastNow));
     this.lastNow = now;
-    if (PROFILE.lite) {
-      this.watchGlitches();
-      this.adaptLookahead();
-    }
+    this.watchGlitches(); // en todos los perfiles: el medidor de la cabecera (ver RENDIMIENTO.md)
+    if (PROFILE.lite) this.adaptLookahead();
 
     const act = this.active;
     for (const d of act) d.update(now, dt);
 
     if (!this.playing) return;
     while (this.nextGrid < now + this.lookahead) {
+      // TARDE: el hilo principal se atascó y este paso ya debería estar sonando
+      // (sus notas salen desplazadas). Distinto de un CORTE (el audio sin datos).
+      if (this.nextGrid < now) this.late++;
       if (this.step % 16 === 0 && this.scaleNext !== null) { this.scaleI = this.scaleNext; this.scaleNext = null; }
       for (const d of act) d.scheduleStep(this.step, this.nextGrid);
       this.nextGrid += this.stepDur;

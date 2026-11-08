@@ -40,8 +40,13 @@ El mismo programa elige solo su perfil:
   como sample (2 nodos por golpe en vez de 9; se regraban si el color cambia el timbre),
   un panorama fijo por carril de percusión, bajo sin osciladores inaudibles,
   saturación sin sobremuestreo, ajustes solo cuando cambian, canvas a menor resolución y sin
-  osciloscopio. Unos la mitad de nodos de audio por segundo. En la cabecera aparece
-  **AUDIO OK** o **CORTES n** (cortes detectados).
+  osciloscopio. Unos la mitad de nodos de audio por segundo (pendiente de volver a medir,
+  ver RENDIMIENTO.md).
+
+En la cabecera, en los dos perfiles, el medidor de salud del audio: **AUDIO OK**, **CORTES n**
+(el audio se quedó sin datos) o **TARDE n** (notas programadas fuera de tiempo). Clic = poner
+a cero. Qué vigilar, cómo medir y qué hacer cuando haga falta optimizar (incluido el motor en
+el hilo de audio y lo que hay que decidir antes de samples y MIDI): **[RENDIMIENTO.md](RENDIMIENTO.md)**.
 
 Para forzar un perfil: añade `?movil` o `?pc` a la dirección. Si en algún móvil hay cortes,
 `?estable` usa el búfer más grande posible (más latencia, máxima estabilidad).

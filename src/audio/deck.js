@@ -17,6 +17,8 @@ const glideAll = glide;
 
 const newSeed = () => (Math.random() * 1e9) | 0;
 
+export const HOLD_MS = 300; // un pad apoyado más que esto = CORTE
+
 export class Deck {
   constructor(engine, id, { scene, v, a }) {
     this.engine = engine;
@@ -29,6 +31,7 @@ export class Deck {
       cut: { bars: 0, fx: false },
     };
     this.held = [];        // escenas mantenidas ahora mismo (manda la última)
+    this.pads = {};        // pads apoyados ahora mismo (ver down / up)
     this.pressHome = null; // escena elegida antes de la última pulsación
     // COMPLEJIDAD por grupos (0 simple .. 1 complejo) y un GLOBAL que los escala.
     // Se aplica compás a compás. NUEVO UNIVERSO los cambia (luego se tocan a mano).
@@ -142,6 +145,24 @@ export class Deck {
   }
 
   // ── ESTRUCTURA: CLIC y CORTE
+  // Entrada única para cualquier mando (pantalla, teclado, MIDI): `down` al apoyar
+  // el pad de una escena y `up` al soltarlo. Un controlador MIDI solo tiene que
+  // llamar a down en note-on y a up en note-off (ver RENDIMIENTO.md).
+  down(name) {
+    if (this.pads[name]) return;
+    const p = (this.pads[name] = { timer: null, holding: false });
+    if (this.press(name) === 'go') {
+      p.timer = setTimeout(() => { p.timer = null; p.holding = true; this.hold(name); }, HOLD_MS);
+    }
+  }
+  up(name) {
+    const p = this.pads[name];
+    if (!p) return;
+    delete this.pads[name];
+    clearTimeout(p.timer);
+    if (p.holding) this.unhold(name);
+  }
+
   // Al apoyar el dedo en una escena es un CLIC: se cambia a ella (instantáneo o viaje).
   // Si el dedo sigue apoyado, la vista llama a hold() y pasa a ser un CORTE (al soltar,
   // unhold()): suena

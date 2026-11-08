@@ -51,6 +51,7 @@ const toggle = async () => {
 };
 $('#state').addEventListener('click', toggle);
 $('#mode').addEventListener('click', () => engine.cycleScale());
+$('#health').addEventListener('click', () => { engine.glitches = 0; engine.late = 0; }); // poner a cero para medir
 
 // ───────── MIXER global (volumen por instrumento)
 // ───────── paneles encima del escenario: MIXER y OPCIONES (solo uno a la vez)
@@ -149,11 +150,12 @@ function frame() {
   $('#mode').classList.toggle('pending', !!nextScale);
   const st = Math.max(0, engine.step - 1);
   $('#pos').textContent = `${String(Math.floor(st / 16) + 1).padStart(3, '0')}.${Math.floor((st % 16) / 4) + 1}`;
-  if (PROFILE.lite) {
+  { // medidor de salud del audio (ver RENDIMIENTO.md): CORTES = el audio sin datos, TARDE = notas fuera de tiempo
+    const g = engine.glitches, l = engine.late;
+    const txt = g || l ? [g && `CORTES ${g}`, l && `TARDE ${l}`].filter(Boolean).join(' · ') : 'AUDIO OK';
     const h = $('#health');
-    const g = engine.glitches;
-    h.textContent = g ? `CORTES ${g}` : 'AUDIO OK';
-    h.classList.toggle('bad', g > 0);
+    if (h.textContent !== txt) h.textContent = txt;
+    h.classList.toggle('bad', g + l > 0);
   }
   const sState = $('#state');
   sState.textContent = engine.playing ? 'EN VIVO' : 'PAUSA';

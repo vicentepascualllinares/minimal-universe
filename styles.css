@@ -121,8 +121,6 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-zero { position: absolute; left: 50%; top: 25%; width: 20px; height: 1px; background: var(--dim); transform: translateX(-50%); }
 .im-foot { display: flex; gap: 28px; }
 .im-foot button { font-size: 10px; letter-spacing: 0.14em; padding: 6px 0; }
-.only-lite { display: none; }
-body.lite .only-lite { display: inline-block; }
 #health { color: var(--faint); font-size: 9px; }
 #health.bad { color: #c98a6a; }
 body.lite #scope { display: none; }

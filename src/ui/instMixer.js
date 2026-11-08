@@ -17,6 +17,9 @@ export function faderDb(v) {
   if (v <= 0.005) return -Infinity;
   return -48 * Math.pow((DEF - v) / DEF, 1.5);
 }
+// IMÁN: a menos de 0,75 dB de 0 dB, el fader se queda en 0 dB (+0,12 o −0,5 no tienen sentido)
+const MAGNET_DB = 0.75;
+const snap = (v) => (Math.abs(faderDb(v)) < MAGNET_DB ? DEF : v);
 const fmt = (db) => (db === -Infinity ? '−∞' : `${db > 0.05 ? '+' : db < -0.05 ? '−' : ''}${Math.abs(db).toFixed(1)}`);
 
 // medidor: pico en dBFS de −60 a 0 → 0..1
@@ -76,12 +79,15 @@ export function instMixer(root, engine, onClose) {
           engine.setInst(i, k, d === -Infinity ? 0 : Math.pow(10, d / 20));
         };
         // vinculados: el otro se mueve lo mismo (conserva la diferencia)
-        const move = (v) => {
+        // (con imán a 0 dB en los dos)
+        const move = (raw) => {
+          const v = snap(raw);
+          if (v !== raw) c.s.set(v);
           const delta = v - val[i][k];
           c.apply(v);
           const o = dj && linked ? find(1 - i, k) : null;
           if (!o) return;
-          const ov = Math.min(1, Math.max(0, val[o.i][k] + delta));
+          const ov = snap(Math.min(1, Math.max(0, val[o.i][k] + delta)));
           o.s.set(ov);
           o.apply(ov);
         };

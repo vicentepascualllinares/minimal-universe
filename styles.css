@@ -136,7 +136,8 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
 .im-row { display: flex; gap: 40px; height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
 .im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 60px; }
-.instmix.dj .im-ch { width: 86px; }
+.instmix.dj .im-ch { width: 78px; }
+.instmix.dj .im-row { gap: 52px; }
 .im-dbs { display: flex; gap: 10px; }
 .im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
 .instmix.dj .im-dbs { gap: 4px; }
@@ -148,8 +149,8 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-fd { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .im-fdrow { flex: 1; min-height: 0; display: flex; gap: 4px; }
 .im-fdrow .fader { height: 100%; }
-.instmix.dj .im-fdrow .fader .t-track { width: 26px; }
-.instmix.dj .im-fdrow .fader .t-handle { width: 22px; }
+.instmix.dj .im-fdrow .fader .t-track { width: 22px; }
+.instmix.dj .im-fdrow .fader .t-handle { width: 20px; }
 .im-meter { position: relative; width: 5px; background: var(--line); }
 .im-meter i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--fg); transform-origin: bottom; transform: scaleY(0); }
 .im-u { color: var(--dim); font-size: 8px; letter-spacing: 0.1em; }

@@ -237,8 +237,9 @@ export class Deck {
     if (this.loop) return A.setTarget(name);
     if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
     const kind = classify(A.cur, SCENES[name].mix);
+    // la FORMA solo cuenta en los viajes: lo instantáneo (el CORTE, o CLIC en INSTANTÁNEO) salta
     const cut = this.form === 'golpe' && g.bars > 0;
-    const stagger = !cut && this.flow === 'escalonado' ? this.fxPal.order : null;
+    const stagger = !cut && g.bars > 0 && this.flow === 'escalonado' ? this.fxPal.order : null;
     A.goTo(name, g.bars, this.startStepFor(g.bars, g.quant), { drop: cut, stagger });
     if (g.bars === 0 && !this.engine.playing) return A.land(); // parado e instantáneo: salta sin transición
     this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng, cut);

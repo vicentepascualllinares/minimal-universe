@@ -40,9 +40,9 @@ function template(label) {
       <div class="col-title">TRANSICIÓN</div>
       ${opts('t-form stack', [['golpe', 'DE GOLPE'], ['prog', 'PROGRESIVA']], 'prog')}
       ${opts('t-flow stack', [['escalonado', 'ESCALONADA'], ['suave', 'SUAVE']], 'suave')}
-      <div class="spacer"></div>
       ${opts('t-len', [['0', 'INSTANTÁNEO'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
       <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
+      <div class="spacer"></div>
     </section>
   </div>
   <div class="row">
@@ -129,8 +129,9 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     }
     q('.t-flow').classList.toggle('off', deck.form === 'golpe');
   };
-  options('.t-form', (v) => { deck.form = v; showForm(); });
-  options('.t-flow', (v) => (deck.flow = v));
+  // cada caja es un interruptor: pulsar en cualquier parte de ella cambia al otro
+  q('.t-form').addEventListener('pointerdown', () => { deck.form = deck.form === 'golpe' ? 'prog' : 'golpe'; showForm(); });
+  q('.t-flow').addEventListener('pointerdown', () => { deck.flow = deck.flow === 'suave' ? 'escalonado' : 'suave'; showForm(); });
   showForm();
   options('.o-len', (v) => (deck.loopLen = Number(v)));
   options('.o-bars', (v) => (deck.releaseBars = Number(v)));

@@ -184,19 +184,41 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 }
 .pad.active .pad-box, .pad-box:hover { border-color: #26262b; }
 .deck.looping .pad-box { border-color: rgba(var(--glow), 0.3); }
-.pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-
-.corner { position: absolute; pointer-events: none; color: var(--fg); opacity: 0.25; font-size: 9px; letter-spacing: 0.18em; }
-.corner.tl { top: 8px; left: 9px; }
-.corner.tr { top: 8px; right: 7px; }
-.corner.bl { bottom: 8px; left: 9px; }
-.corner.br { bottom: 8px; right: 7px; }
-/* esquinas de ESTRUCTURA: se pulsan para viajar ahí */
-.corner.go { pointer-events: auto; cursor: pointer; padding: 4px 3px; margin: -4px -3px; touch-action: none; transition: opacity 0.3s; }
-.corner.go:hover { opacity: 1 !important; }
-.corner.go.dest { opacity: 1 !important; animation: dest-blink 0.9s steps(2) infinite; }
-@keyframes dest-blink { 50% { color: var(--dim); } }
-.corner.go.paused { opacity: 1 !important; text-decoration: underline; text-underline-offset: 3px; }
+/* ESTRUCTURA: 8 escenas en 2×4, arriba sin kick, abajo con kick (como los pads de un controlador) */
+.scenes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 10px 5px;
+  padding: 5px;
+}
+.scene {
+  position: relative;
+  min-width: 0;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+  padding: 8px 6px 7px;
+  border: 1px solid var(--faint);
+  background: rgba(var(--glow, 200, 200, 205), calc(var(--m, 0) * 0.2));
+  font-size: clamp(7px, calc(var(--pad) / 32), 10px);
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  touch-action: none;
+  transition: border-color 0.2s, background-color 0.15s;
+}
+.sc-name { color: var(--fg); opacity: calc(0.45 + var(--m, 0) * 0.55); overflow-wrap: break-word; }
+.sc-lay { display: flex; gap: 0.35em; letter-spacing: 0; font-size: 0.9em; }
+.sc-lay i { font-style: normal; color: var(--faint); }
+.sc-lay i.on { color: var(--dim); }
+.scene:hover { border-color: #3c3c43; }
+.scene.home { border-color: var(--dim); }                    /* la escena elegida */
+.scene.dest { border-color: var(--fg); animation: scene-blink 0.9s steps(2) infinite; }
+@keyframes scene-blink { 50% { border-color: var(--faint); } }
+.scene.paused { border-color: var(--fg); border-style: dashed; }
+.scene.press { background: rgba(var(--glow, 200, 200, 205), 0.3); }
+.scene.held { border-color: rgba(var(--glow, 200, 200, 205), 0.95); }  /* CORTE mantenido */
+.scene.pend { border-color: rgba(var(--glow, 200, 200, 205), 0.85); border-style: dashed; } /* LOOP: entrará al soltar */
 /* COMPLEJIDAD por grupos: 4 faders en el hueco del antiguo pad de emoción */
 .cx-box { display: flex; justify-content: space-around; align-items: stretch; padding: 12px 4px 10px; }
 .cxf { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
@@ -212,6 +234,12 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .ph-ticks i { width: 6px; height: 2px; background: var(--faint); }
 .ph-ticks i.now { background: var(--fg); }
 .t-len { flex-wrap: wrap; justify-content: center; row-gap: 3px; max-width: var(--col); }
+/* qué gesto se está ajustando: CLIC (cambiar de escena) o CORTE (mantener) */
+.t-who { margin-top: 2px; }
+.opts.t-who button { font-size: 9px; letter-spacing: 0.12em; border-bottom: 1px solid transparent; }
+.opts.t-who button.on { border-bottom-color: var(--fg); }
+.t-fx { font-size: 9px; letter-spacing: 0.25em; padding: 3px 7px 3px 9px; border: 1px solid var(--faint); touch-action: none; }
+.t-fx.on { color: var(--fg); border-color: var(--dim); }
 
 /* ───────── columnas (transición / loop) */
 .col {

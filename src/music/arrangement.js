@@ -1,46 +1,67 @@
-// ESTRUCTURA — el pad XY izquierdo: los MOMENTOS de un tema.
+// ESTRUCTURA — 8 ESCENAS: los momentos de un tema, uno por botón.
 //
-//   SIN DRUMS ┌───────────┐ TODO          X = ritmo   (derecha: drums)
-//             │           │               Y = música  (arriba: bajo, acordes, pad)
-//   BREAK     └───────────┘ SOLO DRUMS
+//   sin kick  │ BREAK       SIN DRUMS    SIN GRAVES   SIN KICK
+//   con kick  │ SOLO DRUMS  ESQUELETO    SIN BAJO     TODO
 //
-// Cada borde es una transición típica: subida (derecha), quitar el kick
-// (arriba), quedarse en la atmósfera (izquierda), entrada del groove (abajo).
+// Rejilla 2×4, como los pads de un controlador (8 por universo). Arriba no hay
+// kick y abajo sí: en las dos columnas de la derecha, la de abajo es la de arriba
+// con kick (bajar = DROP, subir = kick-out).
 //
-// Cada instrumento tiene una presencia 0..1 (mezcla bilineal de las esquinas).
-// Al pasar su umbral NO entra de golpe: su cantidad crece poco a poco (filtro
-// o volumen, según TRANSICIÓN, y densidad) hasta llegar a la esquina.
-//
-// La posición que suena (x, y) persigue al cursor (tx, ty). Al pulsar el
-// nombre de una esquina, viaja hasta ella en N compases (se puede pausar);
-// mover el cursor cancela el viaje. El viaje se mide en pasos de la rejilla
-// (16 por compás) y aterriza siempre en el inicio de una frase. Un viaje
-// `drop` (entra el kick) aguanta el origen y salta al destino de golpe en el 1.
+// Cada escena dice cuánto suena cada instrumento (presencia 0..1). Lo que suena
+// (`cur`) viaja de una escena a otra en N compases (o al instante); en el viaje
+// la presencia se interpola y cada instrumento entra o sale poco a poco: al pasar
+// su umbral su cantidad crece (filtro o volumen, según TRANSICIÓN, y densidad).
+// El viaje se mide en pasos de la rejilla (16 por compás) y aterriza siempre en
+// el inicio de una frase. Un viaje `drop` (entra el kick) aguanta el origen y
+// salta al destino de golpe en el 1.
 
 import { clamp } from '../core/rng.js';
 
 export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'chord', 'pad'];
 
-// posición de cada esquina en el pad
-export const CORNERS = {
-  break: { x: 0, y: 0, label: 'BREAK' },
-  drums: { x: 1, y: 0, label: 'SOLO DRUMS' },
-  sindrums: { x: 0, y: 1, label: 'SIN DRUMS' },
-  todo: { x: 1, y: 1, label: 'TODO' },
+const ALL_DRUMS = { kick: 1, hat: 1, perc: 1, clap: 1, ohat: 1 };
+const NO_DRUMS = { kick: 0, hat: 0, perc: 0, clap: 0, ohat: 0 };
+const TOPS = { hat: 1, perc: 1, clap: 0.9, ohat: 0.75 };
+
+const scene = (label, mix) => ({ label, mix: { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, chord: 0, pad: 0, ...mix } });
+
+export const SCENES = {
+  // ── sin kick
+  break: scene('BREAK', { hat: 0.3, perc: 0.5, chord: 0.35, pad: 1 }),       // atmósfera: manda el pad, un hat lejano
+  sindrums: scene('SIN DRUMS', { ...NO_DRUMS, bass: 1, chord: 1, pad: 0.85 }),
+  singraves: scene('SIN GRAVES', { ...TOPS, chord: 0.9, pad: 0.75 }),        // el groove arriba, sin kick ni bajo
+  sinkick: scene('SIN KICK', { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6 }), // kick-out: el bajo sigue rodando
+  // ── con kick
+  drums: scene('SOLO DRUMS', { kick: 1, ...TOPS }),
+  esqueleto: scene('ESQUELETO', { kick: 1, bass: 1, hat: 1, perc: 0.4 }),    // el núcleo del rominimal
+  sinbajo: scene('SIN BAJO', { ...ALL_DRUMS, chord: 0.9, pad: 0.6 }),
+  todo: scene('TODO', { ...ALL_DRUMS, bass: 1, chord: 0.9, pad: 0.6 }),
 };
 
-// cuánto de cada instrumento hay en cada esquina
-const MIX = {
-  //      break drums sindrums todo
-  kick:  [0,    1,    0,    1],
-  hat:   [0.3,  1,    0,    1],     // en el break queda un hat lejano y filtrado
-  clap:  [0,    0.9,  0,    1],
-  ohat:  [0,    0.75, 0,    1],
-  perc:  [0.5,  1,    0,    1],     // la percusión da movimiento al break
-  bass:  [0,    0,    1,    1],
-  chord: [0.35, 0,    1,    0.9],
-  pad:   [1,    0,    0.85, 0.6],   // manda en el break, se aparta cuando entra todo
+// orden de los botones: fila de arriba (sin kick) y fila de abajo (con kick)
+export const GRID = [
+  ['break', 'sindrums', 'singraves', 'sinkick'],
+  ['drums', 'esqueleto', 'sinbajo', 'todo'],
+];
+
+// capas que tiene una escena (para pintar K B T M en su botón)
+export const LAYERS = (name) => {
+  const m = SCENES[name].mix;
+  return {
+    K: m.kick > 0.5,
+    B: m.bass > 0.5,
+    T: Math.max(m.hat, m.perc, m.clap, m.ohat) > 0.5,
+    M: Math.max(m.chord, m.pad) > 0.5,
+  };
 };
+
+// cuánto se parece una presencia a una escena (1 = es esa escena)
+export function likeness(p, name) {
+  const m = SCENES[name].mix;
+  let d = 0;
+  for (const k of INSTRUMENTS) d += Math.abs(p[k] - m[k]);
+  return 1 - d / INSTRUMENTS.length;
+}
 
 // [umbral donde empieza a oírse, presencia en la que llega a tope]
 const RAMP = {
@@ -48,37 +69,19 @@ const RAMP = {
   clap: [0.35, 0.95], ohat: [0.4, 0.95], chord: [0.25, 0.95], pad: [0.2, 0.95],
 };
 
-const weights = (x, y) => [(1 - x) * (1 - y), x * (1 - y), (1 - x) * y, x * y];
-
-export function presence(x, y) {
-  const w = weights(x, y);
-  const out = {};
-  for (const k of INSTRUMENTS) {
-    const c = MIX[k];
-    out[k] = c[0] * w[0] + c[1] * w[1] + c[2] * w[2] + c[3] * w[3];
-  }
-  return out;
-}
-
-export const CORNER_WEIGHTS = (x, y) => {
-  const w = weights(x, y);
-  return { break: w[0], drums: w[1], sindrums: w[2], todo: w[3] };
-};
-
 const smooth = (t) => t * t * (3 - 2 * t);
-// cantidad 0..1: crece de forma progresiva desde el umbral hasta la esquina
+// cantidad 0..1: crece de forma progresiva desde el umbral hasta la escena
 const amountOf = (k, p) => {
   const [thr, full] = RAMP[k];
   return smooth(clamp((p - thr) / (full - thr)));
 };
 const densityOf = (a) => clamp(0.15 + 0.95 * a);
 
-const FOLLOW = 0.12; // s: el sonido sigue al cursor casi al instante, sin saltos
-
 export class Arrangement {
-  constructor() {
-    this.x = this.tx = 0.85; // arranca cerca de SOLO DRUMS, con algo de bajo
-    this.y = this.ty = 0.25;
+  constructor(name = 'todo') {
+    this.home = name;    // la escena elegida (el último clic); al soltar un CORTE se vuelve aquí
+    this.target = name;  // a dónde va lo que suena (en LOOP: lo que entrará al soltar)
+    this.cur = { ...SCENES[name].mix }; // presencia que suena ahora
     this.travel = null;
     this.frozen = false; // LOOP: lo que suena no se mueve
     this.state = {};
@@ -88,44 +91,28 @@ export class Arrangement {
     this.compute();
   }
 
-  // el cursor se movió a mano: cancela cualquier viaje
-  set(x, y) {
-    this.tx = clamp(x); this.ty = clamp(y);
-    this.travel = null;
-  }
-
-  // viajar a una esquina en `bars` compases (0 = instantáneo), empezando en el paso `startStep`.
+  // viajar a una escena en `bars` compases (0 = instantáneo), empezando en el paso `startStep`.
   // `drop`: no se mueve durante el viaje; salta al destino de golpe al llegar
   goTo(name, bars, startStep, drop = false) {
-    const c = CORNERS[name];
-    this.tx = c.x; this.ty = c.y;
+    this.target = name;
     this.travel = {
       name, bars, startStep, done: 0, paused: false, drop,
-      from: { x: this.x, y: this.y }, to: { x: c.x, y: c.y },
-    };
-  }
-  // viaje a la posición del cursor (salida progresiva del LOOP)
-  travelToTarget(bars, startStep) {
-    this.travel = {
-      name: null, bars, startStep, done: 0, paused: false, drop: false,
-      from: { x: this.x, y: this.y }, to: { x: this.tx, y: this.ty },
+      from: { ...this.cur }, to: { ...SCENES[name].mix },
     };
   }
 
-  // salida instantánea del LOOP: salta al cursor
+  // LOOP: solo cambia lo que entrará al soltar
+  setTarget(name) {
+    this.target = name;
+    this.travel = null;
+  }
+  // salida progresiva del LOOP
+  travelToTarget(bars, startStep) { this.goTo(this.target, bars, startStep); }
+  // salida instantánea del LOOP
   snap() {
     this.travel = null;
-    this.x = this.tx; this.y = this.ty;
+    this.cur = { ...SCENES[this.target].mix };
     this.compute();
-  }
-
-  // dónde se dibuja la bolita: en un DROP el sonido aguanta el origen, pero la
-  // bolita viaja igual, para ver siempre cuánto falta
-  shown() {
-    const T = this.travel;
-    if (!T || !T.drop) return { x: this.x, y: this.y };
-    const s = smooth(T.done);
-    return { x: T.from.x + (T.to.x - T.from.x) * s, y: T.from.y + (T.to.y - T.from.y) * s };
   }
 
   // llegada de golpe al destino del viaje (DROP / instantáneo)
@@ -133,46 +120,37 @@ export class Arrangement {
     const T = this.travel;
     if (!T) return;
     this.travel = null;
-    this.x = T.to.x; this.y = T.to.y;
+    this.cur = { ...T.to };
     this.compute();
   }
 
-  // `dt` = tiempo real; `pos` = paso de la rejilla que suena ahora (null en
-  // pausa: los viajes solo avanzan sonando)
-  update(dt, pos) {
-    if (!this.frozen) {
-      const T = this.travel;
-      if (T) {
-        if (pos !== null && !T.paused && pos >= T.startStep) {
-          if (T.bars === 0) return this.land();
-          T.done = clamp((pos - T.startStep) / (T.bars * 16));
-        }
-        if (!T.drop) {
-          const s = smooth(T.done);
-          this.x = T.from.x + (T.to.x - T.from.x) * s;
-          this.y = T.from.y + (T.to.y - T.from.y) * s;
-          if (T.done >= 1) this.travel = null;
-        } else if (T.done >= 1) return this.land(); // por si el paso de llegada no lo hizo
-      } else {
-        const k = 1 - Math.exp(-dt / FOLLOW);
-        this.x += (this.tx - this.x) * k;
-        this.y += (this.ty - this.y) * k;
+  // `pos` = paso de la rejilla que suena ahora (null en pausa: los viajes solo avanzan sonando)
+  update(pos) {
+    const T = this.travel;
+    if (!this.frozen && T) {
+      if (pos !== null && !T.paused && pos >= T.startStep) {
+        if (T.bars === 0) return this.land();
+        T.done = clamp((pos - T.startStep) / (T.bars * 16));
       }
+      if (!T.drop) {
+        const s = smooth(T.done);
+        for (const k of INSTRUMENTS) this.cur[k] = T.from[k] + (T.to[k] - T.from[k]) * s;
+        if (T.done >= 1) this.travel = null;
+      } else if (T.done >= 1) return this.land(); // por si el paso de llegada no lo hizo
     }
     this.compute();
   }
 
   compute() {
-    const p = presence(this.x, this.y);
-    const pt = presence(this.tx, this.ty);
+    const pt = SCENES[this.target].mix;
     for (const k of INSTRUMENTS) {
       const s = this.state[k];
-      const a = amountOf(k, p[k]);
-      s.presence = p[k];
+      const a = amountOf(k, this.cur[k]);
+      s.presence = this.cur[k];
       s.progress = a;
       s.density = densityOf(a);
       s.target = a > 0.001;
-      s.pending = amountOf(k, pt[k]) > 0.001; // lo que sonará al llegar al cursor
+      s.pending = amountOf(k, pt[k]) > 0.001; // lo que sonará al llegar
     }
   }
 

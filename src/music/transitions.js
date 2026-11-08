@@ -1,9 +1,10 @@
 // TRANSICIONES — lo que pasa entre dos momentos de la ESTRUCTURA.
 //
-// Al pulsar una esquina el universo ya sabe de dónde sale, a dónde va y
+// Al pulsar una escena el universo ya sabe de dónde sale, a dónde va y
 // cuántos compases dura el viaje: con eso compone la transición (riser, ruido,
 // redoble, impacto, platos, filtros). Todo sintetizado. Qué sonidos usa y
-// cuánto los usa sale de la semilla del universo: su PALETA.
+// cuánto los usa sale de la semilla del universo: su PALETA. Cada gesto (CLIC /
+// CORTE) puede llevar o no estos efectos (botón FX).
 //
 // Tipo de transición, según el kick y la música (bajo/acordes) de origen y destino:
 //   build  entra el kick                → tensión creciente y DROP: la estructura se
@@ -11,7 +12,7 @@
 //   lift   sigue el kick, entra música  → riser, redoble corto y plato (progresivo)
 //   fall   se va el kick                → downfilter, reverse, golpe y caída (progresivo)
 //   strip  sigue el kick, se va música  → reverse corto, redoble y plato (progresivo)
-//   drift  sin kick (BREAK ↔ SIN DRUMS) → solo un barrido suave
+//   drift  sin kick en los dos lados    → solo un barrido suave
 //
 // Cuantos más compases dura el viaje, más capas. El plan se escribe en
 // COMPASES DEL VIAJE: u = 0 al empezar, u = L al llegar. El viaje siempre
@@ -22,16 +23,15 @@ import { Rng } from '../core/rng.js';
 // frase en la que aterriza un viaje de `bars` compases (en compases)
 export const PHRASE = (bars) => (bars <= 2 ? 4 : 8);
 
-const music = (p) => Math.max(p.bass, p.chord);
-
-// `from` / `to` = presencia de cada instrumento (ver arrangement.presence)
+// `from` / `to` = presencia de cada instrumento (ver arrangement: SCENES)
 export function classify(from, to) {
   const k0 = from.kick, k1 = to.kick;
-  const m0 = music(from), m1 = music(to);
   if (k1 - k0 > 0.5) return 'build';
   if (k0 - k1 > 0.5) return 'fall';
-  if (k1 > 0.5) return m1 > m0 + 0.3 ? 'lift' : m0 > m1 + 0.3 ? 'strip' : 'none';
-  return Math.abs(m1 - m0) > 0.3 || Math.abs(to.pad - from.pad) > 0.3 ? 'drift' : 'none';
+  // música = bajo y acordes por separado: quitar solo el bajo también es quitar música
+  const dm = (to.bass - from.bass) + (to.chord - from.chord);
+  if (k1 > 0.5) return dm > 0.3 ? 'lift' : dm < -0.3 ? 'strip' : 'none';
+  return Math.abs(dm) > 0.3 || Math.abs(to.pad - from.pad) > 0.3 ? 'drift' : 'none';
 }
 
 // PALETA del universo: qué riser, qué redoble, qué golpe, cuánta tensión.

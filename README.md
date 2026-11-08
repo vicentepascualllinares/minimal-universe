@@ -53,8 +53,8 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 
 | Control | Qué hace |
 |---|---|
-| **ESTRUCTURA** (XY) | Los momentos de un tema (ver abajo). X = ritmo, Y = música. Al mover el cursor el sonido lo sigue de forma progresiva. Pulsar el nombre de una esquina = viajar ahí. |
-| **TRANSICIÓN** (vertical) | Cómo entra y sale cada instrumento. Arriba: con filtro (HP para kick/bass, LP para el resto, con resonancia). Abajo: con volumen. En medio: mezcla. Debajo, **A ESQUINA**: cuánto dura el viaje al pulsar una esquina (YA, 1, 2, 4, 8, 16, 32 compases). |
+| **ESTRUCTURA** (8 escenas) | Los momentos de un tema, uno por botón (ver abajo). **Clic** = cambiar a esa escena. **Mantener** = CORTE: suena mientras lo mantienes y al soltar vuelve. |
+| **TRANSICIÓN** (vertical) | Cómo entra y sale cada instrumento. Arriba: con filtro (HP para kick/bass, LP para el resto, con resonancia). Abajo: con volumen. En medio: mezcla. Debajo, **CLIC · CORTE**: qué gesto ajustas; para cada uno, cuánto dura el viaje (YA, 1, 2, 4, 8, 16, 32 compases) y **FX**: si el viaje lleva efectos de transición. Por defecto CLIC = 4 compases con FX, CORTE = YA sin FX. |
 | **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
 | **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
 | **COMPLEJIDAD** (4 faders) | KICK · PERCS · BASS · INSTR.: cuánta información dice cada grupo (ver abajo). Se aplica en el siguiente compás. Doble clic = 0,5. |
@@ -63,53 +63,64 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 
 ## Estructura: los momentos de un tema
 
+Ocho escenas en una rejilla 2×4, como los pads de un controlador (8 por universo; en DJ, 16):
+
 ```
-SIN DRUMS ┌───────────┐ TODO
-          │           │
-BREAK     └───────────┘ SOLO DRUMS
+sin kick │ BREAK       SIN DRUMS   SIN GRAVES   SIN KICK
+con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
 ```
 
-| Esquina | Qué suena |
+| Escena | Qué suena |
 |---|---|
-| **SOLO DRUMS** | kick, hats, clap, open hat y percusión: la entrada / salida para mezclar |
-| **TODO** | todo; el pad algo al fondo y filtrado |
-| **SIN DRUMS** | bajo, acordes y pad: el momento en que se quita el kick |
 | **BREAK** | el pad a tope, algo de percusión, unos acordes y un hat lejano. Sin kick ni bajo |
+| **SIN DRUMS** | bajo, acordes y pad |
+| **SIN GRAVES** | hats, percusión, clap, acordes y pad: el groove arriba, sin kick ni bajo |
+| **SIN KICK** | todo menos el kick: el bajo sigue rodando (kick-out) |
+| **SOLO DRUMS** | kick, hats, clap, open hat y percusión: la entrada / salida para mezclar |
+| **ESQUELETO** | kick, bajo y hat (algo de percusión): el núcleo del rominimal |
+| **SIN BAJO** | todo menos el bajo |
+| **TODO** | todo; el pad algo al fondo y filtrado |
 
-- Cada borde es una transición típica: **derecha** = la subida (entra la música sobre los
-  drums), **arriba** = se quitan los drums, **izquierda** = se va el bajo y queda la
-  atmósfera, **abajo** = entra el groove.
+- En cada botón, **K B T M** dice qué capas tiene: kick, bajo, tops (hats/perc/clap) y música
+  (acordes/pad).
+- En las dos columnas de la derecha, la escena de abajo es la de arriba con kick: **bajar** =
+  DROP, **subir** = kick-out.
+- La escena que suena se ilumina; en un viaje se iluminan las dos a medias. El borde marca
+  la escena elegida; el destino de un viaje parpadea.
 - **Progresivo**: al pasar el umbral de un instrumento no entra de golpe. Su cantidad
   (filtro o volumen, según TRANSICIÓN, y su densidad) crece poco a poco hasta llegar a la
-  esquina. Por el borde de abajo, por ejemplo, el kick va 0 → 6 % → 20 % → 40 % → 60 % → 80 % → 100 %.
-- **Viajar a una esquina**: pulsa su nombre. Tarda los compases elegidos en A ESQUINA y
+  escena. De SOLO DRUMS a TODO en 8 compases, por ejemplo, el bajo y los acordes van subiendo.
+- **CLIC** (pulsar y soltar): cambia a esa escena con los compases y el FX de CLIC.
+- **CORTE** (mantener más de ⅓ de segundo): cambia a esa escena con los compases y el FX de
+  CORTE mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
+  no cambia. Se pueden mantener varias a la vez (manda la última; al soltarla, la anterior).
+- **Viajar a una escena**: tarda los compases elegidos y
   **aterriza en frase**: la llegada cae en el inicio de una frase (cada 4 compases para
   viajes de 1–2, cada 8 para 4 o más), así que puede esperar unos compases antes de
   empezar. No hay un loop por universo: es una rejilla de frases común, contada desde el
   primer compás. Junto a ESTRUCTURA, un trazo por compás de la frase (el que suena,
   encendido) y, **antes de pulsar**, "ENTRA YA" o "ENTRA EN N": cuándo empezaría un viaje
-  con los compases elegidos en A ESQUINA. Después, "→ ESQUINA · ENTRA EN N" mientras espera y
-  "→ ESQUINA · N COMP." durante el viaje. La bolita del pad viaja siempre, también en un
-  build (aunque el sonido se aguante hasta el drop). YA = en la siguiente negra. Pulsa la **misma
-  esquina** otra vez para **pausar** y otra más para seguir (si aún no había empezado,
-  vuelve a esperar frase). Pulsar **otra esquina** cambia el destino desde donde estés.
-  **Mover el cursor cancela** el viaje.
-- Cada viaje lleva su **transición** (ver abajo).
-- Con **LOOP** activo, pulsar una esquina la deja pendiente; al soltar el loop se aplica
-  según SALIDA (instantánea o progresiva).
+  con los compases de CLIC. Después, "→ ESCENA · ENTRA EN N" mientras espera y
+  "→ ESCENA · N COMP." durante el viaje. YA = en la siguiente negra. Pulsa la **misma
+  escena** otra vez para **pausar** y otra más para seguir (si aún no había empezado,
+  vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
+- Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
+  es solo el cambio progresivo, y un kick que entra lo hace poco a poco, sin drop.
+- Con **LOOP** activo, pulsar una escena la deja pendiente (borde discontinuo); al soltar el
+  loop se aplica según SALIDA (instantánea o progresiva).
 
 ## Transiciones
 
-Al viajar a una esquina, el universo compone solo la transición: sabe de dónde sale, a
+Al viajar a una escena (con FX), el universo compone solo la transición: sabe de dónde sale, a
 dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay).
 
 | Viaje | Qué pasa |
 |---|---|
-| **Entra el kick** (BREAK o SIN DRUMS → TODO o SOLO DRUMS) | **build**: riser (ruido y/o tono que sube), redoble que acelera (negras → corcheas → semicorcheas → fusas), el universo se va adelgazando con un high-pass y a veces un silencio de ½–2 tiempos antes del final. La estructura **se aguanta** y todo entra de golpe en el 1 (**drop**) con impacto y plato. |
-| **Entra la música sobre el kick** (SOLO DRUMS → TODO) | progresivo, con riser suave, redoble corto y plato al llegar |
-| **Se va el kick** (TODO o SOLO DRUMS → BREAK o SIN DRUMS) | progresivo, con downfilter (el universo entero se cierra los últimos compases), plato al revés que muere en el 1, golpe grave y caída de ruido después |
-| **Se va la música** (TODO → SOLO DRUMS) | progresivo, con un reverse corto, redoble del último tiempo y plato |
-| **Sin kick** (BREAK ↔ SIN DRUMS) | solo un barrido suave |
+| **Entra el kick** (de la fila de arriba a la de abajo) | **build**: riser (ruido y/o tono que sube), redoble que acelera (negras → corcheas → semicorcheas → fusas), el universo se va adelgazando con un high-pass y a veces un silencio de ½–2 tiempos antes del final. La estructura **se aguanta** y todo entra de golpe en el 1 (**drop**) con impacto y plato. |
+| **Entra la música sobre el kick** (SOLO DRUMS → TODO, ESQUELETO → TODO, SIN BAJO → TODO…) | progresivo, con riser suave, redoble corto y plato al llegar |
+| **Se va el kick** (de la fila de abajo a la de arriba) | progresivo, con downfilter (el universo entero se cierra los últimos compases), plato al revés que muere en el 1, golpe grave y caída de ruido después |
+| **Se va la música** (TODO → SOLO DRUMS, TODO → SIN BAJO…) | progresivo, con un reverse corto, redoble del último tiempo y plato |
+| **Sin kick** (entre escenas de la fila de arriba) | solo un barrido suave |
 
 - **Cuantos más compases, más capas**: con YA solo hay golpe o plato al llegar; con 1–2,
   un redoble corto y un soplo de ruido; con 4, riser y tensión; con 8 o más, todo (el
@@ -119,7 +130,7 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
   sordo o los dos), cómo son los platos, cuánta tensión y si hay silencio antes del drop
   salen de la semilla del universo, igual que su color. Hay universos sobrios y universos
   intensos; NUEVO UNIVERSO cambia también la paleta.
-- Mover el cursor, pulsar otra esquina o activar el LOOP corta la transición en curso.
+- Pulsar otra escena o activar el LOOP corta la transición en curso.
   Las transiciones suenan por el canal del universo (en DJ, pasan por su EQ y su fader).
 
 ## Instrumentos
@@ -247,6 +258,6 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo, acordes dub y pad.
 - `src/music/emotion.js` — el color de cada universo → timbre, golpe, duraciones y swing; las escalas.
 - `src/music/generators.js` — motivos estables con mutación lenta, percusión polimétrica, bajo y armonía en grados de escala.
-- `src/music/arrangement.js` — presencia por instrumento, umbrales, transiciones.
+- `src/music/arrangement.js` — las 8 escenas (presencia por instrumento), umbrales, viajes.
 - `src/music/complexity.js` — la complejidad por grupos y el global: reglas por instrumento, presupuesto de protagonismo.
-- `src/ui/` — pads XY, sliders, knobs y la vista de universo (se instancia dos veces).
+- `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).

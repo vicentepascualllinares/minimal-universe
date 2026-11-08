@@ -4,7 +4,7 @@
 //   step(n, t)   — en cada paso programado: redobles, reverse, silencio, llegada.
 //                  Exacto a la muestra. La llegada es el DROP del build.
 //   update(now)  — a ritmo de control: lo sostenido (riser, filtros de tensión).
-// Si el viaje se cancela (mover el cursor, otra esquina, LOOP) todo se apaga.
+// Si el viaje se cancela (otra escena, LOOP) todo se apaga.
 
 import * as FX from './fx.js';
 import { planTransition } from '../music/transitions.js';
@@ -25,10 +25,11 @@ export class TransitionFx {
     this.live = []; // reverses en curso (se pueden cortar)
   }
 
+  // sin efectos (FX apagado o nada que contar) el plan va vacío: solo marca la llegada,
+  // para que un viaje instantáneo caiga exacto en su tiempo
   start(T, kind, pal, rng) {
     this.cancel(this.ctx.currentTime);
-    const P = planTransition(kind, T.bars, pal, rng);
-    if (!P) return;
+    const P = planTransition(kind, T.bars, pal, rng) || { kind: 'none', L: T.bars, layers: [], arrived: false };
     P.T = T;
     P.pal = pal;
     P.lvl = 0.6 + 0.4 * pal.amount;
@@ -42,7 +43,7 @@ export class TransitionFx {
     const P = this.plan;
     if (!P) return;
     const T = P.T;
-    if (this.deck.arr.travel !== T) return this.cancel(now); // cursor movido / otra esquina
+    if (this.deck.arr.travel !== T) return this.cancel(now); // otra escena
     if (T.paused || pos === null) return;
     const u = (pos - T.startStep) / 16;
     const E = this.engine;

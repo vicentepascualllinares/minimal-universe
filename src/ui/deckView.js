@@ -1,9 +1,8 @@
 // Vista de un UNIVERSO: estructura, transición, complejidad, loop, nuevo universo e instrumentos.
 // Se instancia dos veces (izquierda y derecha) sobre el mismo Deck API.
 
-import { XYPad } from './xypad.js';
 import { VSlider, HSlider } from './slider.js';
-import { INSTRUMENTS, CORNER_WEIGHTS, CORNERS } from '../music/arrangement.js';
+import { INSTRUMENTS, SCENES, GRID, LAYERS, likeness } from '../music/arrangement.js';
 import { GROUPS, GROUP_LABEL, shapeComplexity } from '../music/complexity.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
@@ -11,6 +10,15 @@ const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLA
 const opts = (cls, values, on) =>
   `<div class="opts ${cls}">${values.map((v) => `<button data-v="${v[0]}"${v[0] === on ? ' class="on"' : ''}>${v[1]}</button>`).join('')}</div>`;
 const nums = (arr) => arr.map((n) => [String(n), String(n)]);
+
+// botón de una escena: su nombre y sus capas (K kick · B bajo · T hats/perc · M acordes/pad)
+const sceneBtn = (name) => {
+  const L = LAYERS(name);
+  const lay = ['K', 'B', 'T', 'M'].map((l) => `<i${L[l] ? ' class="on"' : ''}>${l}</i>`).join('');
+  const text = SCENES[name].label.replace('ESQUELETO', 'ESQUE&shy;LETO'); // si no cabe, corta con guion
+  return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span><span class="sc-lay">${lay}</span></button>`;
+};
+const HOLD_MS = 300; // más que esto apoyado = CORTE
 
 function template(label) {
   return `
@@ -27,18 +35,16 @@ function template(label) {
   <div class="row">
     <section class="pad p-struct">
       <div class="pad-title">ESTRUCTURA<span class="ph-ticks" title="la frase: un trazo por compás. Los viajes aterrizan al empezar la frase"></span><span class="p-status"></span></div>
-      <div class="pad-box"><canvas></canvas>
-        <button class="corner go tl" data-c="sindrums" title="ir aquí (otra vez: pausa)">SIN DRUMS</button><button class="corner go tr" data-c="todo" title="ir aquí (otra vez: pausa)">TODO</button>
-        <button class="corner go bl" data-c="break" title="ir aquí (otra vez: pausa)">BREAK</button><button class="corner go br" data-c="drums" title="ir aquí (otra vez: pausa)">SOLO DRUMS</button>
-      </div>
+      <div class="pad-box scenes">${GRID.flat().map(sceneBtn).join('')}</div>
     </section>
     <section class="col trans">
       <div class="col-title">TRANSICIÓN</div>
       <div class="t-lab top">FILTRO</div>
       <div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div>
       <div class="t-lab bot">VOLUMEN</div>
+      ${opts('t-who', [['click', 'CLIC'], ['cut', 'CORTE']], 'click')}
       ${opts('t-len', [['0', 'YA'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
-      <div class="unit">A ESQUINA</div>
+      <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
     </section>
   </div>
   <div class="row">
@@ -84,10 +90,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   root.innerHTML = template(label);
   const q = (s) => root.querySelector(s);
 
-  const structPad = new XYPad(q('.p-struct'), {
-    value: { x: deck.arr.x, y: deck.arr.y },
-    onChange: (x, y) => deck.arr.set(x, y),
-  });
   new VSlider(q('.trans'), { value: deck.transitionMode, onChange: (v) => (deck.transitionMode = v) });
   new HSlider(q('.cx'), { value: deck.cx.global, reset: 0.8, onChange: (v) => (deck.cx.global = v) });
   // COMPLEJIDAD por grupos: un fader cada uno; la barra fina = lo que de verdad suena (× global)
@@ -110,7 +112,22 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       onPick(b.dataset.v);
     });
   };
-  options('.t-len', (v) => (deck.transitionBars = Number(v)));
+  // TRANSICIÓN: compases y FX de cada gesto (se ve el de la pestaña CLIC / CORTE)
+  let editing = 'click';
+  const fxBtn = q('.t-fx');
+  const showGesture = () => {
+    const g = deck.gesture[editing];
+    q('.t-len').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === g.bars));
+    fxBtn.classList.toggle('on', g.fx);
+  };
+  options('.t-who', (v) => { editing = v; showGesture(); });
+  options('.t-len', (v) => (deck.gesture[editing].bars = Number(v)));
+  fxBtn.addEventListener('pointerdown', () => {
+    const g = deck.gesture[editing];
+    g.fx = !g.fx;
+    showGesture();
+  });
+  showGesture();
   options('.o-len', (v) => (deck.loopLen = Number(v)));
   options('.o-bars', (v) => (deck.releaseBars = Number(v)));
   options('.o-mode', (v) => {
@@ -132,13 +149,33 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     q('.strip').appendChild(el);
     cells[k] = { el, dot: el.querySelector('.dot'), bar: el.querySelector('i'), mark: el.querySelector('b'), flash: 0 };
   }
-  const structCorners = [...root.querySelectorAll('.p-struct .corner')];
-  // pulsar una esquina: viajar ahí en los compases elegidos (otra vez = pausa / sigue)
-  for (const el of structCorners) {
+
+  // ESCENAS: apoyar = CLIC (ir ahí); seguir apoyado = CORTE (vuelve al soltar).
+  // Cada botón sigue a su propio dedo: se pueden mantener varios a la vez.
+  const sceneEls = [...root.querySelectorAll('.scene')];
+  for (const el of sceneEls) {
+    const name = el.dataset.s;
+    let pid = null, timer = null, holding = false;
     el.addEventListener('pointerdown', (ev) => {
-      ev.stopPropagation();
-      deck.goCorner(el.dataset.c);
+      if (pid !== null) return;
+      pid = ev.pointerId;
+      try { el.setPointerCapture(pid); } catch {} // algunos navegadores fallan con punteros sintéticos
+      el.classList.add('press');
+      if (deck.press(name) === 'go') {
+        timer = setTimeout(() => { timer = null; holding = true; deck.hold(name); }, HOLD_MS);
+      }
     });
+    const up = (ev) => {
+      if (ev.pointerId !== pid) return;
+      pid = null;
+      el.classList.remove('press');
+      clearTimeout(timer);
+      timer = null;
+      if (holding) { holding = false; deck.unhold(name); }
+    };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('contextmenu', (ev) => ev.preventDefault()); // mantener pulsado en el móvil
   }
   const pStatus = q('.p-status');
   const phTicks = q('.ph-ticks');
@@ -165,27 +202,31 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
 
       const AR = deck.arr;
       const T = AR.travel;
-      const cw = CORNER_WEIGHTS(AR.x, AR.y);
-      structCorners.forEach((el) => {
-        el.style.opacity = 0.3 + 0.7 * cw[el.dataset.c];
-        const dest = !!T && T.name === el.dataset.c;
+      const L = deck.loop;
+      for (const el of sceneEls) {
+        const name = el.dataset.s;
+        // cuánto suena ahora esta escena (en un viaje, se encienden las dos a medias)
+        const m = Math.pow(Math.max(0, 1 - 8 * (1 - likeness(AR.cur, name))), 1.5).toFixed(2);
+        if (el.style.getPropertyValue('--m') !== m) el.style.setProperty('--m', m);
+        const dest = !!T && T.name === name;
         el.classList.toggle('dest', dest && !T.paused);
         el.classList.toggle('paused', dest && T.paused);
-      });
-      structPad.value = { x: AR.tx, y: AR.ty };
-      structPad.follow = AR.shown();
+        el.classList.toggle('home', AR.home === name);
+        el.classList.toggle('held', deck.held.includes(name));
+        el.classList.toggle('pend', !!L && AR.target === name); // LOOP: entrará al soltar
+      }
       let st = '';
       const ti = deck.travelInfo();
-      const pv = deck.previewStart(deck.transitionBars);
+      const pv = deck.previewStart(deck.gesture.click.bars);
       if (ti) {
         // el viaje espera al compás que le toca para aterrizar en frase
         const when = ti.paused ? 'PAUSA'
           : ti.wait > 0.02 ? `ENTRA EN ${Math.ceil(ti.wait)}`
           : ti.left < 0.95 ? 'ÚLTIMO COMPÁS' : `${Math.ceil(ti.left)} COMP.`;
-        st = `→ ${CORNERS[ti.name].label} · ${when}`;
+        st = `→ ${SCENES[ti.name].label} · ${when}`;
       } else if (engine.ready) {
-        // antes de pulsar: cuándo empezaría un viaje con los compases elegidos
-        st = deck.transitionBars === 0 || pv.wait < 0.02 ? 'ENTRA YA' : `ENTRA EN ${Math.ceil(pv.wait)}`;
+        // antes de pulsar: cuándo empezaría un viaje de CLIC con los compases elegidos
+        st = deck.gesture.click.bars === 0 || pv.wait < 0.02 ? 'ENTRA YA' : `ENTRA EN ${Math.ceil(pv.wait)}`;
       }
       if (pStatus.textContent !== st) pStatus.textContent = st;
       pStatus.classList.toggle('preview', !ti);
@@ -195,7 +236,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       root.querySelector('.p-struct').classList.toggle('traveling', !!T && !T.paused);
 
       // loop
-      const L = deck.loop;
       const heardBar = Math.floor(Math.max(0, engine.step - 1) / 16);
       const armed = !!L && heardBar < L.startBar;
       loopBtn.classList.toggle('on', !!L);
@@ -206,10 +246,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       if (loopTicks.childElementCount !== n) loopTicks.innerHTML = '<i></i>'.repeat(n);
       const cur = L && !armed ? (heardBar - L.startBar) % L.n : -1;
       [...loopTicks.children].forEach((t, i) => t.classList.toggle('now', i === cur));
-      structPad.ghost = L ? { x: L.frozen.x, y: L.frozen.y } : null;
       seedBtn.classList.toggle('pending', deck.pendingSeed !== null);
-
-      structPad.draw();
 
       // instrumentos: destellos sincronizados con el audio
       if (engine.ready) {

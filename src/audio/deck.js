@@ -6,7 +6,7 @@ import * as V from './voices.js';
 import { Channel, driveCurve, glide } from './dsp.js';
 import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
-import { Arrangement, INSTRUMENTS, CORNERS, presence } from '../music/arrangement.js';
+import { Arrangement, INSTRUMENTS, SCENES } from '../music/arrangement.js';
 import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
 import { shapeComplexity, shareDensity, randomComplexity, GROUPS } from '../music/complexity.js';
@@ -18,19 +18,24 @@ const glideAll = glide;
 const newSeed = () => (Math.random() * 1e9) | 0;
 
 export class Deck {
-  constructor(engine, id, { x, y, v, a }) {
+  constructor(engine, id, { scene, v, a }) {
     this.engine = engine;
     this.id = id;
     this.transitionMode = 1;  // 1 filtro .. 0 volumen
-    this.transitionBars = 4;  // compases del viaje al pulsar una esquina (0 = instantáneo)
+    // los dos gestos de ESTRUCTURA: compases del viaje (0 = instantáneo) y si lleva efectos.
+    // CLIC = cambiar de escena; CORTE = mantener pulsado: dura lo que dura el dedo
+    this.gesture = {
+      click: { bars: 4, fx: true },
+      cut: { bars: 0, fx: false },
+    };
+    this.held = [];        // escenas mantenidas ahora mismo (manda la última)
+    this.pressHome = null; // escena elegida antes de la última pulsación
     // COMPLEJIDAD por grupos (0 simple .. 1 complejo) y un GLOBAL que los escala.
     // Se aplica compás a compás. NUEVO UNIVERSO los cambia (luego se tocan a mano).
     this.cx = { kick: 0.3, perc: 0.6, bass: 0.5, inst: 0.5, global: 0.8 };
     this.cxVersion = 0; // la vista sabe cuándo los cambió el universo y no el usuario
     this.emotion = new EmotionState(v, a);
-    this.arr = new Arrangement();
-    this.arr.set(x, y);
-    this.arr.snap();
+    this.arr = new Arrangement(scene);
     this.events = [];
     this.seed = newSeed();
     this.gen = makeGenerators(this.seed);
@@ -136,20 +141,61 @@ export class Deck {
     return Math.ceil((earliest + bars * 16) / P) * P - bars * 16;
   }
 
-  // pulsar el nombre de una esquina: viajar ahí; pulsar la misma a mitad = pausa / sigue
-  goCorner(name) {
+  // ── ESTRUCTURA: CLIC y CORTE
+  // Al apoyar el dedo en una escena es un CLIC: se cambia a ella (instantáneo o viaje).
+  // Si el dedo sigue apoyado, la vista llama a hold() y pasa a ser un CORTE (al soltar,
+  // unhold()): suena
+  // mientras se mantiene y al soltar vuelve a la escena elegida. Cada gesto tiene sus
+  // compases y su FX. Pulsar el destino de un viaje a mitad = pausa / sigue.
+  // Devuelve 'pause' si la pulsación solo pausó o reanudó (entonces no hay corte).
+  press(name) {
     const A = this.arr;
-    const T = A.travel;
-    if (T && T.name === name && T.bars > 0) return this.toggleTravelPause();
-    const bars = this.transitionBars;
-    const c = CORNERS[name];
-    const kind = classify(presence(A.x, A.y), presence(c.x, c.y));
-    A.goTo(name, bars, this.startStepFor(bars), kind === 'build');
-    if (bars === 0 && !this.engine.playing) { // parado e instantáneo: salta sin transición
-      A.land();
-      return;
+    if (this.loop) { // LOOP: solo se deja pendiente
+      A.setTarget(name);
+      A.home = name;
+      return 'loop';
     }
-    this.fx?.start(A.travel, kind, this.fxPal, this.fxRng);
+    const T = A.travel;
+    if (T && T.name === name && T.bars > 0 && !this.held.length) {
+      this.toggleTravelPause();
+      return 'pause';
+    }
+    this.pressHome = A.home;
+    A.home = name;
+    this.goScene(name, this.gesture.click);
+    return 'go';
+  }
+
+  // el dedo sigue apoyado: era un CORTE. La escena elegida no cambia y, si el CORTE
+  // tiene otros compases u otro FX que el CLIC, el viaje se rehace con los suyos
+  hold(name) {
+    if (this.loop) return;
+    if (this.arr.home === name && this.pressHome !== null) this.arr.home = this.pressHome;
+    this.held.push(name);
+    const c = this.gesture.click, k = this.gesture.cut;
+    if (c.bars !== k.bars || c.fx !== k.fx) this.goScene(name, k, true);
+  }
+
+  // soltar un CORTE: vuelve a la escena elegida (o al último corte que siga mantenido)
+  unhold(name) {
+    const i = this.held.lastIndexOf(name);
+    if (i < 0) return;
+    const top = i === this.held.length - 1;
+    this.held.splice(i, 1);
+    if (!top) return;
+    const back = this.held.length ? this.held[this.held.length - 1] : this.arr.home;
+    this.goScene(back, this.gesture.cut);
+  }
+
+  // ir a una escena con un gesto { bars, fx }. `force`: rehacer aunque ya vaya ahí
+  goScene(name, g, force = false) {
+    const A = this.arr;
+    if (this.loop) return A.setTarget(name);
+    if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
+    const kind = classify(A.cur, SCENES[name].mix);
+    A.goTo(name, g.bars, this.startStepFor(g.bars), g.fx && kind === 'build');
+    if (g.bars === 0 && !this.engine.playing) return A.land(); // parado e instantáneo: salta sin transición
+    this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng);
   }
 
   toggleTravelPause() {
@@ -211,7 +257,7 @@ export class Deck {
       bars: this.history.slice(-n).map((h) => h.bars),
       startBar: this.lastPrepared + 1,
       scale: this.engine.scale,
-      frozen: { x: this.arr.x, y: this.arr.y, v: this.emotion.v, a: this.emotion.a },
+      frozen: { cur: { ...this.arr.cur }, v: this.emotion.v, a: this.emotion.a },
       releasing: false,
     };
     this.arr.frozen = true;
@@ -238,11 +284,11 @@ export class Deck {
   update(now, dt) {
     const pos = this.pos(now);
     if (this.loop) {
-      this.arr.update(dt, pos); // congelado: solo se previsualiza lo pendiente
+      this.arr.update(pos); // congelado: solo se previsualiza lo pendiente
     } else {
       this.emotion.update(dt);
       this.e = mapEmotion(this.emotion.v, this.emotion.a, this.drift(now));
-      this.arr.update(dt, pos);
+      this.arr.update(pos);
       this.fx.update(now, pos);
       for (const k of INSTRUMENTS) {
         this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, now);

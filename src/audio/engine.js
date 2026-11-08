@@ -25,8 +25,8 @@ export class Engine {
     this.lookahead = PROFILE.lookahead; // s programados por adelantado (adaptativo en móvil)
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
-      new Deck(this, 'A', { x: 0.7, y: 0.3, v: -0.3, a: -0.25 }), // casi SOLO DRUMS, con un poco de bajo
-      new Deck(this, 'B', { x: 0.7, y: 0.7, v: 0.2, a: 0.15 }),
+      new Deck(this, 'A', { scene: 'esqueleto', v: -0.3, a: -0.25 }), // kick, bajo y hat
+      new Deck(this, 'B', { scene: 'todo', v: 0.2, a: 0.15 }),
     ];
     this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
     this.eqType = 'iso'; // EQ de la mesa DJ: 'iso' (silencia, −∞) | 'eq' (atenúa, −26 dB)

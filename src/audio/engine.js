@@ -29,6 +29,7 @@ export class Engine {
       new Deck(this, 'B', { x: 0.7, y: 0.7, v: 0.2, a: 0.15 }),
     ];
     this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
+    this.eqType = 'iso'; // EQ de la mesa DJ: 'iso' (silencia, −∞) | 'eq' (atenúa, −26 dB)
     // MIXER global: ganancia por instrumento, igual para todos los universos (1 = 0 dB = el perfil por defecto)
     this.inst = Object.fromEntries(INSTRUMENTS.map((k) => [k, 1]));
     // estado de la mesa (lo que muestran los controles)
@@ -76,7 +77,7 @@ export class Engine {
     monoLow.connect(glue).connect(limiter).connect(this.analyser).connect(ctx.destination);
 
     this.strips = this.active.map((d, i) => {
-      const s = new Strip(ctx, this.sum);
+      const s = new Strip(ctx, this.sum, this.eqType);
       for (const [k, v] of Object.entries(this.mix[i])) s.set(k, v);
       d.initAudio(ctx, s.input);
       return s;
@@ -120,6 +121,12 @@ export class Engine {
     this.inst[k] = gain;
     if (!this.ready) return;
     for (const d of this.active) glide(d.ch[k].user.gain, gain, this.ctx.currentTime, 0.02);
+  }
+
+  // OPCIONES → DJ: tipo de EQ de la mesa (como en rekordbox)
+  setEqType(t) {
+    this.eqType = t;
+    if (this.ready) this.strips.forEach((s) => s.setEqType(t));
   }
 
   setMix(i, key, v) {

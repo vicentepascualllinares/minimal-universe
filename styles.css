@@ -84,6 +84,22 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 #state.live { color: var(--fg); }
 #mixbtn { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; }
 #mixbtn.on { color: var(--fg); }
+#optbtn { color: var(--dim); padding: 2px 0; letter-spacing: 0.12em; }
+#optbtn.on { color: var(--fg); }
+
+/* ───────── OPCIONES */
+.op-sec { width: min(560px, 100%); display: flex; flex-direction: column; gap: 14px; padding: 0 16px; }
+.op-sec-title { color: var(--fg); letter-spacing: 0.4em; font-size: 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.op-row { display: flex; flex-direction: column; gap: 10px; }
+.op-lab { color: var(--dim); font-size: 9px; letter-spacing: 0.16em; }
+.op-choices { display: flex; gap: 10px; }
+.op-choice { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); text-align: left; }
+.op-choice b { color: var(--dim); font-weight: normal; letter-spacing: 0.2em; font-size: 11px; }
+.op-choice small { color: var(--faint); font-size: 9px; letter-spacing: 0.04em; line-height: 1.5; }
+.op-choice.on { border-color: var(--fg); }
+.op-choice.on b { color: var(--fg); }
+.op-choice.on small { color: var(--dim); }
+.op-note { color: var(--faint); font-size: 9px; letter-spacing: 0.06em; }
 
 /* ───────── MIXER global (encima del escenario) */
 .instmix {
@@ -391,6 +407,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   .instmix { top: 0; padding-top: 70px; }
   .im-row { gap: 4px; }
   .im-ch { width: 40px; }
+  .op-choices { flex-direction: column; }
   .im-name { letter-spacing: 0.04em; }
   .inst .name { letter-spacing: 0.06em; }
 

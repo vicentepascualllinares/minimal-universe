@@ -139,11 +139,21 @@ la tónica y el swing no pasa del 58 %. El color del universo en pantalla lo ref
 
 | Control | Qué hace |
 |---|---|
-| HI / MID / LOW | EQ por canal. Centro = 0 dB, derecha hasta +6 dB, izquierda hasta −40 dB (casi corte total). |
+| HI / MID / LOW | EQ de 3 bandas por canal (cortes en 250 Hz y 3,5 kHz). Centro = 0 dB (plano), derecha hasta +6 dB. A la izquierda, según OPCIONES → DJ: **ISOLATOR** (por defecto) silencia la banda del todo (−∞); **EQ** baja hasta −26 dB. |
 | FILTRO | Centro abierto. Izquierda = low pass, derecha = high pass, con algo de resonancia. |
 | Faders | Volumen de cada universo, con medidor al lado. A empieza arriba y B abajo. |
 
 Knobs: arrastrar en vertical (Shift = fino), rueda, doble clic = centro.
+
+## OPCIONES
+
+Botón **OPCIONES** en la cabecera (Esc cierra). La música sigue sonando. De momento no se
+guardan (vendrá con las cuentas).
+
+- **DJ → EQ de la mesa**: las mismas dos opciones que «EQ Type» en rekordbox (y los
+  mixers Pioneer DJM):
+  - **ISOLATOR** — a la izquierda del todo la banda desaparece (−∞ … +6 dB).
+  - **EQ** — atenúa sin llegar a silenciar (−26 … +6 dB).
 
 ## MIXER (volumen por instrumento)
 
@@ -200,7 +210,7 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 
 - `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (glue + limitador).
 - `src/audio/deck.js` — un universo: 8 canales, loop, secuenciador. Sin reverb ni delay: todo seco.
-- `src/audio/strip.js` — canal de mezcla: EQ 3 bandas, filtro DJ, fader, medidor.
+- `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ), filtro DJ, fader, medidor.
 - `src/audio/dsp.js` — canal de instrumento (drive → HP → LP → fade → duck), saturación.
 - `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo, acordes dub y pad.
 - `src/music/emotion.js` — el color de cada universo → timbre, golpe, duraciones y swing; las escalas.

@@ -3,6 +3,7 @@ import { VSlider } from './ui/slider.js';
 import { Knob } from './ui/knob.js';
 import { deckView } from './ui/deckView.js';
 import { instMixer } from './ui/instMixer.js';
+import { optionsPanel } from './ui/options.js';
 import { PROFILE } from './core/profile.js';
 import { SCALES } from './music/emotion.js';
 
@@ -52,19 +53,28 @@ $('#state').addEventListener('click', toggle);
 $('#mode').addEventListener('click', () => engine.cycleScale());
 
 // ───────── MIXER global (volumen por instrumento)
+// ───────── paneles encima del escenario: MIXER y OPCIONES (solo uno a la vez)
 const mixPanel = $('#instmix');
-const setMixer = (open) => {
-  mixPanel.hidden = !open;
-  $('#mixbtn').classList.toggle('on', open);
+const optPanel = $('#options');
+const setPanel = (panel, open) => {
+  for (const [p, btn] of [[mixPanel, '#mixbtn'], [optPanel, '#optbtn']]) {
+    const on = p === panel && open;
+    p.hidden = !on;
+    $(btn).classList.toggle('on', on);
+  }
 };
+const setMixer = (open) => setPanel(mixPanel, open);
 const toggleMixer = () => setMixer(mixPanel.hidden);
-instMixer(mixPanel, engine, () => setMixer(false));
+const closePanels = () => setPanel(null, false);
+instMixer(mixPanel, engine, closePanels);
+optionsPanel(optPanel, engine, closePanels);
 $('#mixbtn').addEventListener('click', toggleMixer);
+$('#optbtn').addEventListener('click', () => setPanel(optPanel, optPanel.hidden));
 
 const [A, B] = engine.decks;
 const KEYS = {
-  solo: { Space: toggle, KeyM: toggleMixer, Escape: () => setMixer(false), KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
-  dj: { Space: toggle, KeyM: toggleMixer, Escape: () => setMixer(false), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
+  solo: { Space: toggle, KeyM: toggleMixer, Escape: closePanels, KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
+  dj: { Space: toggle, KeyM: toggleMixer, Escape: closePanels, KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
 };
 window.addEventListener('keydown', (ev) => {
   const k = KEYS[engine.mode][ev.code];

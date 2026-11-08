@@ -10,10 +10,13 @@
 // Cada escena dice cuánto suena cada instrumento (presencia 0..1). Lo que suena
 // (`cur`) viaja de una escena a otra en N compases (o al instante); en el viaje
 // la presencia se interpola y cada instrumento entra o sale poco a poco: al pasar
-// su umbral su cantidad crece (filtro o volumen, según TRANSICIÓN, y densidad).
+// su umbral su cantidad crece (con filtro o volumen, a su manera, y densidad).
 // El viaje se mide en pasos de la rejilla (16 por compás) y aterriza siempre en
-// el inicio de una frase. Un viaje `drop` (entra el kick) aguanta el origen y
-// salta al destino de golpe en el 1.
+// el inicio de una frase. Tres FORMAS de viaje (las elige TRANSICIÓN):
+//   SUAVE       todos a la vez, a lo largo de todo el viaje
+//   ESCALONADA  uno tras otro, cada uno con su barrido corto y llegando en su compás
+//               (ver stagger): primero lo que sale, luego lo que entra; de adorno a cimiento
+//   DE GOLPE    (`drop`) aguanta el origen y salta al destino de golpe en el 1
 
 import { clamp } from '../core/rng.js';
 
@@ -77,6 +80,32 @@ const amountOf = (k, p) => {
 };
 const densityOf = (a) => clamp(0.15 + 0.95 * a);
 
+// ESCALONADA: orden en que cambian, de adorno a cimiento (el kick, el último)
+const ORDER = { pad: 0, ohat: 1, perc: 2, chord: 3, hat: 4, clap: 5, bass: 6, kick: 7 };
+
+// Plan de un viaje ESCALONADO de `bars` compases: para cada instrumento que cambia,
+// [empieza, llega] en fracción del viaje. Los que cambian se reparten en tramos (uno por
+// compás si caben; en viajes de 1–2 compases, medios compases) y cada uno barre al final de
+// su tramo: llega justo en su límite. `nudge` = empujón al orden (sale de la paleta).
+export function stagger(from, to, bars, nudge = {}) {
+  const ch = INSTRUMENTS.filter((k) => Math.abs(to[k] - from[k]) > 0.05)
+    .map((k) => ({ k, w: (to[k] < from[k] ? 0 : 10) + ORDER[k] + (nudge[k] || 0) }))
+    .sort((a, b) => a.w - b.w);
+  const n = ch.length;
+  const plan = {};
+  if (!n || !bars) return plan;
+  const unit = bars >= 4 ? 1 : 0.5;
+  const S = Math.min(n, bars / unit);
+  const edge = (j) => Math.round((j * bars) / S / unit) * unit; // límites de tramo, en compases
+  ch.forEach(({ k }, i) => {
+    const j = Math.floor((i * S) / n);
+    const a = edge(j), b = edge(j + 1);
+    const sweep = Math.min(b - a, Math.max(1, (b - a) / 4));
+    plan[k] = [(b - sweep) / bars, b / bars];
+  });
+  return plan;
+}
+
 export class Arrangement {
   constructor(name = 'todo') {
     this.home = name;    // la escena elegida (el último clic); al soltar un CORTE se vuelve aquí
@@ -92,12 +121,14 @@ export class Arrangement {
   }
 
   // viajar a una escena en `bars` compases (0 = instantáneo), empezando en el paso `startStep`.
-  // `drop`: no se mueve durante el viaje; salta al destino de golpe al llegar
-  goTo(name, bars, startStep, drop = false) {
+  // `drop` (DE GOLPE): no se mueve durante el viaje; salta al destino de golpe al llegar.
+  // `stagger` (ESCALONADA): el empujón al orden de la paleta; null = SUAVE
+  goTo(name, bars, startStep, { drop = false, stagger: nudge = null } = {}) {
     this.target = name;
+    const from = { ...this.cur }, to = { ...SCENES[name].mix };
     this.travel = {
-      name, bars, startStep, done: 0, paused: false, drop,
-      from: { ...this.cur }, to: { ...SCENES[name].mix },
+      name, bars, startStep, done: 0, paused: false, drop, from, to,
+      steps: nudge && !drop ? stagger(from, to, bars, nudge) : null,
     };
   }
 
@@ -133,8 +164,11 @@ export class Arrangement {
         T.done = clamp((pos - T.startStep) / (T.bars * 16));
       }
       if (!T.drop) {
-        const s = smooth(T.done);
-        for (const k of INSTRUMENTS) this.cur[k] = T.from[k] + (T.to[k] - T.from[k]) * s;
+        for (const k of INSTRUMENTS) {
+          const w = T.steps?.[k]; // ESCALONADA: cada uno en su tramo
+          const x = w ? clamp((T.done - w[0]) / (w[1] - w[0])) : T.done;
+          this.cur[k] = T.from[k] + (T.to[k] - T.from[k]) * smooth(x);
+        }
         if (T.done >= 1) this.travel = null;
       } else if (T.done >= 1) return this.land(); // por si el paso de llegada no lo hizo
     }

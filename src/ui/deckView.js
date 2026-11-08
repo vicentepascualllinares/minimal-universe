@@ -38,11 +38,12 @@ function template(label) {
     </section>
     <section class="col trans">
       <div class="col-title">TRANSICIÓN</div>
-      <div class="t-lab top">FILTRO</div>
-      <div class="t-track"><div class="t-line"></div><div class="t-handle"></div></div>
-      <div class="t-lab bot">VOLUMEN</div>
+      ${opts('t-form stack', [['golpe', 'DE GOLPE'], ['prog', 'PROGRESIVA']], 'prog')}
+      ${opts('t-flow stack', [['escalonado', 'ESCALONADA'], ['suave', 'SUAVE']], 'suave')}
+      <div class="spacer"></div>
       ${opts('t-who', [['click', 'CLIC'], ['cut', 'CORTE']], 'click')}
       ${opts('t-len', [['0', 'YA'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
+      ${opts('t-q stack gone', [['1', 'CUANTIZADO'], ['0', 'SIN CUANTIZAR']], '1')}
       <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
     </section>
   </div>
@@ -89,7 +90,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   root.innerHTML = template(label);
   const q = (s) => root.querySelector(s);
 
-  new VSlider(q('.trans'), { value: deck.transitionMode, onChange: (v) => (deck.transitionMode = v) });
   new HSlider(q('.cx'), { value: deck.cx.global, reset: 0.8, onChange: (v) => (deck.cx.global = v) });
   // COMPLEJIDAD por grupos: un fader cada uno; la barra fina = lo que de verdad suena (× global)
   const cxF = {};
@@ -111,22 +111,37 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       onPick(b.dataset.v);
     });
   };
-  // TRANSICIÓN: compases y FX de cada gesto (se ve el de la pestaña CLIC / CORTE)
+  // TRANSICIÓN: lo de cada gesto (se ve el de la pestaña CLIC / CORTE). CLIC: compases del
+  // viaje y FX. CORTE: siempre instantáneo; cuantizado (a la corchea) o no, y FX
   let editing = 'click';
   const fxBtn = q('.t-fx');
   const showGesture = () => {
     const g = deck.gesture[editing];
+    q('.t-len').classList.toggle('gone', editing === 'cut');
+    q('.t-q').classList.toggle('gone', editing !== 'cut');
     q('.t-len').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === g.bars));
+    q('.t-q').querySelectorAll('button').forEach((b) => b.classList.toggle('on', (b.dataset.v === '1') === (g.quant > 1)));
     fxBtn.classList.toggle('on', g.fx);
   };
   options('.t-who', (v) => { editing = v; showGesture(); });
-  options('.t-len', (v) => (deck.gesture[editing].bars = Number(v)));
+  options('.t-len', (v) => (deck.gesture.click.bars = Number(v)));
+  options('.t-q', (v) => (deck.gesture.cut.quant = v === '1' ? 2 : 1));
   fxBtn.addEventListener('pointerdown', () => {
     const g = deck.gesture[editing];
     g.fx = !g.fx;
     showGesture();
   });
   showGesture();
+  // FORMA del viaje: DE GOLPE / PROGRESIVA; y, solo en progresiva, ESCALONADA / SUAVE
+  const showForm = () => {
+    for (const [sel, v] of [['.t-form', deck.form], ['.t-flow', deck.flow]]) {
+      q(sel).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    }
+    q('.t-flow').classList.toggle('off', deck.form === 'golpe');
+  };
+  options('.t-form', (v) => { deck.form = v; showForm(); });
+  options('.t-flow', (v) => (deck.flow = v));
+  showForm();
   options('.o-len', (v) => (deck.loopLen = Number(v)));
   options('.o-bars', (v) => (deck.releaseBars = Number(v)));
   options('.o-mode', (v) => {

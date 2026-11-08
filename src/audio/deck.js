@@ -24,12 +24,17 @@ export class Deck {
   constructor(engine, id, { scene, v, a }) {
     this.engine = engine;
     this.id = id;
-    this.transitionMode = 1;  // 1 filtro .. 0 volumen
-    // los dos gestos de ESTRUCTURA: compases del viaje (0 = instantáneo) y si lleva efectos.
-    // CLIC = cambiar de escena; CORTE = mantener pulsado: dura lo que dura el dedo
+    // FORMA de los viajes (para los dos gestos): 'golpe' = se aguanta y cambia todo en el 1;
+    // 'prog' = cambia a lo largo del viaje, 'suave' (todos a la vez) o 'escalonado' (uno a uno)
+    this.form = 'prog';
+    this.flow = 'suave';
+    // los dos gestos de ESTRUCTURA y si llevan efectos. CLIC = cambiar de escena: un viaje de
+    // `bars` compases (0 = YA, en la siguiente negra). CORTE = mantener pulsado: dura lo que
+    // dura el dedo y es siempre instantáneo. `quant` = rejilla de lo instantáneo, en pasos:
+    // 4 = negra, 2 = corchea (CORTE CUANTIZADO), 1 = sin cuantizar (el siguiente paso)
     this.gesture = {
-      click: { bars: 4, fx: true },
-      cut: { bars: 0, fx: false },
+      click: { bars: 4, fx: true, quant: 4 },
+      cut: { bars: 0, fx: false, quant: 2 },
     };
     this.held = [];        // escenas mantenidas ahora mismo (manda la última)
     this.pads = {};        // pads apoyados ahora mismo (ver down / up)
@@ -149,10 +154,11 @@ export class Deck {
   }
 
   // dónde empieza un viaje de `bars` compases para ATERRIZAR EN FRASE:
-  // la llegada cae en el primer inicio de frase posible. YA = el siguiente tiempo.
-  startStepFor(bars) {
+  // la llegada cae en el primer inicio de frase posible. Instantáneo (0 compases): en el
+  // siguiente paso múltiplo de `quant` (4 = negra, 2 = corchea, 1 = el siguiente paso).
+  startStepFor(bars, quant = 4) {
     const s = this.engine.step; // el siguiente paso aún sin programar
-    if (bars === 0) return s + ((4 - (s % 4)) % 4);
+    if (bars === 0) return s + ((quant - (s % quant)) % quant);
     const P = PHRASE(bars) * 16;
     const earliest = Math.ceil(s / 16) * 16;
     return Math.ceil((earliest + bars * 16) / P) * P - bars * 16;
@@ -208,7 +214,7 @@ export class Deck {
     if (this.arr.home === name && this.pressHome !== null) this.arr.home = this.pressHome;
     this.held.push(name);
     const c = this.gesture.click, k = this.gesture.cut;
-    if (c.bars !== k.bars || c.fx !== k.fx) this.goScene(name, k, true);
+    if (c.bars !== k.bars || c.fx !== k.fx || c.quant !== k.quant) this.goScene(name, k, true);
   }
 
   // soltar un CORTE: vuelve a la escena elegida (o al último corte que siga mantenido)
@@ -228,9 +234,11 @@ export class Deck {
     if (this.loop) return A.setTarget(name);
     if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
     const kind = classify(A.cur, SCENES[name].mix);
-    A.goTo(name, g.bars, this.startStepFor(g.bars), g.fx && kind === 'build');
+    const cut = this.form === 'golpe' && g.bars > 0;
+    const stagger = !cut && this.flow === 'escalonado' ? this.fxPal.order : null;
+    A.goTo(name, g.bars, this.startStepFor(g.bars, g.quant), { drop: cut, stagger });
     if (g.bars === 0 && !this.engine.playing) return A.land(); // parado e instantáneo: salta sin transición
-    this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng);
+    this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng, cut);
   }
 
   toggleTravelPause() {
@@ -250,7 +258,7 @@ export class Deck {
   // DROP: el destino entra de golpe en el tiempo exacto `t` (lo llama la transición)
   land(t) {
     this.arr.land();
-    for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, t, 0.006);
+    for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], t, 0.006);
   }
 
   // para la vista, antes de pulsar: compases que faltan para que EMPIECE un viaje de
@@ -308,7 +316,7 @@ export class Deck {
       this.emotion.snap();
       this.e = mapEmotion(this.emotion.v, this.emotion.a, this.drift(now));
       this.arr.snap();
-      for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, t0);
+      for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], t0);
     } else {
       this.emotion.rampTo(this.releaseBars * this.engine.barDur, t0 - now);
       this.arr.travelToTarget(this.releaseBars, b * 16);
@@ -326,7 +334,7 @@ export class Deck {
       this.arr.update(pos);
       this.fx.update(now, pos);
       for (const k of INSTRUMENTS) {
-        this.ch[k].applyTransition(this.arr.state[k].progress, this.transitionMode, now);
+        this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], now);
       }
     }
     this.updateSound(now);
@@ -462,7 +470,7 @@ export class Deck {
   scheduleStep(n, gridT) {
     const s = n % 16;
     const b = Math.floor(n / 16);
-    this.fx.step(n, gridT); // antes que las notas: en la llegada de un build, el DROP
+    this.fx.step(n, gridT); // antes que las notas: en la llegada de un viaje DE GOLPE, el DROP
     if (s === 0 || !this.bars.kick) this.prepareBar(b, n - s, gridT);
     const ctx = this.ctx;
     const noise = this.engine.noise;

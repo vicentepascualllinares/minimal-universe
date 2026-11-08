@@ -254,6 +254,8 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .ph-ticks i { width: 6px; height: 2px; background: var(--faint); }
 .ph-ticks i.now { background: var(--fg); }
 .t-len { flex-wrap: wrap; justify-content: center; row-gap: 3px; max-width: var(--col); }
+/* CLIC: compases del viaje; CORTE (siempre instantáneo): cuantizado o no */
+.t-len.gone, .t-q.gone { display: none; }
 /* qué gesto se está ajustando: CLIC (cambiar de escena) o CORTE (mantener) */
 .t-who { margin-top: 2px; }
 .opts.t-who button { font-size: 9px; letter-spacing: 0.12em; border-bottom: 1px solid transparent; }
@@ -279,8 +281,10 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .opts button.on { color: var(--fg); }
 .opts.off { opacity: 0.25; pointer-events: none; }
 
-.t-lab { color: var(--fg); font-size: 9px; opacity: calc(0.25 + var(--v, 1) * 0.75); }
-.t-lab.bot { opacity: calc(0.25 + (1 - var(--v, 1)) * 0.75); }
+/* FORMA del viaje: dos interruptores de arriba / abajo (el segundo, solo en PROGRESIVA) */
+.t-form, .t-flow { width: 100%; padding: 5px 0; border: 1px solid var(--faint); gap: 6px; }
+.opts.t-form button, .opts.t-flow button { width: 100%; padding: 2px 0; }
+.opts.t-form button.on, .opts.t-flow button.on { box-shadow: inset 2px 0 0 var(--fg); }
 .t-track { position: relative; flex: 1; width: 44px; cursor: ns-resize; touch-action: none; }
 .t-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--faint); }
 .t-handle {
@@ -290,7 +294,6 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   transform: translate(-50%, -50%);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
-.trans.active .t-handle { width: 34px; }
 
 /* ───────── loop */
 .loop-btn {

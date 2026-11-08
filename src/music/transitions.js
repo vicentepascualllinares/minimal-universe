@@ -7,18 +7,27 @@
 // CORTE) puede llevar o no estos efectos (botón FX).
 //
 // Tipo de transición, según el kick y la música (bajo/acordes) de origen y destino:
-//   build  entra el kick                → tensión creciente y DROP: la estructura se
-//                                         aguanta y todo entra de golpe en el 1
-//   lift   sigue el kick, entra música  → riser, redoble corto y plato (progresivo)
-//   fall   se va el kick                → downfilter, reverse, golpe y caída (progresivo)
-//   strip  sigue el kick, se va música  → reverse corto, redoble y plato (progresivo)
+//   build  entra el kick                → tensión creciente: HP, riser, redoble, impacto
+//                                         (DE GOLPE: a veces, además, silencio antes del 1)
+//   lift   sigue el kick, entra música  → riser, redoble corto y plato
+//   fall   se va el kick                → downfilter, reverse, golpe y caída
+//   strip  sigue el kick, se va música  → reverse corto, redoble y plato
 //   drift  sin kick en los dos lados    → solo un barrido suave
+//
+// La FORMA del viaje (DE GOLPE / PROGRESIVA, y ESCALONADA / SUAVE) va aparte: los efectos
+// son los mismos, cambia cómo se mueve la música debajo (ver arrangement).
 //
 // Cuantos más compases dura el viaje, más capas. El plan se escribe en
 // COMPASES DEL VIAJE: u = 0 al empezar, u = L al llegar. El viaje siempre
 // aterriza en el inicio de una frase (ver PHRASE).
 
-import { Rng } from '../core/rng.js';
+import { Rng, clamp } from '../core/rng.js';
+import { INSTRUMENTS } from './arrangement.js';
+
+// CÓMO ENTRA Y SALE CADA INSTRUMENTO en un viaje progresivo: 1 = con filtro (HP en kick y
+// bajo, LP con resonancia en el resto), 0 = con volumen. Todos, además, con densidad (de pocas
+// notas a todas). La paleta de cada universo lo mueve un poco.
+const HOW = { kick: 0.85, bass: 0.9, hat: 0.25, perc: 0.35, clap: 0.3, ohat: 0.4, chord: 1, pad: 0.2 };
 
 // frase en la que aterriza un viaje de `bars` compases (en compases)
 export const PHRASE = (bars) => (bars <= 2 ? 4 : 8);
@@ -63,6 +72,13 @@ export function makePalette(seed) {
     down: r.chance(0.65),                              // caída de ruido al llegar a un fall
   };
   if (!pal.boom && !pal.thud) pal.boom = true;
+  // (al final, para que lo de arriba no cambie con la misma semilla)
+  pal.how = {};   // cómo entra cada instrumento (ver HOW)
+  pal.order = {}; // ESCALONADA: empujón al orden en que cambian (ver arrangement: ORDER)
+  for (const k of INSTRUMENTS) {
+    pal.how[k] = clamp(HOW[k] + r.float(-0.15, 0.15));
+    pal.order[k] = r.float(-0.7, 0.7);
+  }
   return pal;
 }
 
@@ -72,7 +88,9 @@ export function makePalette(seed) {
 //   reverse                  plato al revés que termina en b
 //   gap                      silencio entre a y la llegada
 //   impact / crash / downlifter   al llegar
-export function planTransition(kind, L, pal, r) {
+// `cut` = viaje DE GOLPE (la música se aguanta y cambia en el 1): solo entonces cabe
+// el silencio antes de la llegada
+export function planTransition(kind, L, pal, r, cut = false) {
   if (kind === 'none') return null;
   const layers = [];
   const add = (o) => layers.push(o);
@@ -80,7 +98,7 @@ export function planTransition(kind, L, pal, r) {
   const tier = L === 0 ? 0 : L <= 2 ? 1 : L <= 4 ? 2 : 3;
 
   if (kind === 'build') {
-    const gap = tier >= 2 && pal.gap ? pal.gap / 4 : 0;
+    const gap = cut && tier >= 2 && pal.gap ? pal.gap / 4 : 0;
     const end = L - gap;
     if (tier >= 1) {
       add({ type: 'riser', a: L - Math.min(L, 16), b: end, gain: 1, noiseOnly: tier === 1 });

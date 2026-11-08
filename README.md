@@ -58,7 +58,7 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | Control | Qué hace |
 |---|---|
 | **ESTRUCTURA** (8 escenas) | Los momentos de un tema, uno por botón (ver abajo). **Clic** = cambiar a esa escena. **Mantener** = CORTE: suena mientras lo mantienes y al soltar vuelve. |
-| **TRANSICIÓN** (vertical) | Cómo entra y sale cada instrumento. Arriba: con filtro (HP para kick/bass, LP para el resto, con resonancia). Abajo: con volumen. En medio: mezcla. Debajo, **CLIC · CORTE**: qué gesto ajustas; para cada uno, cuánto dura el viaje (YA, 1, 2, 4, 8, 16, 32 compases) y **FX**: si el viaje lleva efectos de transición. Por defecto CLIC = 4 compases con FX, CORTE = YA sin FX. |
+| **TRANSICIÓN** | La **forma** de los viajes de CLIC, con dos interruptores. **DE GOLPE**: la estructura se aguanta y todo cambia a la vez en el 1 de la llegada. **PROGRESIVA**: cambia durante el viaje; entonces el segundo elige **SUAVE** (todos a la vez, a lo largo del viaje) o **ESCALONADA** (uno tras otro, cada uno en su compás). Ver "Formas del viaje". Debajo, **CLIC · CORTE**: qué gesto ajustas. CLIC: cuánto dura el viaje (YA, 1, 2, 4, 8, 16, 32 compases). CORTE: siempre instantáneo, **CUANTIZADO** (en la siguiente corchea) o **SIN CUANTIZAR** (en la siguiente semicorchea, lo antes posible). Los dos: **FX**, si el cambio lleva efectos de transición. Por defecto CLIC = 4 compases con FX, CORTE = cuantizado sin FX. |
 | **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
 | **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
 | **COMPLEJIDAD** (4 faders) | KICK · PERCS · BASS · INSTR.: cuánta información dice cada grupo (ver abajo). Se aplica en el siguiente compás. Doble clic = 0,5. |
@@ -91,12 +91,22 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
   DROP, **subir** = kick-out.
 - La escena que suena se ilumina; en un viaje se iluminan las dos a medias. El borde marca
   la escena elegida; el destino de un viaje parpadea.
-- **Progresivo**: al pasar el umbral de un instrumento no entra de golpe. Su cantidad
-  (filtro o volumen, según TRANSICIÓN, y su densidad) crece poco a poco hasta llegar a la
-  escena. De SOLO DRUMS a TODO en 8 compases, por ejemplo, el bajo y los acordes van subiendo.
+- **Formas del viaje** (TRANSICIÓN):
+  - **DE GOLPE**: suena el origen hasta el final del viaje y en el 1 de la llegada todo salta
+    al destino (**drop**). Los compases son la espera, con sus FX (riser, redoble, tensión).
+  - **PROGRESIVA · SUAVE**: todos los instrumentos cambian a la vez, poco a poco, durante todo
+    el viaje. De SOLO DRUMS a TODO en 8 compases, el bajo y los acordes van subiendo juntos.
+  - **PROGRESIVA · ESCALONADA**: uno tras otro, cada uno con un barrido corto que acaba justo
+    en su compás. Primero lo que sale y luego lo que entra; de adorno a cimiento (pad, open
+    hat, percusión, acordes, hat, clap, bajo y el kick el último). El viaje se reparte en
+    tramos: uno por compás si caben (en viajes de 1–2 compases, medios compases); si cambian
+    más instrumentos que tramos, algunos van juntos. El orden varía un poco con cada universo.
+  - En los progresivos, **cada instrumento entra y sale a su manera** (además de con su
+    densidad): kick y bajo con un high-pass, acordes con un low-pass resonante, hats, clap,
+    percusión y pad sobre todo con volumen. Cada universo lo mueve un poco.
 - **CLIC** (pulsar y soltar): cambia a esa escena con los compases y el FX de CLIC.
-- **CORTE** (mantener más de ⅓ de segundo): cambia a esa escena con los compases y el FX de
-  CORTE mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
+- **CORTE** (mantener más de ⅓ de segundo): cambia a esa escena al instante (cuantizado o
+  no, y con el FX de CORTE) mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
   no cambia. Se pueden mantener varias a la vez (manda la última; al soltarla, la anterior).
 - **Viajar a una escena**: tarda los compases elegidos y
   **aterriza en frase**: la llegada cae en el inicio de una frase (cada 4 compases para
@@ -109,7 +119,7 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
   escena** otra vez para **pausar** y otra más para seguir (si aún no había empezado,
   vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
 - Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
-  es solo el cambio progresivo, y un kick que entra lo hace poco a poco, sin drop.
+  es solo el cambio (de golpe o progresivo, según TRANSICIÓN).
 - Con **LOOP** activo, pulsar una escena la deja pendiente (borde discontinuo); al soltar el
   loop se aplica según SALIDA (instantánea o progresiva).
 
@@ -120,10 +130,10 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
 
 | Viaje | Qué pasa |
 |---|---|
-| **Entra el kick** (de la fila de arriba a la de abajo) | **build**: riser (ruido y/o tono que sube), redoble que acelera (negras → corcheas → semicorcheas → fusas), el universo se va adelgazando con un high-pass y a veces un silencio de ½–2 tiempos antes del final. La estructura **se aguanta** y todo entra de golpe en el 1 (**drop**) con impacto y plato. |
-| **Entra la música sobre el kick** (SOLO DRUMS → TODO, ESQUELETO → TODO, SIN BAJO → TODO…) | progresivo, con riser suave, redoble corto y plato al llegar |
-| **Se va el kick** (de la fila de abajo a la de arriba) | progresivo, con downfilter (el universo entero se cierra los últimos compases), plato al revés que muere en el 1, golpe grave y caída de ruido después |
-| **Se va la música** (TODO → SOLO DRUMS, TODO → SIN BAJO…) | progresivo, con un reverse corto, redoble del último tiempo y plato |
+| **Entra el kick** (de la fila de arriba a la de abajo) | **build**: riser (ruido y/o tono que sube), redoble que acelera (negras → corcheas → semicorcheas → fusas), el universo se va adelgazando con un high-pass e impacto y plato al llegar. DE GOLPE, a veces, además, un silencio de ½–2 tiempos antes del 1. |
+| **Entra la música sobre el kick** (SOLO DRUMS → TODO, ESQUELETO → TODO, SIN BAJO → TODO…) | riser suave, redoble corto y plato al llegar |
+| **Se va el kick** (de la fila de abajo a la de arriba) | downfilter (el universo entero se cierra los últimos compases), plato al revés que muere en el 1, golpe grave y caída de ruido después |
+| **Se va la música** (TODO → SOLO DRUMS, TODO → SIN BAJO…) | un reverse corto, redoble del último tiempo y plato |
 | **Sin kick** (entre escenas de la fila de arriba) | solo un barrido suave |
 
 - **Cuantos más compases, más capas**: con YA solo hay golpe o plato al llegar; con 1–2,

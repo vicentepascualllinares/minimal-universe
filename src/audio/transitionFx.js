@@ -2,7 +2,7 @@
 //
 // El viaje se mide en pasos de la rejilla (T.startStep, 16 por compás):
 //   step(n, t)   — en cada paso programado: redobles, reverse, silencio, llegada.
-//                  Exacto a la muestra. La llegada es el DROP del build.
+//                  Exacto a la muestra. En un viaje DE GOLPE, la llegada es el DROP.
 //   update(now)  — a ritmo de control: lo sostenido (riser, filtros de tensión).
 // Si el viaje se cancela (otra escena, LOOP) todo se apaga.
 
@@ -27,9 +27,9 @@ export class TransitionFx {
 
   // sin efectos (FX apagado o nada que contar) el plan va vacío: solo marca la llegada,
   // para que un viaje instantáneo caiga exacto en su tiempo
-  start(T, kind, pal, rng) {
+  start(T, kind, pal, rng, cut = false) {
     this.cancel(this.ctx.currentTime);
-    const P = planTransition(kind, T.bars, pal, rng) || { kind: 'none', L: T.bars, layers: [], arrived: false };
+    const P = planTransition(kind, T.bars, pal, rng, cut) || { kind: 'none', L: T.bars, layers: [], arrived: false };
     P.T = T;
     P.pal = pal;
     P.lvl = 0.6 + 0.4 * pal.amount;
@@ -110,7 +110,7 @@ export class TransitionFx {
     if (u >= P.L) this.arrive(t);
   }
 
-  // LLEGADA: corta lo sostenido, suelta los filtros, golpes y (build) DROP
+  // LLEGADA: corta lo sostenido, suelta los filtros, golpes y (DE GOLPE) DROP
   arrive(t) {
     const P = this.plan;
     const T = P.T;

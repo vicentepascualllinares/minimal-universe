@@ -43,7 +43,7 @@ function template(label) {
       <div class="spacer"></div>
       ${opts('t-who', [['click', 'CLIC'], ['cut', 'CORTE']], 'click')}
       ${opts('t-len', [['0', 'YA'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
-      ${opts('t-q stack gone', [['1', 'CUANTIZADO'], ['0', 'SIN CUANTIZAR']], '1')}
+      <div class="t-q gone" title="el CORTE es instantáneo y entra en la siguiente corchea: nunca a mitad de un golpe">AL INSTANTE · 1/8</div>
       <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
     </section>
   </div>
@@ -112,7 +112,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     });
   };
   // TRANSICIÓN: lo de cada gesto (se ve el de la pestaña CLIC / CORTE). CLIC: compases del
-  // viaje y FX. CORTE: siempre instantáneo; cuantizado (a la corchea) o no, y FX
+  // viaje y FX. CORTE: siempre instantáneo, a la corchea, y FX
   let editing = 'click';
   const fxBtn = q('.t-fx');
   const showGesture = () => {
@@ -120,12 +120,10 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     q('.t-len').classList.toggle('gone', editing === 'cut');
     q('.t-q').classList.toggle('gone', editing !== 'cut');
     q('.t-len').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === g.bars));
-    q('.t-q').querySelectorAll('button').forEach((b) => b.classList.toggle('on', (b.dataset.v === '1') === (g.quant > 1)));
     fxBtn.classList.toggle('on', g.fx);
   };
   options('.t-who', (v) => { editing = v; showGesture(); });
   options('.t-len', (v) => (deck.gesture.click.bars = Number(v)));
-  options('.t-q', (v) => (deck.gesture.cut.quant = v === '1' ? 2 : 1));
   fxBtn.addEventListener('pointerdown', () => {
     const g = deck.gesture[editing];
     g.fx = !g.fx;

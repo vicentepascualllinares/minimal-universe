@@ -30,8 +30,8 @@ export class Deck {
     this.flow = 'suave';
     // los dos gestos de ESTRUCTURA y si llevan efectos. CLIC = cambiar de escena: un viaje de
     // `bars` compases (0 = YA, en la siguiente negra). CORTE = mantener pulsado: dura lo que
-    // dura el dedo y es siempre instantáneo. `quant` = rejilla de lo instantáneo, en pasos:
-    // 4 = negra, 2 = corchea (CORTE CUANTIZADO), 1 = sin cuantizar (el siguiente paso)
+    // dura el dedo y es siempre instantáneo, en la siguiente corchea (nunca a mitad de un
+    // golpe). `quant` = rejilla de lo instantáneo, en pasos: 4 = negra, 2 = corchea
     this.gesture = {
       click: { bars: 4, fx: true, quant: 4 },
       cut: { bars: 0, fx: false, quant: 2 },
@@ -155,7 +155,7 @@ export class Deck {
 
   // dónde empieza un viaje de `bars` compases para ATERRIZAR EN FRASE:
   // la llegada cae en el primer inicio de frase posible. Instantáneo (0 compases): en el
-  // siguiente paso múltiplo de `quant` (4 = negra, 2 = corchea, 1 = el siguiente paso).
+  // siguiente paso múltiplo de `quant` (4 = negra, 2 = corchea).
   startStepFor(bars, quant = 4) {
     const s = this.engine.step; // el siguiente paso aún sin programar
     if (bars === 0) return s + ((quant - (s % quant)) % quant);

@@ -275,9 +275,6 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
   transition: border-color 0.2s, background-color 0.15s;
 }
 .sc-name { color: var(--fg); opacity: calc(0.45 + var(--m, 0) * 0.55); overflow-wrap: break-word; }
-.sc-lay { display: flex; gap: 0.35em; letter-spacing: 0; font-size: 0.9em; }
-.sc-lay i { font-style: normal; color: var(--faint); }
-.sc-lay i.on { color: var(--dim); }
 .scene:hover { border-color: #3c3c43; }
 .scene.home { border-color: var(--dim); }                    /* la escena elegida */
 .scene.dest { border-color: var(--fg); animation: scene-blink 0.9s steps(2) infinite; }
@@ -286,19 +283,21 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .scene.press { background: rgba(var(--glow, 200, 200, 205), 0.3); }
 .scene.held { border-color: rgba(var(--glow, 200, 200, 205), 0.95); }  /* CORTE mantenido */
 .scene.pend { border-color: rgba(var(--glow, 200, 200, 205), 0.85); border-style: dashed; } /* LOOP: entrará al soltar */
-/* VERSIÓN 1 · 2: a la derecha de las partes, de arriba abajo (como un SHIFT en un controlador) */
+/* VERSIONES: AHORA (la parte que suena) y LUEGO (el destino), a la derecha de las partes */
+.vers { grid-column: 5; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ver {
-  grid-column: 5; grid-row: 1 / span 2;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  padding: 8px 7px; border: 1px solid var(--faint);
-  font-size: clamp(7px, calc(var(--pad) / 32), 10px); letter-spacing: 0.08em;
-  touch-action: none; transition: border-color 0.2s, background-color 0.15s;
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 6px 5px; border: 1px solid var(--faint);
+  font-size: clamp(7px, calc(var(--pad) / 32), 10px); letter-spacing: 0.06em;
+  touch-action: none; transition: border-color 0.2s, background-color 0.15s, opacity 0.2s;
 }
 .ver:hover { border-color: #3c3c43; }
-.ver-lab { color: var(--dim); }
-.ver b { font-weight: normal; color: var(--faint); font-size: 1.3em; }
+.ver-lab { color: var(--dim); font-size: 0.85em; }
+.ver b { font-weight: normal; color: var(--faint); font-size: 1.2em; line-height: 1.1; }
 .ver b.on { color: var(--fg); }
-.ver.v2 { border-color: var(--dim); }
+.ver.off { opacity: 0.35; }                                   /* AHORA: no se puede tocar ahora */
+.ver.pre { border-color: rgba(var(--glow, 200, 200, 205), 0.85); border-style: dashed; } /* LUEGO elegido para la próxima parte */
 .ver.press { background: rgba(var(--glow, 200, 200, 205), 0.3); }
 /* COMPLEJIDAD por grupos: 4 faders en el hueco del antiguo pad de emoción */
 .cx-box { display: flex; justify-content: space-around; align-items: stretch; padding: 12px 4px 10px; }

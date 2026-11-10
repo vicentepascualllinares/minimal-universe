@@ -210,16 +210,6 @@ export class Deck {
   // Devuelve 'pause' si la pulsación solo pausó o reanudó (entonces no hay corte).
   press(name) {
     const A = this.arr;
-    // VERSIÓN mantenida (SHIFT): esta parte va en la otra versión. Si es la que ya suena (o a la
-    // que se va), es como pulsar VERSIÓN; si es otra, se viaja a ella directamente en esa versión
-    const h = this.vHold;
-    if (h) {
-      h.used = true;
-      if (A.version !== h.v) {
-        if (name === A.target && !this.loop) { this.setVersion(h.v); return 'pause'; }
-        A.version = h.v; // el viaje de abajo ya sale hacia la otra versión
-      }
-    }
     if (this.loop) { // LOOP: solo se deja pendiente
       A.setTarget(name);
       A.home = name;
@@ -263,14 +253,16 @@ export class Deck {
     if (this.loop) return A.setTarget(name);
     // parado (antes del primer GENERAR o en PAUSA) no hay nada que viajar: se salta directo
     // y la música empieza (o sigue) desde ahí
+    // (la misma parte con LUEGO en otra versión no es «ya está»: se va a esa versión)
+    const same = A.target === name && A.vNow === A.vNext;
     if (!this.engine.playing) {
-      if (A.target === name && !A.travel) return;
+      if (same && !A.travel) return;
       A.goTo(name, 0, 0);
-      this.fx?.cancel(this.ctx.currentTime);
+      this.fx?.cancel(this.ctx?.currentTime ?? 0);
       return A.land();
     }
-    if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
-    const kind = classify(A.cur, mixOf(name, A.version));
+    if (!force && same && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
+    const kind = classify(A.cur, mixOf(name, A.vNext));
     // la FORMA solo cuenta en los viajes: lo instantáneo (el CORTE, o CLIC en INSTANTÁNEO) salta
     const cut = this.form === 'golpe' && g.bars > 0;
     const stagger = !cut && g.bars > 0 && this.flow === 'escalonado' ? this.fxPal.order : null;
@@ -278,48 +270,46 @@ export class Deck {
     this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng, cut);
   }
 
-  // ── VERSIÓN (1 · 2): dos posibilidades de cada parte (no «más» o «menos»: otra forma del mismo
-  // momento). Es del universo: la parte que suena y cualquiera a la que vayas van en la versión
-  // elegida. Un mando cualquiera (pantalla, teclado, MIDI) llama a versionDown / versionUp:
-  //   CLIC (al soltar)            cambia de versión
-  //   MANTENER + pulsar una parte esa parte, en la otra versión (como SHIFT en un controlador);
-  //                               al soltar VERSIÓN no cambia nada más
-  versionDown() { this.vHold = { used: false, v: 1 - this.arr.version }; }
-  versionUp() {
-    const h = this.vHold;
-    this.vHold = null;
-    if (h && !h.used) this.setVersion(h.v);
-  }
+  // ── VERSIONES (1 · 2): dos posibilidades de cada parte, siempre en el mismo orden (la 1 con
+  // menos elementos, la 2 con más). Dos botones, para guiar sabiendo qué va a pasar:
+  //   AHORA  la versión de la parte que SUENA
+  //   LUEGO  la del destino del viaje; quieto, la de la próxima parte que pulses
+  // Cuando solo suena una parte (al llegar), las dos quedan en la de esa parte: de BREAK 1 a
+  // DROP 2, al llegar AHORA = 2 y LUEGO = 2. Un mando cualquiera (pantalla, teclado, MIDI)
+  // llama a toggleNow / toggleNext.
 
-  // Qué pasa al cambiar de versión, según el momento:
-  //   LOOP          queda pendiente y entra al soltar el loop (como las partes)
-  //   parado        salta directo
-  //   en un viaje   (esperando la frase o a medias) el viaje sigue igual y llega a la otra
-  //                 versión, sin saltos (ver Arrangement.retarget). Si se vuelve a la de antes
-  //                 en un viaje de versión que aún no ha empezado, se anula
-  //   quieto        la otra versión de la misma parte entra en el SIGUIENTE COMPÁS: DE GOLPE, de
-  //                 golpe en ese 1; PROGRESIVA, en 1 compás (SUAVE o ESCALONADA). Sin FX: no es un
-  //                 viaje de parte, es la misma parte de otra forma
-  setVersion(v) {
+  // ¿se puede tocar AHORA? Quieto, sí; en un viaje, mientras aún suena entera la parte de
+  // origen (esperando la frase, o DE GOLPE). No en LOOP ni a mitad de un viaje progresivo
+  canNow() { return !this.loop && this.arr.canMorph(); }
+
+  // AHORA: la parte que suena cambia de versión en el SIGUIENTE COMPÁS: DE GOLPE, de golpe en ese
+  // 1; PROGRESIVA, en 1 compás (SUAVE o ESCALONADA). Sin FX: es la misma parte de otra forma.
+  // Quieto, LUEGO la sigue (solo suena una parte). Parado, salta directo. Dos clics antes de que
+  // empiece el cambio lo anulan
+  toggleNow() {
     const A = this.arr;
-    if (v === A.version) return;
-    A.version = v;
-    if (this.loop) return A.compute();
-    if (!this.engine.playing) {
-      A.goTo(A.target, 0, 0);
-      if (this.ctx) this.fx.cancel(this.ctx.currentTime);
-      return A.land();
-    }
-    if (A.travel) {
-      A.retarget();
-      if (A.travel.version && A.idleTravel()) { this.fx.cancel(this.ctx.currentTime); A.travel = null; A.compute(); }
-      return;
+    if (!this.canNow()) return;
+    A.vNow = 1 - A.vNow;
+    if (!A.travel) A.vNext = A.vNow;
+    if (!this.engine.playing && !A.travel) {
+      A.morph = null;
+      A.cur = { ...mixOf(A.target, A.vNow) };
+      return A.compute();
     }
     const golpe = this.form === 'golpe';
     const bar = Math.ceil(this.engine.step / 16) * 16;
-    A.goTo(A.target, golpe ? 0 : 1, bar, { stagger: !golpe && this.flow === 'escalonado' ? this.fxPal.order : null });
-    A.travel.version = true; // viaje de versión (no de parte)
-    this.fx.start(A.travel, 'none', this.fxPal, this.fxRng);
+    A.startMorph(bar, golpe ? 0 : 16, !golpe && this.flow === 'escalonado' ? this.fxPal.order : null);
+    A.compute();
+  }
+
+  // LUEGO: en un viaje (esperando la frase o a medias), el viaje sigue igual y llega a la otra
+  // versión, sin saltos (ver Arrangement.retarget). Quieto, elige la versión de la próxima parte
+  // que pulses (lo que suena no cambia). En LOOP, la de lo que entrará al soltar
+  toggleNext() {
+    const A = this.arr;
+    A.vNext = 1 - A.vNext;
+    if (!this.loop && A.travel) A.retarget();
+    A.compute();
   }
 
   toggleTravelPause() {
@@ -385,6 +375,7 @@ export class Deck {
       releasing: false,
     };
     this.arr.frozen = true;
+    this.arr.morph = null; // un cambio de AHORA pendiente tampoco entra
     this.fx.cancel(this.ctx.currentTime); // el loop congela: la transición en curso se apaga
   }
 
@@ -552,6 +543,12 @@ export class Deck {
     const s = n % 16;
     const b = Math.floor(n / 16);
     this.fx.step(n, gridT); // antes que las notas: en la llegada de un viaje DE GOLPE, el DROP
+    // AHORA DE GOLPE: la parte que suena cambia de versión exacta en el 1 del compás
+    const M = this.arr.morph;
+    if (M && !M.len && n >= M.startStep && !this.loop) {
+      this.arr.endMorph();
+      for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], gridT, 0.006);
+    }
     if (s === 0 || !this.bars.kick) this.prepareBar(b, n - s, gridT);
     // ¿ENTRA EL KICK DE GOLPE? En el paso anterior no sonaba y ahora está entero: un DROP DE
     // GOLPE, un cambio INSTANTÁNEO, un CORTE o soltar el LOOP de golpe. Si entra poco a poco

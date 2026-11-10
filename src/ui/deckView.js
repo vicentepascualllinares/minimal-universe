@@ -2,7 +2,7 @@
 // Se instancia dos veces (izquierda y derecha) sobre el mismo Deck API.
 
 import { VSlider, HSlider } from './slider.js';
-import { INSTRUMENTS, SCENES, GRID, LAYERS, likeness } from '../music/arrangement.js';
+import { INSTRUMENTS, SCENES, GRID, likeness } from '../music/arrangement.js';
 import { GROUPS, GROUP_LABEL, shapeComplexity } from '../music/complexity.js';
 import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 
@@ -12,16 +12,10 @@ const opts = (cls, values, on) =>
   `<div class="opts ${cls}">${values.map((v) => `<button data-v="${v[0]}"${v[0] === on ? ' class="on"' : ''}>${v[1]}</button>`).join('')}</div>`;
 const nums = (arr) => arr.map((n) => [String(n), String(n)]);
 
-// capas de una parte en una versión (K kick · B bajo · T hats/perc · M acordes/pad)
-const layHtml = (name, v) => {
-  const L = LAYERS(name, v);
-  return ['K', 'B', 'T', 'M'].map((l) => `<i${L[l] ? ' class="on"' : ''}>${l}</i>`).join('');
-};
-// botón de una parte: su nombre y sus capas (las de la VERSIÓN que manda: se repintan al cambiarla)
+// botón de una parte: solo su nombre (lo que es en el tema, no qué instrumentos lleva)
 const sceneBtn = (name) => {
-  const lay = layHtml(name, 0);
   const text = SCENES[name].label.replace('KICK-OUT', 'KICK-&#8203;OUT'); // si no cabe, corta tras el guion
-  return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span><span class="sc-lay">${lay}</span></button>`;
+  return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span></button>`;
 };
 
 function template(label) {
@@ -40,7 +34,10 @@ function template(label) {
     <section class="pad p-struct">
       <div class="pad-title">ESTRUCTURA<span class="ph-ticks" title="la frase: un trazo por compás. Los viajes aterrizan al empezar la frase"></span><span class="p-status"></span></div>
       <div class="pad-box scenes">
-        <button class="ver" title="VERSIÓN: dos posibilidades de cada parte · clic: cambiar (quieto, entra en el siguiente compás; en un viaje, cambia a dónde llega) · mantener + pulsar una parte: esa parte en la otra versión"><span class="ver-lab">VER</span><b data-v="0">1</b><b data-v="1">2</b></button>
+        <div class="vers">
+          <button class="ver ver-now" title="AHORA: versión de la parte que suena (1 = menos elementos, 2 = más) · cambia en el siguiente compás · no en un viaje progresivo en marcha ni en LOOP"><span class="ver-lab">AHORA</span><b data-v="0">1</b><b data-v="1">2</b></button>
+          <button class="ver ver-next" title="LUEGO: versión del destino del viaje; quieto, la de la próxima parte que pulses · al llegar, AHORA pasa a ser esta"><span class="ver-lab">LUEGO</span><b data-v="0">1</b><b data-v="1">2</b></button>
+        </div>
         ${GRID.flat().map(sceneBtn).join('')}
       </div>
     </section>
@@ -211,29 +208,15 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     el.addEventListener('pointercancel', up);
     el.addEventListener('contextmenu', (ev) => ev.preventDefault()); // mantener pulsado en el móvil
   }
-  // VERSIÓN: apoyar / soltar (el universo decide si era un clic o un SHIFT: ver Deck.versionDown)
-  const verBtn = q('.ver');
-  {
-    let pid = null;
-    verBtn.addEventListener('pointerdown', (ev) => {
-      if (pid !== null) return;
-      pid = ev.pointerId;
-      try { verBtn.setPointerCapture(pid); } catch {}
-      verBtn.classList.add('press');
-      deck.versionDown();
-    });
-    const up = (ev) => {
-      if (ev.pointerId !== pid) return;
-      pid = null;
-      verBtn.classList.remove('press');
-      deck.versionUp();
-    };
-    verBtn.addEventListener('pointerup', up);
-    verBtn.addEventListener('pointercancel', up);
-    verBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  // VERSIONES: AHORA (la parte que suena) y LUEGO (el destino; quieto, la próxima parte). Al apoyar
+  const nowBtn = q('.ver-now'), nextBtn = q('.ver-next');
+  for (const [b, act] of [[nowBtn, () => deck.toggleNow()], [nextBtn, () => deck.toggleNext()]]) {
+    b.addEventListener('pointerdown', () => { b.classList.add('press'); act(); });
+    for (const e of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(e, () => b.classList.remove('press'));
+    b.addEventListener('contextmenu', (ev) => ev.preventDefault());
   }
-  const verMarks = [...verBtn.querySelectorAll('b')];
-  let verSeen = -1;
+  const mark = (b, v) => b.querySelectorAll('b').forEach((x) => x.classList.toggle('on', Number(x.dataset.v) === v));
+  let verSeen = '';
   const pStatus = q('.p-status');
   const phTicks = q('.ph-ticks');
 
@@ -262,12 +245,17 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       const AR = deck.arr;
       const T = AR.travel;
       const L = deck.loop;
-      // VERSIÓN: la que manda, encendida; las capas de cada botón son las de esa versión
-      if (verSeen !== AR.version) {
-        verSeen = AR.version;
-        verMarks.forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === verSeen));
-        verBtn.classList.toggle('v2', verSeen === 1);
-        for (const el of sceneEls) el.querySelector('.sc-lay').innerHTML = layHtml(el.dataset.s, verSeen);
+      // VERSIONES: AHORA y LUEGO, cada una con la suya encendida. AHORA se apaga cuando no se puede
+      // tocar (viaje progresivo en marcha, LOOP); LUEGO se marca si, quieto, ya está elegida otra
+      // para la próxima parte
+      const canNow = deck.canNow();
+      const vk = `${AR.vNow}${AR.vNext}${canNow ? 1 : 0}${AR.travel ? 1 : 0}`;
+      if (verSeen !== vk) {
+        verSeen = vk;
+        mark(nowBtn, AR.vNow);
+        mark(nextBtn, AR.vNext);
+        nowBtn.classList.toggle('off', !canNow);
+        nextBtn.classList.toggle('pre', !AR.travel && AR.vNext !== AR.vNow);
       }
       for (const el of sceneEls) {
         const name = el.dataset.s;
@@ -291,7 +279,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         const when = ti.paused ? 'PAUSA'
           : ti.wait > 0.02 ? `ENTRA EN ${Math.ceil(ti.wait)}`
           : ti.left < 0.95 ? 'ÚLTIMO COMPÁS' : `${Math.ceil(ti.left)} COMP.`;
-        st = `→ ${SCENES[ti.name].label} ${AR.version + 1} · ${when}`;
+        st = `→ ${SCENES[ti.name].label} ${AR.vNext + 1} · ${when}`;
       } else if (engine.ready) {
         // antes de pulsar: cuándo empezaría un viaje de CLIC con los compases elegidos
         st = deck.gesture.click.bars === 0 || pv.wait < 0.02 ? 'ENTRA YA' : `ENTRA EN ${Math.ceil(pv.wait)}`;

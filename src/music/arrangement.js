@@ -36,8 +36,9 @@ const NO_DRUMS = { kick: 0, hat: 0, perc: 0, clap: 0, ohat: 0 };
 const TOPS = { hat: 1, perc: 1, clap: 0.9, ohat: 0.75 };
 
 const EMPTY = { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, chord: 0, pad: 0 };
-// una parte = su nombre y sus DOS VERSIONES (1 y 2): dos posibilidades del mismo momento del
-// tema. La 1 es la de siempre. Lo que no se nombra en una versión NO suena en ella (presencia 0)
+// una parte = su nombre y sus DOS VERSIONES: dos posibilidades del mismo momento del tema.
+// Siempre en el mismo orden, para poder predecirlas: la 1 con MENOS elementos (o energía) y la 2
+// con MÁS. Lo que no se nombra en una versión NO suena en ella (presencia 0)
 const scene = (label, v1, v2) => ({ label, mixes: [{ ...EMPTY, ...v1 }, { ...EMPTY, ...v2 }] });
 
 export const SCENES = {
@@ -49,11 +50,11 @@ export const SCENES = {
     { bass: 1, chord: 1, pad: 0.85 },                                   // bajo y armonía flotando, sin batería
     { bass: 1, chord: 1, pad: 0.85, hat: 0.4, perc: 0.6 }),             // con pulso: hats lejanos y percusión
   build: scene('BUILD',
-    { ...TOPS, chord: 0.9, pad: 0.6 },                                  // el ritmo arriba, sin kick ni bajo
-    { hat: 1, perc: 1, chord: 0.9, pad: 0.6 }),                         // sin clap ni open hat
+    { hat: 1, perc: 1, chord: 0.9, pad: 0.6 },                          // el ritmo arriba, sin clap ni open hat
+    { ...TOPS, chord: 0.9, pad: 0.6 }),                                 // con clap y open hat
   kickout: scene('KICK-OUT',
-    { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6 },           // el DROP sin kick
-    { bass: 1, hat: 1, perc: 1, chord: 0.9 }),                          // bajo, hats, percusión y acordes
+    { bass: 1, hat: 1, perc: 1, chord: 0.9 },                           // bajo, hats, percusión y acordes
+    { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6 }),          // el DROP sin kick
   // ── con kick
   intro: scene('INTRO',
     { kick: 1, hat: 0.85, perc: 0.4 },                                  // kick y hats secos, algo de percusión
@@ -77,17 +78,6 @@ export const GRID = [
   ['break', 'drift', 'build', 'kickout'],
   ['intro', 'groove', 'main', 'drop'],
 ];
-
-// capas que tiene una parte en una versión (para pintar K B T M en su botón)
-export const LAYERS = (name, v = 0) => {
-  const m = mixOf(name, v);
-  return {
-    K: m.kick > 0.5,
-    B: m.bass > 0.5,
-    T: Math.max(m.hat, m.perc, m.clap, m.ohat) > 0.5,
-    M: Math.max(m.chord, m.pad) > 0.5,
-  };
-};
 
 // cuánto se parece una presencia a una parte en una versión (1 = es esa)
 export function likeness(p, name, v = 0) {
@@ -141,11 +131,16 @@ export class Arrangement {
   constructor(name = 'drop') {
     this.home = name;    // la escena elegida (el último clic); al soltar un CORTE se vuelve aquí
     this.target = name;  // a dónde va lo que suena (en LOOP: lo que entrará al soltar)
-    // VERSIÓN (0 = la 1, 1 = la 2): la del universo entero; cualquier parte a la que se vaya
-    // llega en esta versión (ver Deck.setVersion)
-    this.version = 0;
+    // VERSIONES (0 = la 1, 1 = la 2), dos botones (ver Deck.toggleNow / toggleNext):
+    //   vNow   AHORA: la de la parte que suena
+    //   vNext  LUEGO: la del destino del viaje (o, quieto, la de la próxima parte que pulses)
+    // Cuando solo suena una parte (al llegar un viaje), AHORA pasa a ser la de LUEGO: se
+    // normalizan a la que suena
+    this.vNow = 0;
+    this.vNext = 0;
     this.cur = { ...mixOf(name) }; // presencia que suena ahora
     this.travel = null;
+    this.morph = null;   // cambio de versión de la parte que suena (ver startMorph)
     this.frozen = false; // LOOP: lo que suena no se mueve
     this.state = {};
     for (const k of INSTRUMENTS) {
@@ -156,17 +151,23 @@ export class Arrangement {
 
   // viajar a una escena en `bars` compases (0 = instantáneo), empezando en el paso `startStep`.
   // `drop` (DE GOLPE): no se mueve durante el viaje; salta al destino de golpe al llegar.
-  // `stagger` (ESCALONADA): el empujón al orden de la paleta; null = SUAVE
+  // `stagger` (ESCALONADA): el empujón al orden de la paleta; null = SUAVE.
+  // El punto de partida se toma cuando el viaje EMPIEZA a moverse (no al pulsar): mientras espera
+  // la frase, la parte que suena aún puede cambiar de versión (AHORA)
   goTo(name, bars, startStep, { drop = false, stagger: nudge = null } = {}) {
+    // de dónde sale: la parte que sonaba entera, o nada si ya se estaba a medio viaje (entonces
+    // AHORA no tiene una parte a la que cambiar de versión)
+    const P = this.travel;
+    const fromName = P ? (P.started && !P.drop ? null : P.fromName) : this.target;
     this.target = name;
-    const from = { ...this.cur }, to = { ...mixOf(name, this.version) };
+    const from = { ...this.cur }, to = { ...mixOf(name, this.vNext) };
     this.travel = {
-      name, bars, startStep, done: 0, paused: false, drop, from, to,
+      name, fromName, bars, startStep, done: 0, paused: false, started: false, drop, from, to, nudge,
       steps: nudge && !drop ? stagger(from, to, bars, nudge) : null,
     };
   }
 
-  // VERSIÓN cambiada a mitad de un viaje: el viaje sigue (mismo inicio, misma duración, mismos
+  // LUEGO cambiado a mitad de un viaje: el viaje sigue (mismo inicio, misma duración, mismos
   // FX) pero llega a la otra versión. Sin saltos: cada instrumento sigue desde donde está ahora.
   //   aún no ha empezado a moverse  → solo cambia a dónde va
   //   a medio camino                → se recalcula de dónde «venía» para que la curva pase por
@@ -176,8 +177,8 @@ export class Arrangement {
   retarget() {
     const T = this.travel;
     if (!T) return;
-    const to = mixOf(T.name, this.version);
-    if (!T.drop) {
+    const to = mixOf(T.name, this.vNext);
+    if (!T.drop && T.started) {
       for (const k of INSTRUMENTS) {
         if (Math.abs(to[k] - T.to[k]) < 1e-6) continue;
         const w = T.steps?.[k];
@@ -193,34 +194,61 @@ export class Arrangement {
     T.to = { ...to };
   }
 
-  // ¿el viaje aún no ha movido nada y acaba donde ya suena? (p. ej. VERSIÓN pulsada dos veces
-  // antes de empezar): entonces sobra
-  idleTravel() {
+  // ¿puede cambiar ahora de versión la parte que suena (AHORA)? Quieto, sí; en un viaje, solo
+  // mientras aún suena una parte entera: esperando la frase, o DE GOLPE (el origen se aguanta
+  // hasta el 1). En un viaje progresivo en marcha lo que suena ya es mezcla de las dos partes
+  canMorph() {
     const T = this.travel;
-    if (!T || T.done > 0) return false;
-    return INSTRUMENTS.every((k) => Math.abs(T.to[k] - this.cur[k]) < 1e-3);
+    if (this.frozen) return false;
+    if (!T) return true;
+    return !!T.fromName && (!T.started || T.drop);
+  }
+  // la parte que suena entera (la de AHORA)
+  soundingName() { return this.travel ? this.travel.fromName : this.target; }
+
+  // AHORA: la parte que suena pasa a la versión vNow, empezando en `startStep` y durante `len`
+  // pasos (0 = de golpe en ese paso: lo hace el universo, exacto a la muestra, con endMorph).
+  // `nudge` = ESCALONADA (como en los viajes). Si acaba donde ya suena (dos clics antes de
+  // empezar), se anula
+  startMorph(startStep, len, nudge = null) {
+    const to = { ...mixOf(this.soundingName(), this.vNow) };
+    if (INSTRUMENTS.every((k) => Math.abs(to[k] - this.cur[k]) < 1e-3)) { this.morph = null; return; }
+    const from = { ...this.cur };
+    this.morph = { from, to, startStep, len, steps: nudge && len ? stagger(from, to, len / 16, nudge) : null };
+  }
+  endMorph() {
+    if (!this.morph) return;
+    if (this.canMorph()) this.cur = { ...this.morph.to };
+    this.morph = null;
+    this.compute();
   }
 
   // LOOP: solo cambia lo que entrará al soltar
   setTarget(name) {
     this.target = name;
     this.travel = null;
+    this.morph = null;
   }
   // salida progresiva del LOOP
   travelToTarget(bars, startStep) { this.goTo(this.target, bars, startStep); }
   // salida instantánea del LOOP
   snap() {
     this.travel = null;
-    this.cur = { ...mixOf(this.target, this.version) };
+    this.morph = null;
+    this.cur = { ...mixOf(this.target, this.vNext) };
+    this.vNow = this.vNext;
     this.compute();
   }
 
-  // llegada de golpe al destino del viaje (DROP / instantáneo)
+  // llegada de golpe al destino del viaje (DROP / instantáneo). Ya solo suena el destino: AHORA
+  // pasa a ser su versión
   land() {
     const T = this.travel;
     if (!T) return;
     this.travel = null;
+    this.morph = null;
     this.cur = { ...T.to };
+    this.vNow = this.vNext;
     this.compute();
   }
 
@@ -230,22 +258,41 @@ export class Arrangement {
     if (!this.frozen && T) {
       if (pos !== null && !T.paused && pos >= T.startStep) {
         if (T.bars === 0) return this.land();
+        if (!T.started) { // empieza a moverse: sale de lo que suena justo ahora
+          T.started = true;
+          if (!T.drop) {
+            T.from = { ...this.cur };
+            if (T.nudge) T.steps = stagger(T.from, T.to, T.bars, T.nudge);
+            this.morph = null;
+          }
+        }
         T.done = clamp((pos - T.startStep) / (T.bars * 16));
       }
-      if (!T.drop) {
+      if (!T.drop && T.started) {
         for (const k of INSTRUMENTS) {
           const w = T.steps?.[k]; // ESCALONADA: cada uno en su tramo
           const x = w ? clamp((T.done - w[0]) / (w[1] - w[0])) : T.done;
           this.cur[k] = T.from[k] + (T.to[k] - T.from[k]) * smooth(x);
         }
-        if (T.done >= 1) this.travel = null;
-      } else if (T.done >= 1) return this.land(); // por si el paso de llegada no lo hizo
+        if (T.done >= 1) { this.travel = null; this.vNow = this.vNext; }
+      } else if (T.drop && T.done >= 1) return this.land(); // por si el paso de llegada no lo hizo
+    }
+    // AHORA: la parte que suena cambia de versión (los de golpe los hace el universo en su paso)
+    const M = this.morph;
+    if (!this.frozen && M && M.len && pos !== null && pos >= M.startStep && this.canMorph()) {
+      const u = clamp((pos - M.startStep) / M.len);
+      for (const k of INSTRUMENTS) {
+        const w = M.steps?.[k];
+        const x = w ? clamp((u - w[0]) / (w[1] - w[0])) : u;
+        this.cur[k] = M.from[k] + (M.to[k] - M.from[k]) * smooth(x);
+      }
+      if (u >= 1) this.morph = null;
     }
     this.compute();
   }
 
   compute() {
-    const pt = mixOf(this.target, this.version);
+    const pt = mixOf(this.target, this.vNext);
     for (const k of INSTRUMENTS) {
       const s = this.state[k];
       const a = amountOf(k, this.cur[k]);

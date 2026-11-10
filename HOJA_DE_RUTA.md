@@ -73,11 +73,12 @@ tope de voces, AudioWorklet).
    con la COMPLEJIDAD, con el LOOP y con las transiciones según el viaje (sesión 9), y si el
    intérprete puede elegir la velocidad o la dirección del proceso.
 11. **VERSIÓN como variable de todo lo demás** (apuntado 2026-11-10): desde hoy cada parte tiene
-   dos versiones (VER 1 · 2, ver README). Hoy solo cambia qué suena. Más adelante puede pesar en
-   la mezcla, los arreglos y las transiciones (BUILD 1 → DROP 2 no es lo mismo que BUILD 2 →
-   DROP 1), y en las partes que evolucionan solas (sesión 10). Pendiente también: probar si hace
-   falta el fader continuo entre las dos versiones (se probó primero como botón), un atajo de
-   teclado y el MIDI (versionDown / versionUp, como las partes).
+   dos versiones, siempre la 1 con menos elementos y la 2 con más, y dos botones: AHORA (la parte
+   que suena) y LUEGO (el destino), ver README. Hoy solo cambia qué suena. Más adelante puede
+   pesar en la mezcla, los arreglos y las transiciones (BUILD 1 → DROP 2 no es lo mismo que
+   BUILD 2 → DROP 1), y en las partes que evolucionan solas (sesión 10). Pendiente también:
+   probar si hace falta el fader continuo entre las dos versiones (se probó primero como botón),
+   un atajo de teclado y el MIDI (toggleNow / toggleNext, como las partes).
 
 ## Auto-arreglos (OPCIONES → AUTO-ARREGLOS)
 

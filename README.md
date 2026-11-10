@@ -77,10 +77,11 @@ sin kick │ BREAK   DRIFT   BUILD   KICK-OUT
 con kick │ INTRO   GROOVE  MAIN    DROP
 ```
 
-Cada parte tiene **dos versiones** (botón **VER 1 · 2**, ver abajo): dos posibilidades del mismo
-momento, no «más» o «menos». La 1 es la de siempre. En cada versión suena **solo** lo que dice
-la tabla (auditado: en las 16 combinaciones, nada de lo que no toca programa notas ni deja sonido
-por encima de −80 dB una vez asentada la parte).
+Cada parte tiene **dos versiones** (botones **AHORA** y **LUEGO**, ver abajo): dos posibilidades
+del mismo momento. Para poder predecirlas, siempre en el mismo orden: **la 1 con menos elementos
+(o energía) y la 2 con más**. En cada versión suena **solo** lo que dice la tabla (auditado: en
+las 16 combinaciones, nada de lo que no toca programa notas ni deja sonido por encima de −80 dB
+una vez asentada la parte).
 
 | Parte | Qué es | Versión 1 | Versión 2 |
 |---|---|---|---|
@@ -90,34 +91,39 @@ por encima de −80 dB una vez asentada la parte).
 | **DROP** | el pico: todo dentro | todo; el pad algo al fondo | todo, con acordes y pad enteros |
 | **BREAK** | el breakdown: cae la batería y manda la atmósfera | el pad a tope, acordes flojos y un hat lejano | el pad, acordes enteros, un hat lejano y algo de percusión |
 | **DRIFT** | lo experimental / ambient: flota, bajo y armonía suspendidos | bajo, acordes y pad | lo mismo con pulso: hats lejanos y percusión |
-| **BUILD** | la subida: sin graves, arriba el ritmo; pide un drop | hats, percusión, clap, open hat, acordes y pad | hats, percusión, acordes y pad (sin clap ni open hat) |
-| **KICK-OUT** | el bajo sigue rodando sin kick: tensión antes de que vuelva | todo menos el kick | bajo, hats, percusión y acordes |
+| **BUILD** | la subida: sin graves, arriba el ritmo; pide un drop | hats, percusión, acordes y pad (sin clap ni open hat) | + clap y open hat |
+| **KICK-OUT** | el bajo sigue rodando sin kick: tensión antes de que vuelva | bajo, hats, percusión y acordes | todo menos el kick |
 
-**VERSIÓN** (**VER 1 · 2**, a la derecha de las partes; en DJ, una por universo):
-- Es **del universo**, no de cada parte: la parte que suena y cualquiera a la que vayas van en la
-  versión elegida. En cada botón, K B T M enseña las capas de esa versión; el botón se marca en la 2.
-- **Clic** (al soltar): cambia de versión.
-  - **Quieto**: la otra versión de la misma parte entra en el **siguiente compás**. DE GOLPE, de
-    golpe en ese 1; PROGRESIVA, en 1 compás (SUAVE o ESCALONADA). Sin FX: es la misma parte de
-    otra forma, no un viaje.
+**AHORA** y **LUEGO** (a la derecha de las partes, cada uno con 1 · 2; en DJ, en cada universo):
+- **AHORA** = la versión de la parte que **suena**. **LUEGO** = la del **destino** del viaje; si
+  no hay viaje, la de la **próxima parte que pulses**.
+- **Se normalizan solas**: cuando ya solo suena una parte (al llegar un viaje), AHORA pasa a ser la
+  de LUEGO. De BREAK 1 a DROP 2: al llegar, AHORA = 2 y LUEGO = 2.
+- **AHORA**, al pulsar:
+  - **Quieto**: la otra versión de la parte que suena entra en el **siguiente compás** (DE GOLPE,
+    de golpe en ese 1; PROGRESIVA, en 1 compás, SUAVE o ESCALONADA; sin FX). LUEGO la sigue.
+  - **En un viaje que espera la frase**, o **DE GOLPE** (el origen se aguanta hasta el 1): cambia
+    la versión del origen, igual que quieto; el destino no se toca. Si el viaje empieza en ese
+    mismo compás, ya no da tiempo.
+  - **A mitad de un viaje PROGRESIVO**, o con **LOOP**: no se puede (el botón se apaga): lo que
+    suena ya es mezcla de las dos partes, o está congelado.
+  - Dos pulsaciones antes de que empiece el cambio lo anulan. **Parado**, salta directo.
+- **LUEGO**, al pulsar:
   - **En un viaje** (esperando la frase o a medias): el viaje sigue igual (inicio, duración, FX) y
-    **llega a la otra versión**, sin saltos: cada instrumento sigue desde donde está. Así, para ir
-    de GROOVE 1 a MAIN 2 no hace falta acertar antes: pulsa MAIN y luego VER mientras llega.
-  - Dos clics antes de que empiece el cambio de versión lo anulan.
-  - Con **LOOP** queda pendiente y entra al soltar el loop, como las partes. **Parado**, salta directo.
-- **Mantener VER + pulsar una parte** (como SHIFT en un controlador): ir a esa parte **en la otra
-  versión**, sin tocar la que suena hasta que empiece el viaje. Si es la parte que ya suena, es
-  como un clic. Al soltar VER no cambia nada más.
-- **CORTE** (mantener una parte): suena en la versión que mande y, al soltarlo, se vuelve a la
-  parte elegida en la versión que mande en ese momento.
+    **llega a la otra versión**, sin saltos: cada instrumento sigue desde donde está.
+  - **Quieto**: elige la versión de la próxima parte, sin tocar lo que suena (el botón se marca
+    con borde discontinuo). Pulsar luego una parte (incluso la misma) va a esa versión.
+  - Con **LOOP**, decide en qué versión entra lo pendiente al soltar.
+- **CORTE** (mantener una parte): va en la versión de LUEGO y, al soltarlo, se vuelve a la parte
+  elegida en esa misma versión.
 
 Se basan en lo que se repite en estos géneros: intro y outro de batería para que el DJ mezcle,
 un groove que se mantiene mucho tiempo con cambios pequeños (rominimal, Villalobos), el drop
 como llegada de todo, el breakdown donde cae la batería, la subida sin graves y el kick-out con
 el bajo rodando. DRIFT viene del ambient y de los directos modulares: algo que flota y se disuelve.
 
-- En cada botón, **K B T M** dice qué capas tiene: kick, bajo, tops (hats/perc/clap) y música
-  (acordes/pad).
+- Cada botón dice solo el nombre de la parte (lo que es en el tema); qué suena en cada versión
+  está en la tabla de arriba.
 - Parejas: **KICK-OUT** es el DROP sin kick y **BUILD**, el MAIN sin graves. **Bajar** = entra
   el kick.
 - La parte que suena se ilumina (en cualquiera de sus versiones); en un viaje se iluminan las dos

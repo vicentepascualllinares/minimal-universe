@@ -212,7 +212,7 @@ export function optionsPanel(root, engine, onClose) {
   const tryIn = async (fn) => {
     try { await fn(); showIn(); }
     catch (e) {
-      const msg = e?.name === 'NotAllowedError' ? 'cancelado o sin permiso'
+      const msg = e?.name === 'NotAllowedError' ? `cancelado o sin permiso (${e.message})`
         : e?.message === 'sin audio' ? 'no llegó audio: en la ventana de Chrome deja marcado «compartir también el audio de la pestaña»'
         : e?.message === 'no es pestaña' ? 'elige una pestaña (no una ventana ni la pantalla)'
         : `no se pudo: ${e?.message || e}`;

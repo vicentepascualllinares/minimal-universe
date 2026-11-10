@@ -32,8 +32,22 @@ tope de voces, AudioWorklet).
    - para crear **texturas** con efectos encima: choppeos, granular, efectos varios
    - como **samples** directos: loops, kicks, snares...
    - como **capas** dentro de los instrumentos
-7. **Sonidos nuevos**: que no suene todo igual. Hoy, por ejemplo, todos los kicks son el mismo
-   kick. Más variedad por universo.
+7. **Sonidos nuevos**: que no suene todo igual.
+   **En marcha (2026-11-10), hats y percs**, en tres fases:
+   - **Fase 1 (hecha)**: la base. Recetas (`sounds.js`), taller en JS puro (`drumsynth.js`),
+     banco de sonidos en un Worker (`soundBank.js`) y ranuras con colas y tope de voces
+     (`drumSlots.js`). Los sonidos de antes, idénticos (medido). Etapas comunes listas en neutro:
+     palo, envolvente de filtro, puerta, saturación, bits/muestreo, capa floja, variación.
+   - **Fase 2**: motores nuevos. Hats: METAL con otros juegos de proporciones, FM (2
+     osciladores), RUIDO tipo 909/707 con resonancia, RESONADORES (plato "real") y GRANOS
+     (shaker, cabasa). Percs: RESONADOR (rim, clave, conga, cowbell), MODAL (madera, barra,
+     tubo), GLITCH (clics y ráfagas de 1–5 ms) y GRANOS. FINO, OSCURO, TICK y MEDIO sortean su
+     motor. Al ser JS puro ya no hay límite de Web Audio: Karplus-Strong (madera aguda) se
+     puede hacer en el taller.
+   - **Fase 3**: tabla de estilos (rominimal, house, microhouse, experimental) con qué motores
+     y qué rangos sortea cada uno, lista para la sesión 15 (universos según intención).
+   Lo demás sigue pendiente: hoy, por ejemplo, todos los kicks son el mismo kick. Más variedad
+   por universo.
 8. **Síntesis modular procedimental**: un sistema interno de módulos (o algo en esa línea)
    para acercarse a una herramienta útil y experimental de verdad, que valore quien crea con
    módulos en hardware.
@@ -128,6 +142,20 @@ tope de voces, AudioWorklet).
      la sesión entera (aquí sí tienen sentido los contrastes y el "cambio de disco").
    - Por decidir: cómo se hablan los dos niveles (el auto-DJ pide a cada auto-play "llega a un
      BREAK en 32 compases", "alarga el DROP"...) y qué hace la persona cuando toca encima.
+15. **Generar universos según una INTENCIÓN** (apuntado 2026-11-10, tras CANTIDAD y VARIEDAD de
+   hats y percs). Hoy NUEVO UNIVERSO sortea todo dentro de un mismo estilo (rominimal). La idea:
+   pedir un universo **con una intención** (algo experimental, un rominimal, un house típico...)
+   y que esa intención cambie *de qué* se sortea, no solo *cuánto*:
+   - **Timbres**: no son los mismos hats ni la misma percusión en cada estilo (qué tipos de hat
+     existen, metal o ruido, colas largas o secas; percusión tonal, FM o de ruido).
+   - **Armonía**: cuánta disonancia, qué modos, voicings, cuánto se mueve la progresión.
+   - **Ritmo de cada elemento**: rapidez de las notas, kicks (rectos, rotos), claps (estilos,
+     dónde caen), dónde vive cada hat, longitudes de la polimetría.
+   - Y los rangos de partida de COMPLEJIDAD, CANTIDAD y VARIEDAD.
+   - Por decidir: si la intención es una lista cerrada de estilos, unos ejes continuos
+     (experimental ↔ funcional, oscuro ↔ luminoso...) o las dos cosas; cómo se mezcla con el
+     color (emoción) del universo; y cómo encaja con el ADN de los sonidos (sesión 3) y con
+     "Sonidos nuevos" (sesión 7), que van muy de la mano.
 
 ## Auto-arreglos (OPCIONES → AUTO-ARREGLOS)
 
@@ -139,6 +167,10 @@ su interruptor en OPCIONES. Se van añadiendo poco a poco.
   Pendiente: probar de oído si 30 ms es lo justo y si hace falta un mando para la duración.
   Cuando se haga la sesión 9 (transiciones según origen y destino), decidir si su largo depende
   del viaje (p. ej., más largo de BREAK a DROP).
+- **Caída del kick al final de frase** (2026-11-10; encendido por defecto): antes era parte de
+  la complejidad del KICK (al azar, más probable cuanto más compleja). Ahora, el último tiempo
+  del último compás de cada 16. Pendiente: probar de oído si 16 es lo justo (o 8, o 32) y si
+  conviene que la estructura lo pida (más antes de un viaje, nunca en un BREAK sin kick).
 - **Bajo fuera antes del drop**, **graves que bajan antes del drop** (−6 dB, último compás) y
   **menos volumen sin kick** (−1,5 dB) (hechos, 2026-11-10; encendidos por defecto). Los dos
   primeros solo en drops DE GOLPE, que son los que se saben por adelantado. Pendiente: probar de

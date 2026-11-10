@@ -19,6 +19,8 @@ const dB = (v) => `${String(v).replace('.', ',').replace('-', '−')} dB`;
 const AUTOS = [
   { k: 'kickGap', label: 'HUECO ANTES DEL KICK', amount: (o) => ms(o.kickGapS),
     desc: 'cuando entra el kick de golpe (venía de una escena sin kick), el universo calla un instante justo antes de su primer golpe: más pegada' },
+  { k: 'kickDrop', label: 'CAÍDA DEL KICK AL FINAL DE FRASE', amount: (o) => `ÚLTIMO TIEMPO · CADA ${o.kickDropBars} COMPASES`,
+    desc: 'el kick calla el último tiempo del último compás de cada tramo: respira y marca que empieza otro' },
   { k: 'bassOut', label: 'BAJO FUERA ANTES DEL DROP', amount: () => 'ÚLTIMO TIEMPO',
     desc: 'el bajo calla el último tiempo antes del drop y vuelve con el kick en el 1' },
   { k: 'lowsDip', label: 'GRAVES QUE BAJAN ANTES DEL DROP', amount: (o) => `${dB(o.lowsDb)} · ÚLTIMO COMPÁS`,

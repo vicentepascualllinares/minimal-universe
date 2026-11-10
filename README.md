@@ -33,12 +33,14 @@ Requiere [Node.js](https://nodejs.org). Alternativa manual: `node serve.mjs` y a
 
 El mismo programa elige solo su perfil:
 
-- **Ordenador**: CALIDAD **NORMAL** (hats grabados del mismo motor: suena igual y gasta ~⅓
-  menos que antes) y búfer de ~50 ms.
+- **Ordenador**: CALIDAD **NORMAL** (el filtro lento del pad por bloques: suena igual) y búfer
+  de ~50 ms.
 - **Móvil** (Android / iPhone / iPad): CALIDAD **LIGERA** (además, saturación sin
-  sobremuestreo, un oscilador por nota en acordes y pad, bajo sin osciladores inaudibles,
-  panorama fijo por carril de percusión), búfer de ~45 ms, margen de 150 ms que sube solo si
-  el móvil se atasca, ajustes solo cuando cambian, canvas a menor resolución y sin osciloscopio.
+  sobremuestreo, un oscilador por nota en acordes y pad, bajo sin osciladores inaudibles),
+  búfer de ~45 ms, margen de 150 ms que sube solo si el móvil se atasca, ajustes solo cuando
+  cambian, canvas a menor resolución y sin osciloscopio, y 16 MB para el banco de sonidos (48
+  en ordenador).
+- En los dos, hats y percs salen del **banco de sonidos** (ver "Taller de percusión").
 
 Todo esto se cambia en **OPCIONES → RENDIMIENTO** (ver abajo y RENDIMIENTO.md).
 
@@ -65,7 +67,8 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | **OSCILADOR** (uno por fader) | La complejidad del grupo va y viene entre el fader (A) y la **marca** ◂ de su derecha (B): arrastrar = ponerla, doble clic = quitarla. El **cuadradito** junto al nombre del grupo = encenderlo / apagarlo. Debajo, el **GESTO** (‹ › o clic en la palabra) y la **línea de la frase**: arrastrar arriba / abajo = más rápido / más lento, de lado = en qué tramo de la frase; doble clic = como el gesto; mantener = editor de casillas. Ver "Osciladores". |
 | **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
-| **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. |
+| **CANT · VAR** (bajo HAT y bajo PERC) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
+| **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. |
 
 ## Estructura: los momentos de un tema
 
@@ -228,6 +231,36 @@ KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **CHORD** · **PAD*
   casa y otro: iv, VI, VII o v). Si el modo cambia, se recolorean al compás siguiente.
 - El kick los hace bombear un poco (sidechain), y NUEVO UNIVERSO cambia también la armonía.
 
+### Taller de percusión (hats y percs)
+
+Cada hat y cada perc es una **receta**: un motor y sus números (`src/music/sounds.js`), con
+el color del universo. El **taller** (`src/audio/drumsynth.js`, JavaScript puro, sin Web Audio)
+la sintetiza y el **banco de sonidos** (`src/audio/soundBank.js`) la guarda grabada: 4
+variantes por sonido (el ruido cambia de un golpe a otro), y dos capas (floja y fuerte) si
+responde a la velocidad. Cada golpe solo reproduce la grabación: 2 nodos, cueste lo que cueste
+el motor.
+
+- **Graba en segundo plano** (un Worker): nunca para el reloj ni la pantalla. Un universo
+  entero (11 sonidos) son ~100 ms de trabajo; el hat abierto largo, el más caro, ~40 ms.
+- **NUEVO UNIVERSO** graba sus sonidos al pulsarlo, antes de que entre: suenan desde el
+  primer golpe (medido: 0 golpes perdidos).
+- **El color**: si viaja (universo nuevo), cada sonido se vuelve a grabar cada medio segundo y
+  el cambio se oye gradual. Con la deriva lenta sola, una vez cada 4 s (no se oye la
+  diferencia). Lo que cambia de verdad (un carril que muta, otra tónica o escala) entra al
+  momento. Mientras se graba lo nuevo, suena lo anterior: nunca hay hueco.
+- **Las colas**: cada sonido dice qué corta. El cerrado del hat del universo corta a su
+  abierto; el MEDIO se corta a sí mismo; el resto suena entero. Tope de 8 colas vivas por
+  sonido (la más vieja se apaga en ~20 ms).
+- **Mismo sonido que antes**: los motores de hoy (metal tipo 808, tono, FM y ruido) se
+  comprobaron contra los de Web Audio: tono y FM iguales a la muestra (diferencia −51…−74 dB),
+  hats y ruido iguales en nivel (±0,4 dB) y en el reparto de frecuencias. La cuadrada de
+  Chrome está normalizada (RMS 0,845): se midió y se iguala.
+- **Etapas comunes**, preparadas para los sonidos que vienen (hoy en neutro): palo (clic de
+  1,5 ms), envolvente de filtro, puerta (la cola se cierra a un largo fijo), saturación, bits y
+  muestreo reducidos, capa floja más oscura y corta, y variación de altura y largo por golpe.
+- **Memoria**: 48 MB en ordenador y 16 MB en móvil; por encima, se olvida lo que hace más que
+  no suena.
+
 ## Complejidad
 
 Cuatro faders por universo, uno por grupo, y la barra GLOBAL de la cabecera que los escala
@@ -238,12 +271,15 @@ medias, y bajar o subir todo el universo con el GLOBAL sin perder ese carácter.
 
 | Grupo | SIMPLE | COMPLEJO |
 |---|---|---|
-| **KICK** | negras rectas, sin caídas | kicks fantasma (al máximo, dos) y caída del último tiempo al final de frase |
-| **PERCS** (hat, open hat, clap, perc) | el hat en contratiempo, 1 capa de percusión, clap recto | semicorcheas, hasta 4 capas de polimetría, clap con fantasmas, redobles al final de frase (al máximo, redoble largo de semicorcheas) |
+| **KICK** | negras rectas | kicks fantasma (al máximo, dos). La caída del último tiempo al final de frase ya no es complejidad: es un AUTO-ARREGLO |
+| **PERCS** (hat, open hat, clap, perc) | hats y percusión en corcheas (el hat en contratiempo), sin redobles, clap recto, motivos que casi no cambian | semicorcheas, redobles de hat, percusión y clap al final de frase (al máximo, redoble largo de semicorcheas), clap con fantasmas y desplazado, un open hat a contrapié, motivos que mutan más |
 | **BASS** | corcheas en contratiempo con tónica y octava, siempre el mismo motivo | semicorcheas, todas las notas, variación cada 4 compases |
 | **INSTR.** (acordes, pad) | un solo acorde de 2 notas, stabs muy espaciados, el pad cambia cada 4–8 compases | progresión, 4 notas, stabs seguidos, el pad cada 2–4 |
 
 Cada grupo también decide cuánto cambian sus motivos con el tiempo (poco = hipnótico).
+
+En PERCS, la complejidad decide **cómo** se tocan hats y percusión, no **cuántos golpes** ni
+**cuántos sonidos**: eso son las perillas CANT y VAR (ver "Cantidad y variedad").
 
 Con el GLOBAL, dos reglas para que no compita todo a la vez:
 
@@ -253,6 +289,38 @@ Con el GLOBAL, dos reglas para que no compita todo a la vez:
   pad no ceden.
 - **Turnos** (GLOBAL por debajo de 0,6): los acordes esquivan al bajo (se mueven una
   corchea, como respuesta) y la percusión deja libres los golpes de acordes y clap.
+
+### Cantidad y variedad (hats y percs)
+
+Bajo **HAT** y bajo **PERC**, en la tira de instrumentos, dos perillas con el centro arriba.
+Son independientes de la complejidad: se puede tener mucha variedad de hats que suenan poco,
+un solo hat que suena mucho, muchos hats y pocas percs, etc.
+
+| | izquierda | centro | derecha |
+|---|---|---|---|
+| **CANT** (cantidad: golpes de cada sonido) | casi nada: un golpe suelto | lo de siempre | casi todos los pasos |
+| **VAR** (variedad: sonidos distintos) | 1 | 3 | 5 |
+
+- **HATS**: el 1º es el hat del universo (el cerrado y su abierto, el mismo plato). Los
+  otros cuatro salen de cada universo con su propio timbre, y en un orden que también cambia
+  (el 2º siempre es cerrado):
+  - **FINO** — brillante, casi ruido, en semicorcheas (el "shaker").
+  - **OSCURO** — más grave y algo más largo, en negras y corcheas (el "chick" del pedal).
+  - **TICK** — un clic metálico cortísimo justo antes del tiempo.
+  - **MEDIO** — medio abierto, a contrapié; suena por el canal OPEN (solo donde hay open hat).
+  Todos siguen el color del universo. Las colas: el cerrado del hat del universo corta a su
+  abierto, y el MEDIO se corta a sí mismo; los demás platos no se cortan entre ellos.
+  En un mismo paso suena un solo hat cerrado (y un solo abierto): el que lo tiene más
+  seguro. Por eso, con mucha CANTIDAD, los otros hats no desaparecen bajo el principal.
+- **PERCS**: VAR = cuántos carriles de percusión polimétrica (cada uno con su sonido y su
+  longitud: 16, 12, 7, 5...). El 1º es la **percusión principal**, la única con VAR 1: siempre
+  con tono (tonal o FM, nunca ruido estrecho), al menos un golpe por cada cuatro pasos de su
+  ciclo y sus golpes base en corcheas, para que nunca salga casi muda. CANT = cuántos golpes da cada carril: en el centro, su patrón
+  euclídeo de siempre; al subir, entran los huecos más alejados de lo que ya suena; al bajar,
+  se van en orden inverso. Subir y bajar es reversible.
+- El que está entrando con VAR lo hace poco a poco: primero sus golpes más fuertes.
+- La densidad de la parte (estructura) sigue mandando por encima: con una parte floja
+  ("hats lejanos") suenan menos golpes, y en un viaje los carriles entran poco a poco.
 
 ### Osciladores
 
@@ -367,6 +435,10 @@ se guarda (vendrá con las cuentas).
     primer golpe del kick. Da más pegada a la entrada. Si el kick entra poco a poco
     (PROGRESIVA), no hay entrada que marcar y no se hace. Rampas de 4 ms al bajar y 2 ms al
     volver, entero justo en el ataque del kick: medido sin clics.
+  - **CAÍDA DEL KICK AL FINAL DE FRASE** (encendido, **último tiempo · cada 16 compases**): en
+    el último compás de cada tramo de 16 (dos frases de 8) el kick calla su último tiempo.
+    Siempre en el mismo sitio, sea cual sea la complejidad (antes salía a veces, y más con la
+    complejidad del KICK alta). Si hay un kick fantasma después, se queda.
   - Los tres siguientes miran el **drop**: un viaje **DE GOLPE** en el que entra el kick. Es el
     único que se sabe por adelantado. Lo INSTANTÁNEO o el CORTE caen en la siguiente negra o
     corchea y no dan tiempo, y en un viaje PROGRESIVO el kick ya suena antes de llegar. Si el
@@ -384,12 +456,13 @@ sus opciones van de menos a más calidad; AUTO, que se mueve solo por esa escala
 
 - **RENDIMIENTO → Calidad del motor**: cuánto trabaja el audio por nota. **Si hay cortes, lo
   primero es bajar aquí.** Al cambiarla, el audio se rehace (hueco corto).
-  - **ALTA** — todo sintetizado al momento y filtros recalculados muestra a muestra. La de
-    antes; la que más gasta.
-  - **NORMAL** (por defecto en ordenador) — los hats se graban con el mismo motor y cada
-    golpe reproduce la grabación (y el filtro lento del pad se recalcula cada ~3 ms). Suena igual.
+  - **ALTA** — sin atajos: filtros recalculados muestra a muestra. La que más gasta.
+  - **NORMAL** (por defecto en ordenador) — el filtro lento del pad se recalcula cada ~3 ms.
+    Suena igual.
   - **LIGERA** (por defecto en móvil) — además, saturación sin sobremuestreo y voces más
     sencillas.
+  - Hats y percs no dependen de la calidad: en las tres salen del banco de sonidos (ver
+    "Taller de percusión"). Antes, ALTA los sintetizaba al momento y NORMAL grababa solo los hats.
 - **RENDIMIENTO → Búfer de audio**: cuánto audio prepara el navegador por adelantado. Más
   búfer = menos cortes y un poco más de retraso al tocar (casi no se nota: los cambios caen a
   la negra o al compás).
@@ -422,6 +495,11 @@ lado de cada fader, un **medidor** con lo que suena ahora. En **DJ** salen **A y
 instrumento, **VINCULADOS** por defecto: mover un instrumento en un universo lo mueve igual en el
 otro (conservando la diferencia que tuvieran, como un grupo de faders; doble clic, los dos al
 valor del preset). El botón VINCULADOS los separa. En el móvil, en DJ, no se ven los dB (no caben).
+
+Bajo cada fader, **M** (MUTE) y **S** (SOLO). MUTE silencia ese canal sin mover el fader. SOLO
+"en su sitio": si hay alguno en SOLO, se oyen solo esos, de los dos universos (los demás se ven
+medio apagados). Vinculados, A y B se encienden juntos (los FX, nunca). Rampa corta al entrar y
+salir: sin clics. **RESTABLECER** los quita todos. No se guardan.
 
 **0 dB = el pico máximo del instrumento en 0 dBFS.** Cada instrumento (y los FX) sale de su
 canal con su pico más alto en 0 dB, y la mezcla es **solo la posición de los faders**. Arriba,
@@ -525,9 +603,14 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ; curvas de EASY EQ), filtro DJ, fader, medidor.
 - `src/audio/lowRoles.js` — EASY EQ · GRAVES: reparte los papeles KICK y BAJO entre los dos universos (dueño según el giro, cambio en el tiempo, sidechain cruzado; con la EQ normal, cruzado cuando un bajo suena sin kick propio).
 - `src/audio/dsp.js` — canal de instrumento (drive → HP → LP → fade → duck), saturación.
-- `src/audio/voices.js` — kick, clap, hats tipo 808, percusión (tono / FM / ruido), bajo, acordes dub y pad.
+- `src/audio/voices.js` — kick, clap, bajo, acordes dub y pad (sintetizados al momento).
+- `src/audio/drumsynth.js` — el taller: hats y percs en JavaScript puro (metal tipo 808, tono, FM, ruido y etapas comunes).
+- `src/audio/soundBank.js` + `bankWorker.js` — el banco de sonidos: graba las recetas en un Worker y las guarda para los dos universos.
+- `src/audio/drumSlots.js` — las ranuras de hats y percs de un universo: qué suena, sus colas y el tope de voces.
+- `src/music/sounds.js` — las recetas de hats y percs con el color del universo.
 - `src/music/emotion.js` — el color de cada universo → timbre, golpe, duraciones y swing; las escalas.
 - `src/music/generators.js` — motivos estables con mutación lenta, percusión polimétrica, bajo y armonía en grados de escala.
 - `src/music/arrangement.js` — las 8 escenas (presencia por instrumento), umbrales, viajes.
 - `src/music/complexity.js` — la complejidad por grupos y el global: reglas por instrumento, presupuesto de protagonismo y los OSCILADORES (patrones, unidades, valor en cada paso).
+- `src/music/kit.js` — CANTIDAD y VARIEDAD de hats y percs: las curvas de las perillas y los tipos de hat (FINO, OSCURO, TICK, MEDIO).
 - `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).

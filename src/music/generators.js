@@ -4,8 +4,10 @@
 //
 // Cada generador devuelve, por compás, un array de 16 pasos: null | evento.
 // `e` llega con `e.gen` ya ajustado por la COMPLEJIDAD y con `e.cx` (ver complexity.js).
+// Hats y percs además con `e.kit` = { amt, vary } de su grupo: CANTIDAD y VARIEDAD (ver kit.js).
 
 import { Rng, euclid, clamp } from '../core/rng.js';
+import { HAT_KINDS, amountMul, presence } from './kit.js';
 
 const isDown = (s) => s % 4 === 0;
 const isOff8 = (s) => s % 4 === 2;
@@ -31,8 +33,7 @@ export class KickGen {
     const st = new Array(16).fill(null);
     for (const s of [0, 4, 8, 12]) st[s] = { vel: s === 0 ? 1 : 0.94 };
     const r = this.rng;
-    // final de frase de 8: la clásica caída del kick en el último tiempo
-    if (b % 8 === 7 && r.chance(e.gen.fills)) st[12] = null; // simple = negras sin caídas
+    // (la caída del último tiempo al final de frase es un AUTO-ARREGLO: ver Deck.kickDrop)
     // kicks fantasma (tensión / euforia): groove roto
     if (r.chance(e.gen.ghostKick * 0.7)) st[r.pick([7, 10, 14, 15])] = { vel: 0.42 };
     if (e.cx.doubleGhost && r.chance(e.gen.ghostKick * 0.5)) st[r.pick([3, 6, 11])] = { vel: 0.36 };
@@ -70,11 +71,30 @@ export class ClapGen {
   }
 }
 
-// ───────────────────────── HAT CERRADO
+// ───────────────────────── HATS
+// El hat del universo (cerrado aquí, su abierto en OHatGen) y, con la VARIEDAD, hasta cuatro
+// tipos más (ver HAT_KINDS en kit.js), cada uno con su sitio en el compás. Los eventos llevan
+// `ty`: sin él, el hat del universo; 1..4, el tipo `this.kinds[ty - 1]`.
+const HAT_DENS = 0.68; // la densidad de siempre con la CANTIDAD en el centro
+
 export class HatGen {
   constructor(rng) {
     this.rng = rng;
     this.roll();
+    // después del motivo principal: la misma semilla sigue dando el mismo hat de antes
+    // El orden sale de la semilla, pero el 2º sonido siempre es cerrado: el MEDIO (abierto) va
+    // por el canal del open hat y no se oiría en las partes sin OPEN
+    const r = rng;
+    const names = ['fino', 'oscuro', 'tick'].map((n) => [n, r.next()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+    names.splice(r.int(1, 3), 0, 'medio');
+    this.kinds = names.map((name) => {
+      const K = HAT_KINDS[name];
+      return {
+        name, ch: K.ch, tone: K.tone(r),
+        w: Array.from({ length: 16 }, (_, s) => clamp(K.cat(s) + r.float(-0.25, 0.25), 0.02, 1)),
+        acc: Array.from({ length: 16 }, () => r.float(0.35, 1)),
+      };
+    });
   }
   roll() {
     const r = this.rng;
@@ -92,20 +112,52 @@ export class HatGen {
       this.w[s] = clamp(this.w[s] + r.float(-0.35, 0.35));
       this.acc[s] = r.float(0.25, 1);
     }
+    const k = r.pick(this.kinds); // y un paso de uno de los otros tipos
+    const s = r.int(0, 15);
+    k.w[s] = clamp(k.w[s] + r.float(-0.3, 0.3), 0.02, 1);
   }
+  // umbral: densidad de la escena × CANTIDAD (nunca los 16 pasos: siempre huecos)
+  thr(d, e) { return Math.min(0.97, 0.1 + 0.75 * d * HAT_DENS * amountMul(e.kit.amt)); }
   bar(b, d, e) {
-    const thr = 0.1 + 0.75 * d * e.gen.density; // nunca los 16 pasos: siempre huecos
+    const thr = this.thr(d, e);
     const st = new Array(16).fill(null);
     const f = e.cx.fast;
+    // `sure` = lo seguro que es cada golpe (peso / umbral: 0 = de lo más fuerte, casi 1 = justo
+    // entra). Ver kindsBar
+    this.sure = new Array(16).fill(1);
     for (let s = 0; s < 16; s++) {
       // simple = el "tss" en contratiempo; complejo = semicorcheas
       const w = this.w[s] + fastPenalty(s, f, 0.6) - (isOff8(s) ? 0.3 * f : 0);
-      if (w < thr) st[s] = { vel: 1 - e.hat.accent * (1 - this.acc[s]) };
+      if (w < thr) {
+        st[s] = { vel: 1 - e.hat.accent * (1 - this.acc[s]) };
+        this.sure[s] = Math.max(0, w) / thr;
+      }
     }
     if (b % 8 === 7 && this.rng.chance(e.gen.fills * 0.6)) {
-      for (let s = 12; s < 16; s++) st[s] = { vel: 0.35 + (s - 12) * 0.15 };
+      for (let s = 12; s < 16; s++) { st[s] = { vel: 0.35 + (s - 12) * 0.15 }; this.sure[s] = 0; }
     }
     return st;
+  }
+  // VARIEDAD: los otros tipos entran en su canal (`out` = { hat, ohat } ya hechos; `d` =
+  // densidad de cada canal). Un paso es de quien lo tiene más seguro: así, con mucha CANTIDAD,
+  // el hat principal no se lo come todo y los otros se siguen oyendo (sin amontonarse en el
+  // mismo paso). El que está entrando suena solo en sus pasos más fuertes. Los redobles y el
+  // open hat del universo no se tocan. La COMPLEJIDAD les toca igual: menos semicorcheas
+  kindsBar(d, e, out) {
+    const f = e.cx.fast;
+    const sure = { hat: [...this.sure], ohat: out.ohat.map((x) => (x ? 0 : 1)) };
+    this.kinds.forEach((k, i) => {
+      const pres = presence(e.kit.vary, i + 1);
+      if (pres <= 0) return;
+      const st = out[k.ch];
+      const thr = this.thr(d[k.ch], e) * pres;
+      for (let s = 0; s < 16; s++) {
+        const w = k.w[s] + fastPenalty(s, f, 0.5);
+        if (w >= thr || w / thr >= sure[k.ch][s]) continue;
+        st[s] = { vel: 1 - e.hat.accent * 0.8 * (1 - k.acc[s]), ty: i + 1 };
+        sure[k.ch][s] = w / thr;
+      }
+    });
   }
 }
 
@@ -119,7 +171,7 @@ export class OHatGen {
   mutate() { this.extra = this.rng.pick([null, 15, 7, 11, 3]); }
   bar(b, d, e) {
     const st = new Array(16).fill(null);
-    const thr = 0.2 + 0.8 * d;
+    const thr = (0.2 + 0.8 * d) * amountMul(e.kit.amt); // CANTIDAD (centro = lo de siempre)
     [2, 6, 10, 14].forEach((s, i) => { if (this.w[i] < thr) st[s] = { vel: 0.85 + 0.15 * this.w[i] }; });
     if (this.extra !== null && e.cx.ohatExtra && d > 0.6) st[this.extra] = { vel: 0.5 };
     return st;
@@ -127,10 +179,14 @@ export class OHatGen {
 }
 
 // ───────────────────────── PERCUSIÓN GENERATIVA (polimetría)
-// Hasta 4 carriles con longitudes distintas (16, 12, 7, 5...) que giran sobre
+// Hasta 5 carriles con longitudes distintas (16, 12, 7, 5...) que giran sobre
 // el compás: el patrón resultante tarda mucho en repetirse = hipnosis.
-function makePercSound(r) {
-  const type = r.weighted(['tone', 'fm', 'noise'], [3, 4, 2.5]);
+// El 1º es la PERCUSIÓN PRINCIPAL: el único que suena con VARIEDAD 1, así que nunca puede salir
+// casi mudo. Sonido con tono (nada de ruido estrecho, que apenas se oye), longitud par y giro par
+// (sus golpes base caen en corcheas: la complejidad baja no se los quita) y al menos un golpe
+// por cada cuatro pasos de su ciclo. Lo conserva al mutar.
+function makePercSound(r, lead = false) {
+  const type = lead ? r.weighted(['tone', 'fm'], [3, 4]) : r.weighted(['tone', 'fm', 'noise'], [3, 4, 2.5]);
   return {
     type,
     deg: r.pick([0, 0, 2, 4, 4, 6, 7, 9, 11]),
@@ -147,51 +203,83 @@ function makePercSound(r) {
   };
 }
 
-function makeLane(r, minD) {
-  const len = r.weighted([16, 12, 10, 7, 6, 5, 3], [4, 2, 1, 2, 1, 1.5, 0.8]);
-  const k = clamp(r.int(1, Math.ceil(len / 2)), 1, len);
+const leadMinK = (l) => (l.lead ? Math.ceil(l.len / 4) : 1);
+
+function makeLane(r, lead = false) {
+  const len = lead ? r.weighted([16, 12, 8, 6], [3, 2, 1.5, 1]) : r.weighted([16, 12, 10, 7, 6, 5, 3], [4, 2, 1, 2, 1, 1.5, 0.8]);
+  const k = lead ? r.int(Math.ceil(len / 4), Math.ceil(len / 2)) : clamp(r.int(1, Math.ceil(len / 2)), 1, len);
   return {
-    len, k, rot: r.int(0, len - 1), minD,
-    hits: null, sound: makePercSound(r),
+    lead, len, k, rot: lead ? 2 * r.int(0, len / 2 - 1) : r.int(0, len - 1),
+    rank: null, sound: makePercSound(r, lead),
     acc: Array.from({ length: len }, () => r.float(0.4, 1)),
     prob: r.float(0.75, 1),
   };
 }
 
+// CANTIDAD de un carril: en qué orden entran sus golpes. Primero los del patrón euclídeo
+// (k golpes repartidos: lo que suena con la perilla en el centro), luego los huecos más lejos
+// de lo que ya suena. Quitar golpes = desandar el orden: subir y bajar es reversible.
+// `rank[i]` = turno del paso i del carril
+function laneRank(l) {
+  const base = [], rest = [];
+  euclid(l.k, l.len, l.rot).forEach((h, i) => (h ? base : rest).push(i));
+  const order = [];
+  const gap = (i) => {
+    let m = Infinity;
+    for (const j of order) { const d = Math.abs(i - j); m = Math.min(m, d, l.len - d); }
+    return m;
+  };
+  for (const pool of [base, rest]) {
+    while (pool.length) {
+      let best = 0, bd = -1;
+      pool.forEach((i, x) => { const g = gap(i); if (g > bd) { bd = g; best = x; } });
+      order.push(pool.splice(best, 1)[0]);
+    }
+  }
+  l.rank = new Array(l.len);
+  order.forEach((i, n) => (l.rank[i] = n));
+}
+
 export class PercGen {
   constructor(rng) {
     this.rng = rng;
-    this.lanes = [0, 0.3, 0.55, 0.8].map((m) => makeLane(rng, m));
-    this.lanes.forEach((l) => (l.hits = euclid(l.k, l.len, l.rot)));
+    this.lanes = [0, 1, 2, 3, 4].map((n) => makeLane(rng, n === 0));
+    this.lanes.forEach(laneRank);
   }
   mutate(strength = 1) {
     const r = this.rng;
     const l = r.pick(this.lanes);
     const op = r.weighted(['rot', 'k', 'sound', 'len'], [4, 3, 1.2 * strength, 0.8 * strength]);
-    if (op === 'rot') l.rot = (l.rot + r.pick([1, -1, 2, 3])) % l.len;
-    else if (op === 'k') l.k = clamp(l.k + r.pick([1, -1]), 1, Math.ceil(l.len * 0.6));
-    else if (op === 'sound') l.sound = makePercSound(r);
-    else {
-      const nl = makeLane(r, l.minD);
-      Object.assign(l, nl);
-    }
-    l.hits = euclid(l.k, l.len, l.rot);
+    // la principal gira de dos en dos: sus golpes base siguen en corcheas
+    if (op === 'rot') l.rot = (((l.rot + (l.lead ? r.pick([2, -2, 4]) : r.pick([1, -1, 2, 3]))) % l.len) + l.len) % l.len;
+    else if (op === 'k') l.k = clamp(l.k + r.pick([1, -1]), leadMinK(l), Math.ceil(l.len * 0.6));
+    else if (op === 'sound') l.sound = makePercSound(r, l.lead);
+    else Object.assign(l, makeLane(r, l.lead));
+    laneRank(l);
   }
-  // `abs` = número absoluto del primer paso del compás (para la polimetría)
+  // `abs` = número absoluto del primer paso del compás (para la polimetría).
+  // VARIEDAD = cuántos carriles (cada uno, su sonido); CANTIDAD × densidad de la escena = cuántos
+  // golpes da cada uno (con poca densidad, los carriles de menos golpes callan antes)
   bar(b, d, e, abs) {
     const st = new Array(16).fill(null);
-    const dd = d * (0.55 + 0.45 * e.gen.density);
     const fill = b % 8 === 7 && this.rng.chance(e.gen.fills * 0.7);
-    const lanes = this.lanes.slice(0, e.cx.percLanes); // complejidad = cuántas capas de polimetría
+    const mul = amountMul(e.kit.amt) * (0.35 + 0.65 * d);
+    const ks = this.lanes.map((l, n) => {
+      const x = l.k * mul * presence(e.kit.vary, n);
+      // con la CANTIDAD al mínimo, un golpe suelto por carril; callan los que están entrando
+      // (VARIEDAD) o con muy poca densidad de escena
+      return x < 0.25 ? 0 : clamp(Math.round(x), 1, Math.ceil(l.len * 0.75));
+    });
     const f = e.cx.fast;
     for (let s = 0; s < 16; s++) {
       const evs = [];
-      for (const l of lanes) {
-        if (dd < l.minD) continue;
+      for (let n = 0; n < this.lanes.length; n++) {
+        const l = this.lanes[n];
+        if (!ks[n]) continue;
         const i = (abs + s) % l.len;
         if (s % 2 === 1 && l.acc[i] < 0.4 + 0.6 * f) continue; // menos semicorcheas
-        const hit = l.hits[i] || (fill && s >= 12 && l === this.lanes[0] && this.rng.chance(0.6));
-        if (hit && this.rng.chance(l.prob)) evs.push({ lane: l, vel: l.acc[i] });
+        const hit = l.rank[i] < ks[n] || (fill && s >= 12 && n === 0 && this.rng.chance(0.6));
+        if (hit && this.rng.chance(l.prob)) evs.push({ lane: l, n, vel: l.acc[i] }); // n = su ranura de sonido (p0..p4)
       }
       if (evs.length) st[s] = evs;
     }

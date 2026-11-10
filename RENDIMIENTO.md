@@ -97,18 +97,28 @@ Worker (reloj 20 ms PC / 25 ms móvil)
   └─> engine.tick()            hilo principal
         ├─ deck.update()       ~50 Hz: estructura, transiciones, timbre
         └─ deck.scheduleStep() programa los pasos que caen en los próximos `lookahead` s
-              └─ voices.*      cada golpe CREA nodos nuevos (osciladores, filtros, ganancias)
-                               que se tiran al acabar
+              ├─ voices.*      kick, clap, bajo, acordes, pad: cada golpe CREA nodos nuevos
+              │                (osciladores, filtros, ganancias) que se tiran al acabar
+              └─ drumSlots     hats y percs: cada golpe = BufferSource + ganancia (2 nodos)
+                               con la grabación del banco
+Banco de sonidos (soundBank.js) ── Worker (bankWorker.js + drumsynth.js): graba las recetas
 Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
 ```
 
-- **Coste principal**: nodos creados por segundo (cada golpe de kick, hat, perc, bajo,
-  acorde…) y lo que suenan a la vez. Los canales, la mesa y el master son fijos.
+- **Coste principal**: nodos creados por segundo (cada golpe de kick, bajo, acorde…) y lo que
+  suenan a la vez. Los canales, la mesa y el master son fijos. Hats y percs (los que más
+  golpes dan) cuestan 2 nodos por golpe sea cual sea su motor.
 - **CALIDAD** (`src/audio/quality.js`, OPCIONES → RENDIMIENTO): ALTA = todo al momento;
-  NORMAL (PC) = hats grabados (2 nodos por golpe en vez de 9) y el filtro del pad por bloques
-  (`automationRate = 'k-rate'`; SOLO ese, ver §7); LIGERA (móvil)
-  = además sin sobremuestreo, un oscilador por nota en acordes y pad, bajo sin cuadrada
-  inaudible, panorama fijo por carril. Medido en §5.
+  NORMAL (PC) = el filtro del pad por bloques (`automationRate = 'k-rate'`; SOLO ese, ver §7);
+  LIGERA (móvil) = además sin sobremuestreo, un oscilador por nota en acordes y pad, bajo sin
+  cuadrada inaudible. Medido en §5 (con la versión de entonces: hats grabados solo en NORMAL y
+  LIGERA; desde 2026-11-10 hats y percs salen del banco en las tres).
+- **Banco de sonidos** (2026-11-10): la decisión de §4.1 ya tomada para hats y percs. Caché
+  compartida por los dos universos, se graba fuera del golpe (en un Worker, y al pulsar NUEVO
+  UNIVERSO, antes de que entre), presupuesto de memoria (48 MB PC / 16 MB móvil) y tope de
+  voces por sonido (8). Medido en DJ con los dos universos: 0 golpes perdidos; ~3 grabaciones
+  por segundo con todo quieto (la deriva lenta del color) y ~11 por segundo durante los 10 s
+  tras un universo nuevo; cada una ~7 ms de media en el Worker (el hat abierto largo ~40 ms).
 - **Latencia de un gesto** = margen de programación + búfer + salida. Hoy en PC:
   120 ms + 11 ms + ~48 ms ≈ **180 ms** como mucho. No se nota porque casi todo se cuantiza
   a la negra, el compás o la frase. Importará con MIDI y con CORTE en YA.
@@ -122,7 +132,7 @@ Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
 
 | Señal | Primero probar | Si no basta |
 |---|---|---|
-| **CORTES** en ordenador normal | Bajar CALIDAD (OPCIONES). Después: tope de voces por instrumento (robar la más vieja). Cortar antes las colas inaudibles (decays largos, pad). Quitar nodos que no suman (como ya hace el perfil móvil). | Reutilizar nodos fijos en vez de crear por golpe (bancos de osciladores, como el `HatSampler`). Después, **AudioWorklet** (§4.3). |
+| **CORTES** en ordenador normal | Bajar CALIDAD (OPCIONES). Después: tope de voces por instrumento (robar la más vieja). Cortar antes las colas inaudibles (decays largos, pad). Quitar nodos que no suman (como ya hace el perfil móvil). | Reutilizar nodos fijos en vez de crear por golpe (como el banco de sonidos de hats y percs). Después, **AudioWorklet** (§4.3). |
 | **CORTES** solo en ordenadores flojos | CALIDAD LIGERA y búfer (AUTO ya sube solo; MÁXIMO a mano). Idea pendiente: que AUTO proponga LIGERA si hay CORTES el primer minuto. | Bajar polifonía en LIGERA. |
 | **TARDE** | MARGEN en AUTO (ya sube solo) o LARGO (OPCIONES). Revisar qué hace la interfaz por fotograma (escribir en el DOM solo si cambia; menos canvas). No crear objetos en el bucle de cada paso si se puede evitar. | Generar los compases (`prepareBar`) fuera del hilo principal: en un Worker o en el AudioWorklet (§4.3). |
 | **Chasquido sin contadores** | Toda voz con ataque y release de al menos 2–5 ms; nunca saltos de parámetro sin rampa (`setTargetAtTime` / rampas, no `value =` mientras suena); al cortar un sonido, bajar ganancia antes de `stop()`. | Revisar el limitador y la saturación del master. |
@@ -137,9 +147,13 @@ Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
 
 Pueden multiplicar lo que suena a la vez: es el momento de diseñar el motor de voces, no
 después.
+**Hecho para hats y percs (2026-11-10): el banco de sonidos** (`soundBank.js`, ver §2). Los
+samples del usuario y las capas entrarán por el mismo sitio: un sample decodificado es otra
+entrada del banco, y una capa, otra ranura que suena a la vez. Lo de abajo sigue valiendo para
+cuando lleguen.
 - **Decodificar una vez** (`decodeAudioData`) y guardar los `AudioBuffer` en una caché
   compartida por los dos universos. Cada golpe = `BufferSource` + ganancia (2 nodos):
-  barato, como el `HatSampler` del móvil.
+  barato, como el banco de sonidos de hats y percs (`soundBank.js`).
 - **Precargar al cambiar de universo**, nunca en el tiempo del golpe.
 - **Presupuesto de memoria**: el audio decodificado ocupa ~23 MB por minuto (48 kHz, estéreo,
   32 bits). En móvil, poner un tope y preferir samples cortos y mono.

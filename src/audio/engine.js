@@ -3,6 +3,7 @@
 // que siempre van en fase.
 
 import { makeNoise } from './voices.js';
+import { SoundBank } from './soundBank.js';
 import { Deck } from './deck.js';
 import { Strip, easyGains, easyX, bandGain, bandValue, faderGain } from './strip.js';
 import { LowRoles } from './lowRoles.js';
@@ -69,10 +70,12 @@ export class Engine {
     this.rec = new Recorder(); // GRABAR (ver recorder.js)
     this.generated = false;    // ¿se ha pulsado GENERAR alguna vez? (hasta entonces no suena nada)
     // OPCIONES → AUTO-ARREGLOS: trucos de producción que el programa hace solo, en vivo.
-    // kickGap = HUECO ANTES DEL KICK (ver Deck.kickGap); bassOut, lowsDip y breakDip, ver
-    // Deck.autoArrange. Aún no se guardan: vendrá con las cuentas
+    // kickGap = HUECO ANTES DEL KICK (ver Deck.kickGap); kickDrop = CAÍDA DEL KICK AL FINAL DE
+    // FRASE (ver Deck.kickDrop); bassOut, lowsDip y breakDip, ver Deck.autoArrange.
+    // Aún no se guardan: vendrá con las cuentas
     this.auto = {
       kickGap: true, kickGapS: 0.03,
+      kickDrop: true, kickDropBars: 16,
       bassOut: true,
       lowsDip: true, lowsDb: -6,
       breakDip: true, breakDb: -1.5,
@@ -121,6 +124,8 @@ export class Engine {
     // VOLUMEN DE FX por universo: ganancia (1 = 0 dB) y la posición de su fader, que comparten
     // la columna TRANSICIÓN del universo y el MIXER (ver setFxFader en instMixer.js)
     this.fxGain = [1, 1];
+    this.mute = [new Set(), new Set()]; // MIXER: MUTE y SOLO (ver heard)
+    this.solo = [new Set(), new Set()];
     this.fxPos = [FADER_ZERO, FADER_ZERO];
     this.applyMix(DEFAULT_MIX);
     // REGISTRO DE INCIDENCIAS (ver logIncident)
@@ -145,7 +150,31 @@ export class Engine {
   // VOLUMEN DE FX de un universo (0 = A, 1 = B): sus efectos de transición
   setFxGain(i, g) {
     this.fxGain[i] = g;
-    if (this.ready) this.decks[i].fx?.setLevel(g);
+    if (this.ready) this.decks[i].fx?.setLevel(g * this.heard(i, 'fx'));
+  }
+
+  // MUTE y SOLO del MIXER, por universo e instrumento (`k` = un instrumento o 'fx'). Solo "en su
+  // sitio": si hay alguno en SOLO, se oyen solo esos (de los dos universos). Actúan después del
+  // fader (no lo mueven) y con una rampa corta: sin clics. No se guardan
+  heard(i, k) {
+    const anySolo = this.solo[0].size + this.solo[1].size > 0;
+    return !this.mute[i].has(k) && (!anySolo || this.solo[i].has(k)) ? 1 : 0;
+  }
+  // `which` = 'mute' | 'solo'; `on` = encender o apagar
+  setMuteSolo(which, i, k, on) {
+    this[which][i][on ? 'add' : 'delete'](k);
+    this.applyHeard();
+  }
+  clearMuteSolo() {
+    for (const s of [...this.mute, ...this.solo]) s.clear();
+    this.applyHeard();
+  }
+  applyHeard() {
+    for (const i of [0, 1]) {
+      for (const k of INSTRUMENTS) this.setInst(i, k, this.inst[i][k]);
+      this.setFxGain(i, this.fxGain[i]);
+    }
+    this.mixVersion = (this.mixVersion || 0) + 1; // las vistas del MIXER se redibujan
   }
 
   setMasterGain(g) {
@@ -435,6 +464,13 @@ export class Engine {
     this.driftWin = [];
     this.lastWall = 0; // el MARGEN en AUTO no cuenta como atasco el hueco de rehacer el audio
     this.noise = makeNoise(ctx);
+    // BANCO DE SONIDOS de hats y percs (soundBank.js): uno para los dos universos. Sobrevive a
+    // rehacer el audio; solo se rehace si cambia la frecuencia de muestreo
+    if (this.bank?.sr !== ctx.sampleRate) {
+      this.bank?.dispose();
+      this.bank = new SoundBank(ctx.sampleRate);
+      this.bank.inUse = (k) => this.decks.some((d) => d.drums.uses(k));
+    }
 
     // master: suma -> graves en mono -> glue -> limitador
     this.sum = ctx.createGain();
@@ -517,9 +553,17 @@ export class Engine {
   setInst(i, k, gain) {
     this.inst[i][k] = gain;
     const d = this.decks[i];
-    if (this.ready && d.ch) glide(d.ch[k].user.gain, gain, this.ctx.currentTime, 0.02);
+    if (this.ready && d.ch) glide(d.ch[k].user.gain, gain * this.heard(i, k), this.ctx.currentTime, 0.02);
   }
-  instFor(deck) { return this.inst[this.decks.indexOf(deck)]; }
+  // lo que deja pasar el MIXER en un canal: el fader por el MUTE / SOLO
+  instGain(deck, k) {
+    const i = this.decks.indexOf(deck);
+    return this.inst[i][k] * this.heard(i, k);
+  }
+  fxLevel(deck) {
+    const i = this.decks.indexOf(deck);
+    return (this.fxGain[i] ?? 1) * this.heard(i, 'fx');
+  }
 
   // OPCIONES → DJ: tipo de EQ de la mesa (como en rekordbox)
   setEqType(t) {

@@ -25,7 +25,7 @@ export class TransitionFx {
     this.f = filters;
     this.bus = ctx.createGain();
     // × el VOLUMEN DE FX del universo (fader en su columna TRANSICIÓN y en el MIXER)
-    this.bus.gain.value = FX_LEVEL * (deck.engine.fxGain[deck.engine.decks.indexOf(deck)] ?? 1);
+    this.bus.gain.value = FX_LEVEL * deck.engine.fxLevel(deck); // (con el MUTE / SOLO del MIXER)
     this.bus.connect(out);
     this.plan = null;
     this.live = []; // reverses en curso (se pueden cortar)

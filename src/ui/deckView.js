@@ -8,8 +8,15 @@ import {
   layerCells, layerSlot, oscActive, oscShape,
 } from '../music/complexity.js';
 import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
+import { Knob } from './knob.js';
+import { KIT_GROUPS, varietyShown } from '../music/kit.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
+// las dos perillas del KIT (bajo HAT y bajo PERC)
+const KIT_PARAMS = [
+  ['amt', 'CANT', 'CANTIDAD: cuántos golpes da cada sonido · centro = lo normal · izquierda, casi nada; derecha, casi todos los pasos · doble clic = centro'],
+  ['vary', 'VAR', 'VARIEDAD: cuántos sonidos distintos (1 a 5) · el último entra poco a poco · doble clic = centro'],
+];
 
 const opts = (cls, values, on) =>
   `<div class="opts ${cls}">${values.map((v) => `<button data-v="${v[0]}"${v[0] === on ? ' class="on"' : ''}>${v[1]}</button>`).join('')}</div>`;
@@ -443,6 +450,29 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     cells[k] = { el, dot: el.querySelector('.dot'), bar: el.querySelector('i'), mark: el.querySelector('b'), flash: 0 };
   }
 
+  // KIT: bajo HAT y PERC, CANTIDAD y VARIEDAD (ver kit.js). Centro arriba = lo normal;
+  // doble clic = volver al centro. NUEVO UNIVERSO las mueve (las perillas lo siguen)
+  const kitK = [];
+  for (const g of KIT_GROUPS) {
+    const box = document.createElement('div');
+    box.className = 'kit';
+    box.innerHTML = KIT_PARAMS.map(([p, lab, tip]) =>
+      `<div class="kit-p" data-p="${p}" title="${tip}"><div class="kit-knob"></div><span class="kit-lab">${lab}<b></b></span></div>`).join('');
+    cells[g].el.appendChild(box);
+    cells[g].el.classList.add('kit-cell');
+    for (const el of box.querySelectorAll('.kit-p')) {
+      const p = el.dataset.p;
+      const num = el.querySelector('b');
+      const show = (v) => { if (p === 'vary') num.textContent = String(varietyShown(v)); };
+      const k = new Knob(el.querySelector('.kit-knob'), {
+        value: deck.kit[g][p], def: 0.5, bipolar: true,
+        onChange: (v) => { deck.setKit(g, p, v); show(v); },
+      });
+      show(deck.kit[g][p]);
+      kitK.push({ g, p, k, show });
+    }
+  }
+
   // ESCENAS: apoyar = CLIC (ir ahí); seguir apoyado = CORTE (vuelve al soltar).
   // El gesto lo decide el universo (deck.down / deck.up), igual que hará el MIDI.
   // Cada botón sigue a su propio dedo: se pueden mantener varios a la vez.
@@ -493,6 +523,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       if (cxSeen !== deck.cxVersion) {
         cxSeen = deck.cxVersion;
         for (const g of GROUPS) cxF[g].s.set(deck.cx[g]);
+        for (const x of kitK) { x.k.set(deck.kit[x.g][x.p]); x.show(deck.kit[x.g][x.p]); }
       }
       // lo que suena ahora (con su oscilador × global): número y línea fina
       const p = deck.loop ? null : deck.pos();

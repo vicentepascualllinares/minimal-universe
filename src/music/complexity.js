@@ -3,8 +3,9 @@
 // escala a todos en proporción (bajar el global simplifica el universo entero
 // sin perder su carácter: unos percs juguetones siguen siendo lo más movido).
 //
-//   KICK   simple: negras rectas            máximo: kicks fantasma y caídas de frase
-//   PERCS  simple: hat en contratiempo      máximo: semicorcheas, 4 capas, redobles
+//   KICK   simple: negras rectas            máximo: kicks fantasma (dos)
+//   PERCS  simple: hat en contratiempo      máximo: semicorcheas, redobles, clap con fantasmas
+//          (cuántos golpes y cuántos sonidos de hats y percs: CANTIDAD y VARIEDAD, ver kit.js)
 //   BASS   simple: tónica y octava          máximo: todas las notas, variaciones
 //   INSTR. simple: un acorde de 2 notas     máximo: progresión, 4 notas, stabs seguidos
 
@@ -29,18 +30,20 @@ export function shapeComplexity(cx) {
   return {
     eff: { kick: k, perc: p, bass: b, inst: i },
     kick: {
-      gen: { density: 1, fills: 0.6 * k, mutation: 0, ghostKick: 0.55 * clamp((k - 0.35) / 0.65) },
+      // (la caída del último tiempo al final de frase ya no es complejidad: es un AUTO-ARREGLO)
+      gen: { density: 1, mutation: 0, ghostKick: 0.55 * clamp((k - 0.35) / 0.65) },
       cx: { doubleGhost: k > 0.8 },
     },
     perc: {
-      gen: { density: dens(p), fills: clamp(p * 1.2), mutation: 0.06 + 0.45 * p },
+      // sin densidad: cuántos golpes (y cuántas capas de percusión) es la CANTIDAD y la
+      // VARIEDAD de hats y percs (ver kit.js). Aquí, cómo se tocan
+      gen: { fills: clamp(p * 1.2), mutation: 0.06 + 0.45 * p },
       cx: {
         fast: 1 - p,                                         // castigo a las semicorcheas
-        percLanes: 1 + Math.round(3 * clamp((p - 0.1) / 0.8)), // 1..4 capas de polimetría
         clapExtras: p > 0.45,                                // fantasmas y estilos desplazados
         clapRolls: p > 0.5,                                  // redobles al final de frase
         longRolls: p > 0.8,                                  // redoble largo de semicorcheas
-        ohatExtra: p > 0.55,
+        ohatExtra: p > 0.55,                                 // un open hat a contrapié
       },
     },
     bass: {

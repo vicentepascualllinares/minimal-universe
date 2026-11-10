@@ -3,6 +3,7 @@
 // los pone el Engine (globales), así dos universos siempre encajan.
 
 import * as V from './voices.js';
+import { DrumSlots } from './drumSlots.js';
 import { Channel, Saturator, glide, fixChannels } from './dsp.js';
 import { makeGenerators, trimLens } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
@@ -11,7 +12,9 @@ import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
 import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
-import { Rng, makeDrift, lerp } from '../core/rng.js';
+import { newKit, randomKit } from '../music/kit.js';
+import { hatMain, hatKind, percSound } from '../music/sounds.js';
+import { Rng, makeDrift } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
 const glideAll = glide;
@@ -51,14 +54,20 @@ export class Deck {
     // oscMuted = todos en silencio (se preparan por debajo): eso sí lo recuerda el universo
     this.osc = Object.fromEntries(GROUPS.map((g) => [g, newOsc()]));
     this.oscMuted = false;
+    // KIT: CANTIDAD y VARIEDAD de hats y percs (ver kit.js). NUEVO UNIVERSO también los sortea
+    // (cxVersion avisa a la vista igual que con la complejidad)
+    this.kit = newKit();
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement(scene);
     this.events = [];
     this.seed = newSeed();
     this.gen = makeGenerators(this.seed);
     this.pendingSeed = null;
+    this.pendingGen = null; // los generadores del universo que viene (sus sonidos se graban antes)
     this.bars = {};
-    this.lastOpen = null;
+    // HATS Y PERCS: una ranura por sonido, con su grabación en el banco y sus colas (drumSlots.js)
+    this.drums = new DrumSlots(this);
+    this.soundsAt = -1; // cuándo se actualizaron las recetas por última vez (ver updateSound)
     // LOOP: repite los últimos compases que han sonado con el estado congelado;
     // por debajo puedes mover todo y no se oye hasta que lo sueltas.
     this.loopLen = 2;            // compases
@@ -83,7 +92,6 @@ export class Deck {
   initAudio(ctx, out) {
     this.ctx = ctx;
     this.padVoice = null;
-    this.lastOpen = null;
     this.events = [];
     this.sum = ctx.createGain();
     this.sum.gain.value = 0.8;
@@ -124,14 +132,42 @@ export class Deck {
     this.ch = {};
     for (const k of INSTRUMENTS) {
       this.ch[k] = new Channel(ctx, k, this.sum, Q.oversample ? '2x' : 'none');
-      this.ch[k].user.gain.value = this.engine.instFor?.(this)?.[k] ?? 1; // MIXER
+      this.ch[k].user.gain.value = this.engine.instGain(this, k); // MIXER (fader, MUTE y SOLO)
     }
 
-    // CALIDAD: hats grabados (sampler) y, en LIGERA, un panorama fijo por carril de percusión
-    this.hats = Q.hatSampler ? new V.HatSampler(ctx, this.engine.noise) : null;
-    this.lanePans = Q.lean ? new Map() : null;
+    // hats y percs: ranuras nuevas sobre los canales nuevos (las grabaciones siguen en el banco)
+    this.drums.init(ctx);
+    this.refreshSounds();
     // móvil: no reenviar a los parámetros valores que no cambian (ahorra hilo principal)
     this.paramCache = PROFILE.lite ? new Map() : null;
+  }
+
+  // RECETAS de hats y percs con el color de ahora → ranuras (las que cambian se graban de nuevo;
+  // mientras, suena la versión anterior). Con `gen` de otro universo (el que viene) solo se piden
+  // al banco, para tenerlas grabadas antes de que suene (ver reseed)
+  // Cuándo se vuelve a grabar por el COLOR: si viaja (universo nuevo: llega a su color con una
+  // inercia de 2,2 s), cada ranura cada medio segundo (el cambio se oye gradual). Con la deriva
+  // lenta sola, una vez cada 4 s: en ese tiempo se mueve menos de 1/96 de octava y no se oye.
+  // Lo que cambia de verdad (un carril que muta, otro universo, otra tónica o escala) entra
+  // siempre al momento: ver DrumSlots.set
+  refreshSounds(gen = this.gen, warm = false) {
+    const e = this.e;
+    const root = this.engine.rootHz;
+    const scale = this.loop ? this.loop.scale : this.engine.scale;
+    const em = this.emotion;
+    const gap = em.ramp || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
+    const put = (id, ch, rec, src) => {
+      if (warm) this.engine.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p);
+      else this.drums.set(id, ch, rec, gap, src);
+    };
+    put('hat', 'hat', hatMain(e, false), []);
+    put('ohat', 'ohat', hatMain(e, true), []);
+    gen.hat.kinds.forEach((k, i) => put(`k${i}`, k.ch, hatKind(e, k), [k]));
+    gen.perc.lanes.forEach((l, n) => {
+      const so = l.sound;
+      const semis = degreeToSemis(so.deg, scale) + 12 * so.oct;
+      put(`p${n}`, 'perc', percSound(e, so, root * Math.pow(2, semis / 12) * e.perc.pitchMul), [so, root, scale]);
+    });
   }
 
   // móvil: no reenviar a un parámetro el valor que ya tiene
@@ -142,22 +178,13 @@ export class Deck {
     glide(param, v, now, tc);
   }
 
-  // `t` = cuándo suena el golpe. Si el carril cambió de panorama, se mueve con una rampa
-  // corta en ese momento: el golpe anterior aún suena por aquí y un salto sería un clic
-  lanePan(lane, pan, t) {
-    let p = this.lanePans.get(lane);
-    if (!p) {
-      p = this.ctx.createStereoPanner();
-      p.pan.value = pan;
-      p.connect(this.ch.perc.input);
-      this.lanePans.set(lane, { node: p, pan });
-      return p;
-    }
-    if (p.pan !== pan) { p.pan = pan; p.node.pan.setTargetAtTime(pan, t, 0.004); }
-    return p.node;
+  // NUEVO UNIVERSO: entra en el siguiente compás. Sus hats y percs se graban ya, así suenan
+  // desde el primer golpe
+  reseed() {
+    this.pendingSeed = newSeed();
+    this.pendingGen = makeGenerators(this.pendingSeed);
+    if (this.ctx) this.refreshSounds(this.pendingGen, true);
   }
-
-  reseed() { this.pendingSeed = newSeed(); }
 
   // CARÁCTER del universo (sale de la semilla): color del sonido y complejidad
   // de cada grupo. Sustituye al antiguo pad de EMOCIÓN: el timbre cambia con
@@ -167,9 +194,12 @@ export class Deck {
     this.emotion.setTarget(r.float(-0.8, 0.8), r.float(-0.7, 0.7));
     Object.assign(this.cx, randomComplexity(r));
     this.osc = randomOsc(r, this.cx);
+    this.kit = randomKit(r); // al final: la misma semilla sigue dando el mismo color y complejidad
     this.cxVersion++;
   }
   setComplexity(group, v) { this.cx[group] = v; }
+  // KIT: `group` = 'hat' | 'perc', `key` = 'amt' (CANTIDAD) | 'vary' (VARIEDAD). En el siguiente compás
+  setKit(group, key, v) { this.kit[group][key] = v; }
   // OSCILADOR: encendido, marca B (null = sin oscilar), GESTO y GUÍA DE TIEMPOS (velocidad y
   // tramo de la frase); volver a la variante del gesto; volver al gesto (borra lo retocado)
   setOscOn(group, on) { this.osc[group].on = on; }
@@ -448,9 +478,10 @@ export class Deck {
   updateSound(now) {
     const e = this.e;
     const glide = PROFILE.lite ? this.glideLite.bind(this) : glideAll;
-    if (this.hats) {
-      this.hats.update('closed', e.hat, e.hat.decay);
-      this.hats.update('open', e.hat, e.ohat.decay);
+    // hats y percs siguen al color (cuánto y cada cuánto: ver refreshSounds)
+    if (now - this.soundsAt > 0.1 || now < this.soundsAt) {
+      this.soundsAt = now;
+      this.refreshSounds();
     }
     const m = e.master;
     const C = this.ch;
@@ -489,15 +520,10 @@ export class Deck {
     if (this.pendingSeed !== null) {
       this.seed = this.pendingSeed;
       this.pendingSeed = null;
-      this.gen = makeGenerators(this.seed);
+      this.gen = this.pendingGen ?? makeGenerators(this.seed); // (ya creados en reseed: sus sonidos están grabados)
+      this.pendingGen = null;
       this.newCharacter(this.seed);
       this.newFxPalette(this.seed);
-      if (this.lanePans) { // LIGERA: soltar los panoramas de los carriles viejos...
-        const old = [...this.lanePans.values()];
-        this.lanePans.clear();
-        // ...cuando sus últimos golpes ya hayan sonado: desconectarlos ya los cortaría en seco
-        setTimeout(() => old.forEach((p) => p.node.disconnect()), 4000);
-      }
     }
     const G = this.gen;
     // la complejidad de los faders (A): manda en la mutación, la armonía y el protagonismo.
@@ -538,18 +564,24 @@ export class Deck {
       ...this.byPulse('kick', absStep, cx, [G.kick], (sh) => ({ kick: G.kick.bar(b, d('kick'), withCx(sh)) })),
       ...this.byPulse('perc', absStep, cx, [G.clap, G.hat, G.ohat, G.perc], (sh) => {
         const e = withCx(sh);
-        return {
+        // hats y percs con su CANTIDAD y VARIEDAD (las perillas bajo su nombre)
+        const eH = { ...e, kit: this.kit.hat };
+        const out = {
           clap: G.clap.bar(b, d('clap'), e),
-          hat: G.hat.bar(b, d('hat'), e),
-          ohat: G.ohat.bar(b, d('ohat'), e),
-          perc: G.perc.bar(b, d('perc'), e, absStep),
+          hat: G.hat.bar(b, d('hat'), eH),
+          ohat: G.ohat.bar(b, d('ohat'), eH),
+          perc: G.perc.bar(b, d('perc'), { ...e, kit: this.kit.perc }, absStep),
         };
+        G.hat.kindsBar({ hat: d('hat'), ohat: d('ohat') }, eH, out);
+        return out;
       }),
       ...this.byPulse('bass', absStep, cx, [G.bass], (sh) => ({ bass: G.bass.bar(b, d('bass'), withCx(sh)) })),
       ...this.byPulse('inst', absStep, cx, [G.harmony], (sh) => ({ chord: G.harmony.chordBar(b, d('chord'), withCx(chordCx(sh))) })),
       pad: G.harmony.padBar(b, d('pad'), eI), // una nota larga por compás: sigue al fader
     };
     if (cx.avoid) this.takeTurns(this.bars, prog);
+    this.kickDrop(b);
+    this.refreshSounds(); // un carril que mutó (u otro universo) pide ya su sonido nuevo
     this.history.push({ b, bars: this.bars });
     if (this.history.length > 16) this.history.shift();
   }
@@ -576,6 +608,17 @@ export class Deck {
       if (k === 'bass' || k === 'chord') trimLens(res[k]); // una nota de un pulso no pisa la del siguiente
     }
     return res;
+  }
+
+  // AUTO-ARREGLOS · CAÍDA DEL KICK AL FINAL DE FRASE: en el último compás de cada tramo de
+  // `kickDropBars` compases (16 = cada dos frases de 8) el kick calla el último tiempo (el paso
+  // 12; los fantasmas de después se quedan). Siempre en el mismo sitio: es un gesto de
+  // arreglo, no de complejidad. Queda en el historial, así el LOOP repite lo que sonó
+  kickDrop(b) {
+    const O = this.engine.auto;
+    if (!O.kickDrop || b % O.kickDropBars !== O.kickDropBars - 1 || !this.bars.kick[12]) return;
+    this.bars.kick = [...this.bars.kick];
+    this.bars.kick[12] = null;
   }
 
   // TURNOS (complejidad baja): los acordes esquivan al bajo y la percusión deja
@@ -661,39 +704,20 @@ export class Deck {
       V.clap(ctx, C.clap.input, tc, ev.vel, e.clap, noise);
       emit('clap', tc, ev.vel);
     }
+    // HATS Y PERCS: cada golpe va a su ranura (drumSlots.js), que sabe su sonido y sus colas.
+    // `ty` = tipo de hat de la VARIEDAD (1..4); sin él, el hat del universo
     if ((ev = B.hat[s]) && A.audible('hat', t)) {
       const th = Math.max(t + hum(), ctx.currentTime);
-      if (this.lastOpen && this.lastOpen.end > th) this.lastOpen.gain.setTargetAtTime(0, th, 0.007);
-      // grabado si la CALIDAD lo pide y ya está listo; si no, sintetizado (mismo sonido)
-      if (!this.hats?.play('closed', C.hat.input, th, ev.vel)) V.hat(ctx, C.hat.input, th, ev.vel, e.hat, e.hat.decay, noise);
-      emit('hat', th, ev.vel);
+      if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'hat', th, ev.vel)) emit('hat', th, ev.vel);
     }
     if ((ev = B.ohat[s]) && A.audible('ohat', t)) {
-      const th = t + hum() * 0.5;
-      this.lastOpen = this.hats?.play('open', C.ohat.input, th, ev.vel)
-        || V.hat(ctx, C.ohat.input, th, ev.vel, e.hat, e.ohat.decay, noise);
-      emit('ohat', th, ev.vel);
+      const th = Math.max(t + hum() * 0.5, ctx.currentTime);
+      if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'ohat', th, ev.vel)) emit('ohat', th, ev.vel);
     }
     if ((ev = B.perc[s]) && A.audible('perc', t)) {
-      const P = e.perc;
       for (const h of ev) {
-        const so = h.lane.sound;
-        const semis = degreeToSemis(so.deg, scale) + 12 * so.oct;
-        const sound = {
-          type: so.type,
-          wave: so.wave,
-          bend: so.bend,
-          freq: so.type === 'noise' ? so.nfreq * P.pitchMul : root * Math.pow(2, semis / 12) * P.pitchMul,
-          ratio: lerp(so.ratioI, so.ratioH, P.harmonic),
-          index: so.index * P.fmIndex,
-          decay: so.decay * P.decayMul,
-          q: so.q,
-          pan: so.pan,
-        };
         const tp = Math.max(t + hum(), ctx.currentTime);
-        const pn = this.lanePans ? this.lanePan(h.lane, so.pan, tp) : null;
-        V.perc(ctx, C.perc.input, tp, h.vel * 0.9, sound, noise, pn);
-        emit('perc', tp, h.vel);
+        if (this.drums.hit(`p${h.n}`, tp, h.vel)) emit('perc', tp, h.vel);
       }
     }
     if ((ev = B.bass[s]) && A.audible('bass', t)) {

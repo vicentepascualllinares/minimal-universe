@@ -66,6 +66,10 @@ export function instMixer(root, engine, onClose) {
         <div class="im-meter"><i></i></div>
         <div class="fader"><div class="t-track"><div class="t-line"></div><i class="im-zero"></i><div class="t-handle"></div></div></div>
       </div>
+      <div class="im-ms">
+        <button class="im-mute" title="MUTE: silenciar este canal (el fader no se mueve)">M</button>
+        <button class="im-solo" title="SOLO: oír solo los canales en SOLO (de los dos universos)">S</button>
+      </div>
       ${dj ? `<span class="im-u">${'AB'[i]}</span>` : ''}
     </div>`;
 
@@ -156,6 +160,14 @@ export function instMixer(root, engine, onClose) {
           }
         };
         c.s = new VSlider(el, { value: val[i][k], onChange: move, onEnd: release });
+        // MUTE y SOLO (vinculados, los dos; los FX nunca)
+        for (const which of ['mute', 'solo']) {
+          el.querySelector(`.im-${which}`).addEventListener('click', () => {
+            const on = !engine[which][i].has(k);
+            for (const x of pair ? [c, find(1 - i, k)] : [c]) engine.setMuteSolo(which, x.i, k, on);
+            showMS();
+          });
+        }
         // doble clic: vuelve a lo que dice el preset (vinculados, los dos)
         el.querySelector('.t-track').addEventListener('dblclick', () => {
           const v = presetPos(engine, k);
@@ -195,11 +207,13 @@ export function instMixer(root, engine, onClose) {
     }
     // RESTABLECER: el preset que manda, entero, y el máster a 0 dB
     root.querySelector('.im-reset').addEventListener('click', () => {
+      engine.clearMuteSolo();
       engine.applyMix(engine.mixPreset);
       sync();
       master.s.set(DEF); master.apply(DEF);
     });
     showPresets();
+    showMS();
     root.querySelector('.im-close').addEventListener('click', onClose);
   }
   // los faders siguen al motor (tras elegir un preset)
@@ -208,6 +222,16 @@ export function instMixer(root, engine, onClose) {
     load();
     for (const c of chans) { c.s.set(val[c.i][c.k]); c.show(val[c.i][c.k]); }
     showPresets();
+    showMS();
+  }
+
+  // MUTE / SOLO encendidos, y apagado (gris) el canal que no se oye por el SOLO de otro
+  function showMS() {
+    for (const c of chans) {
+      c.el.querySelector('.im-mute').classList.toggle('on', engine.mute[c.i].has(c.k));
+      c.el.querySelector('.im-solo').classList.toggle('on', engine.solo[c.i].has(c.k));
+      c.el.classList.toggle('im-off', !engine.heard(c.i, c.k));
+    }
   }
 
   // el preset que manda, encendido; RETOCADA si algún fader a la vista no está donde dice

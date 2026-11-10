@@ -12,7 +12,8 @@
 //
 // Cola: en el Worker hay como mucho un trabajo a la vez; lo pendiente se guarda aquí, uno por
 // DUEÑO (una ranura de sonido de un universo): si el color cambia diez veces mientras graba, solo
-// se graba la última. Sin Worker de módulos (navegadores viejos), graba en el hilo principal a
+// se graba la última. Lo URGENTE (lo que va a sonar y aún no existe) pasa delante de los retoques
+// de color (ver want). Sin Worker de módulos (navegadores viejos), graba en el hilo principal a
 // trocitos.
 
 import { renderSet } from './drumsynth.js';
@@ -36,6 +37,7 @@ export class SoundBank {
     this.cache = new Map();   // clave -> { layers: [[AudioBuffer]], bytes, used }
     this.bytes = 0;
     this.queue = new Map();   // dueño -> { key, p } (lo último que pidió)
+    this.urgent = new Map();  // lo mismo, lo que pasa delante (ver want)
     this.busy = null;         // clave que se está grabando
     this.inUse = () => false; // lo pone el motor: claves que suenan ahora (no se olvidan)
     this.errors = 0;
@@ -57,17 +59,26 @@ export class SoundBank {
     return c ? c.layers : null;
   }
 
-  // pedir un sonido para un dueño. Barato si ya está o si ya es lo que pidió
-  want(owner, key, p) {
-    if (this.cache.has(key) || this.busy === key) { this.queue.delete(owner); return; }
-    this.queue.set(owner, { key, p });
+  // pedir un sonido para un dueño. Barato si ya está o si ya es lo que pidió. URGENTE = algo que
+  // se va a tocar y aún no existe (una ranura sin grabación, un carril que cambió de sonido, el
+  // universo que viene): pasa delante de los retoques de color, que pueden esperar porque
+  // mientras tanto suena la versión anterior
+  want(owner, key, p, urgent = false) {
+    if (this.cache.has(key) || this.busy === key) { this.queue.delete(owner); this.urgent.delete(owner); return; }
+    if (urgent || this.urgent.has(owner)) { this.queue.delete(owner); this.urgent.set(owner, { key, p }); }
+    else this.queue.set(owner, { key, p });
     this.next();
+  }
+
+  // lo pendiente, primero lo urgente
+  *pending() {
+    for (const q of [this.urgent, this.queue]) for (const [owner, job] of q) yield [owner, job, q];
   }
 
   next() {
     if (this.busy) return;
-    for (const [owner, job] of this.queue) {
-      this.queue.delete(owner);
+    for (const [owner, job, q] of this.pending()) {
+      q.delete(owner);
       if (this.cache.has(job.key)) continue;
       this.busy = job.key;
       this.jobs++;
@@ -110,5 +121,5 @@ export class SoundBank {
     }
   }
 
-  dispose() { this.worker?.terminate(); this.worker = null; this.queue.clear(); }
+  dispose() { this.worker?.terminate(); this.worker = null; this.queue.clear(); this.urgent.clear(); }
 }

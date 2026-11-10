@@ -255,9 +255,32 @@ el motor.
   comprobaron contra los de Web Audio: tono y FM iguales a la muestra (diferencia −51…−74 dB),
   hats y ruido iguales en nivel (±0,4 dB) y en el reparto de frecuencias. La cuadrada de
   Chrome está normalizada (RMS 0,845): se midió y se iguala.
-- **Etapas comunes**, preparadas para los sonidos que vienen (hoy en neutro): palo (clic de
-  1,5 ms), envolvente de filtro, puerta (la cola se cierra a un largo fijo), saturación, bits y
-  muestreo reducidos, capa floja más oscura y corta, y variación de altura y largo por golpe.
+- **Etapas comunes**: palo (clic de 1,5 ms), envolvente de filtro, puerta (la cola se cierra a
+  un largo fijo), saturación, bits y muestreo reducidos (antes de la envolvente, como en el
+  909: la cola nunca crepita), capa floja más oscura y corta, y variación de altura y largo por
+  golpe (sin usar: es humanización, para otra sesión).
+- **Motores** (fase 2, 2026-11-10). Cada universo sortea con qué motor suena cada sonido:
+  - **Hats** FINO, OSCURO, TICK y MEDIO, según su papel: **metal** (el 808 o un juego de
+    proporciones propio del universo), **FM** (2 osciladores a proporción inarmónica, a 2× de
+    muestreo: sin aliasing), **ruido 909/707** (paso alto resonante, a veces con 6 u 8 bits),
+    **plato de resonadores** (14 resonadores de un mismo plato, golpeados por ruido) y
+    **granos** (shaker, cabasa). FINO tira a granos y ruido; MEDIO a plato, ruido y metal.
+    El hat del universo sigue siendo el metal 808 (la tabla de estilos, fase 3, lo decidirá).
+  - **Percs** (cada carril): tono y FM (los de siempre), ruido estrecho, **resonador** (rim,
+    clave o conga, el puente en T de la 808), **cowbell** (dos cuadradas a 587 : 845),
+    **modal** (madera, barra o tubo, con modos inarmónicos), **Karplus-Strong** (tic de
+    madera afinado), **glitch** (clics y ráfagas de 1–5 ms) y **granos** (semillas). La
+    percusión principal solo sale de los que tienen tono (tono, FM, resonador, modal, KS).
+    La altura del carril se lleva por octavas al registro de cada instrumento.
+  - Todos siguen el color (brillo, largo, madera ↔ metal) y responden a la velocidad con dos
+    capas (el golpe flojo, más oscuro o más blando).
+  - **Nivel igualado**: el tramo de 10 ms más fuerte de cada golpe nuevo se lleva al nivel de
+    los de antes de su tipo (medido), sin pasar de 0,9 de pico.
+  - **Medido** (150 universos, todas las variantes y capas): los sonidos de antes, idénticos
+    muestra a muestra; 0 NaN, 0 clics con el detector de RENDIMIENTO.md §7 (los granos y el
+    glitch están hechos de clics a propósito); largos parecidos a los del metal de cada tipo.
+- **Prioridad del banco**: lo que va a sonar y aún no existe (una ranura nueva, un carril que
+  cambió de sonido, el universo que viene) pasa delante de los retoques de color.
 - **Memoria**: 48 MB en ordenador y 16 MB en móvil; por encima, se olvida lo que hace más que
   no suena.
 

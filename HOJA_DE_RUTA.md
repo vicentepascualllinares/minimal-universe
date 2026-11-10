@@ -38,12 +38,14 @@ tope de voces, AudioWorklet).
      banco de sonidos en un Worker (`soundBank.js`) y ranuras con colas y tope de voces
      (`drumSlots.js`). Los sonidos de antes, idénticos (medido). Etapas comunes listas en neutro:
      palo, envolvente de filtro, puerta, saturación, bits/muestreo, capa floja, variación.
-   - **Fase 2**: motores nuevos. Hats: METAL con otros juegos de proporciones, FM (2
-     osciladores), RUIDO tipo 909/707 con resonancia, RESONADORES (plato "real") y GRANOS
-     (shaker, cabasa). Percs: RESONADOR (rim, clave, conga, cowbell), MODAL (madera, barra,
-     tubo), GLITCH (clics y ráfagas de 1–5 ms) y GRANOS. FINO, OSCURO, TICK y MEDIO sortean su
-     motor. Al ser JS puro ya no hay límite de Web Audio: Karplus-Strong (madera aguda) se
-     puede hacer en el taller.
+   - **Fase 2 (hecha, 2026-11-10)**: motores nuevos. Hats: METAL con otros juegos de
+     proporciones, FM (2 osciladores), RUIDO tipo 909/707 con resonancia, RESONADORES (plato
+     "real") y GRANOS (shaker, cabasa). Percs: RESONADOR (rim, clave, conga), COWBELL, MODAL
+     (madera, barra, tubo), KARPLUS-STRONG, GLITCH (clics y ráfagas de 1–5 ms) y GRANOS. FINO,
+     OSCURO, TICK y MEDIO sortean su motor; el hat del universo sigue en metal 808. Ver README
+     → "Taller de percusión". Pendiente: **probarlo de oído** (hay un muestrario WAV de cada
+     motor) y quitar del sorteo o retocar lo que no convenza; medir en móvil.
+     Fuera a propósito (otra sesión): humanización, groove, swing, notas fantasma.
    - **Fase 3**: tabla de estilos (rominimal, house, microhouse, experimental) con qué motores
      y qué rangos sortea cada uno, lista para la sesión 15 (universos según intención).
    - **Lo que dijo la investigación** (2026-11-10), para las fases 2 y 3:

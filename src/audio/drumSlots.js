@@ -34,9 +34,10 @@ export class DrumSlots {
   // `gap` s (ver Deck.refreshSounds)
   set(id, ch, rec, gap = 0, src = []) {
     let s = this.slots.get(id);
+    // mismo origen = solo cambió el color (puede esperar); si no, es un sonido nuevo (urgente)
+    const same = !!s && s.ch === ch && s.src.length === src.length && src.every((x, i) => x === s.src[i]);
     if (s && s.ch === ch) {
       if (s.key === rec.key) { s.rec = rec; return; }
-      const same = s.src.length === src.length && src.every((x, i) => x === s.src[i]);
       if (same && this.ctx.currentTime - s.changed < gap) return;
     }
     if (!s || s.ch !== ch) {
@@ -62,7 +63,7 @@ export class DrumSlots {
     if (s.asked.length > 4) s.asked.shift();
     const bank = this.deck.engine.bank;
     if (bank.has(rec.key)) s.ready = rec.key;
-    else bank.want(`${this.deck.id}:${id}`, rec.key, rec.p);
+    else bank.want(`${this.deck.id}:${id}`, rec.key, rec.p, !s.ready || !same);
   }
 
   // ¿suena (o va a sonar) esta clave en alguna ranura? El banco no la olvida

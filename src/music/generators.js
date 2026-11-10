@@ -7,7 +7,7 @@
 // Hats y percs además con `e.kit` = { amt, vary } de su grupo: CANTIDAD y VARIEDAD (ver kit.js).
 
 import { Rng, euclid, clamp } from '../core/rng.js';
-import { HAT_KINDS, amountMul, presence } from './kit.js';
+import { HAT_KINDS, amountMul, presence, drawHatEngine } from './kit.js';
 
 const isDown = (s) => s % 4 === 0;
 const isOff8 = (s) => s % 4 === 2;
@@ -95,6 +95,9 @@ export class HatGen {
         acc: Array.from({ length: 16 }, () => r.float(0.35, 1)),
       };
     });
+    // el MOTOR de cada tipo (kit.js), de un dado aparte: la misma semilla da los mismos golpes
+    const re = r.fork();
+    this.kinds.forEach((k) => (k.eng = drawHatEngine(re, k.name)));
   }
   roll() {
     const r = this.rng;
@@ -185,8 +188,14 @@ export class OHatGen {
 // casi mudo. Sonido con tono (nada de ruido estrecho, que apenas se oye), longitud par y giro par
 // (sus golpes base caen en corcheas: la complejidad baja no se los quita) y al menos un golpe
 // por cada cuatro pasos de su ciclo. Lo conserva al mutar.
+// Tipos (motores del taller, ver percSound en sounds.js): tone y fm (los de siempre), noise (ruido
+// estrecho), reso (rim, clave, conga), bell (cowbell), modal (madera, barra, tubo), ks (tic de
+// madera afinado), glitch (clics y ráfagas) y grains (semillas). La principal, solo con tono.
+const PERC_TYPES = ['tone', 'fm', 'noise', 'reso', 'bell', 'modal', 'ks', 'glitch', 'grains'];
+const PERC_W = [3, 4, 2.5, 2.5, 1, 2, 2, 1.5, 1.5];
+const LEAD_W = [3, 4, 0, 2.5, 0, 2.5, 2, 0, 0];
 function makePercSound(r, lead = false) {
-  const type = lead ? r.weighted(['tone', 'fm'], [3, 4]) : r.weighted(['tone', 'fm', 'noise'], [3, 4, 2.5]);
+  const type = r.weighted(PERC_TYPES, lead ? LEAD_W : PERC_W);
   return {
     type,
     deg: r.pick([0, 0, 2, 4, 4, 6, 7, 9, 11]),
@@ -200,6 +209,7 @@ function makePercSound(r, lead = false) {
     nfreq: r.float(900, 6000),
     q: r.float(2, 14),
     pan: r.float(-0.75, 0.75),
+    timbre: r.int(1, 2 ** 30), // semilla de los números fijos de su motor (sounds.js)
   };
 }
 

@@ -119,6 +119,13 @@ Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
   voces por sonido (8). Medido en DJ con los dos universos: 0 golpes perdidos; ~3 grabaciones
   por segundo con todo quieto (la deriva lenta del color) y ~11 por segundo durante los 10 s
   tras un universo nuevo; cada una ~7 ms de media en el Worker (el hat abierto largo ~40 ms).
+  Con los motores de la fase 2 (2026-11-10, DJ, VAR al máximo en los dos): quieto, 2,6
+  grabaciones/s de ~7 ms; NUEVO UNIVERSO cada 4 s alternando (lo peor), ~32/s, mediana 6 ms,
+  p90 34 ms, máximo 77 ms (plato de resonadores y FM abierto, los más caros), cola máxima 16.
+  0 CORTES, 0 TARDE, 0 errores; 1 golpe perdido en ~46 universos nuevos (0 en los últimos 36,
+  tras dar prioridad a lo urgente en el banco). Memoria: llega al presupuesto (45 de 48 MB) y
+  se recorta sola. ⚠ Sin medir en móvil: grabar allí cuesta varias veces más y el presupuesto
+  es 16 MB; si se pierden golpes, primero bajar las variantes o las capas en LIGERA.
 - **Latencia de un gesto** = margen de programación + búfer + salida. Hoy en PC:
   120 ms + 11 ms + ~48 ms ≈ **180 ms** como mucho. No se nota porque casi todo se cuantiza
   a la negra, el compás o la frase. Importará con MIDI y con CORTE en YA.

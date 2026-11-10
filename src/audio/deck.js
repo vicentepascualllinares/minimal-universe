@@ -157,7 +157,7 @@ export class Deck {
     const em = this.emotion;
     const gap = em.ramp || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
     const put = (id, ch, rec, src) => {
-      if (warm) this.engine.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p);
+      if (warm) this.engine.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p, true); // urgente: sonará en el próximo compás
       else this.drums.set(id, ch, rec, gap, src);
     };
     put('hat', 'hat', hatMain(e, false), []);

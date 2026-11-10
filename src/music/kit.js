@@ -68,3 +68,43 @@ export const HAT_KINDS = {
   },
 };
 // (su receta con el color de ahora: hatKind en sounds.js)
+
+// ───────────────────────── MOTOR de cada tipo de hat (fase 2 del taller)
+// Cada universo sortea con qué motor suena cada tipo, según su papel, y los números fijos de ese
+// motor (los que no siguen al color). El hat del universo (el 1º) sigue siendo el metal 808.
+//   metal   6 cuadradas inarmónicas: las del 808 o un juego propio del universo
+//   fm      2 osciladores en FM a proporción inarmónica (Machinedrum, Noise Engineering)
+//   hiss    ruido tipo 909/707 con resonancia, a veces con los 6 u 8 bits de las máquinas
+//   cymbal  plato de resonadores (mcld): suena a plato "de verdad"
+//   grains  granos de ruido (shaker, cabasa: PhISEM)
+export const HAT_ENGINE_WEIGHTS = {
+  fino: { metal: 1, fm: 1, hiss: 1.5, grains: 2.5 },
+  oscuro: { metal: 2, fm: 1.5, cymbal: 1.2, hiss: 0.6 },
+  tick: { metal: 1.5, fm: 2, hiss: 1.2, cymbal: 0.8 },
+  medio: { metal: 1.5, cymbal: 2, hiss: 2, fm: 1 },
+};
+
+// un número al azar lejos de los enteros y de las mitades (proporciones inarmónicas)
+const inharm = (r, a, b) => {
+  for (;;) {
+    const x = r.float(a, b);
+    const f = (x * 2) % 1;
+    if (f > 0.12 && f < 0.88) return Math.round(x * 1000) / 1000;
+  }
+};
+
+export function drawHatEngine(r, name) {
+  const W = HAT_ENGINE_WEIGHTS[name];
+  const engine = r.weighted(Object.keys(W), Object.values(W));
+  if (engine === 'metal') {
+    // 808 (las de siempre) o un juego propio: 6 parciales entre 1 y ~4
+    if (r.chance(0.4)) return { engine };
+    const ratios = [1];
+    for (let i = 1; i < 6; i++) ratios.push(Math.round((ratios[i - 1] + r.float(0.18, 0.75)) * 1000) / 1000);
+    return { engine, ratios };
+  }
+  if (engine === 'fm') return { engine, cr: r.float(4, 9), ratio: inharm(r, 1.25, 3.8), index: r.float(1.8, 5.5), noise: r.float(0.04, 0.18) };
+  if (engine === 'hiss') return { engine, res: r.float(2, 10), peak: r.float(0.2, 0.9), bits: r.weighted([0, 6, 8], [2, 1.5, 1]) };
+  if (engine === 'cymbal') return { engine, plate: r.int(1, 2 ** 30), lo: r.float(0.35, 0.8), ring: r.float(0.6, 1.5), tilt: r.float(-0.2, 0.5), wash: r.float(0.1, 0.5), exc: r.float(0.001, 0.004) };
+  return { engine, q: r.float(1.5, 6), f: r.float(0.45, 0.85), f2: r.chance(0.5) ? r.float(1.2, 1.6) : 0, rate: r.float(400, 1500), gtau: r.float(0.0005, 0.0015), shake: r.float(0.015, 0.035) };
+}

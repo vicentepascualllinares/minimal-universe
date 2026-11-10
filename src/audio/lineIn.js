@@ -4,9 +4,9 @@
 // Más adelante: efectos para hacer ambientes y texturas.
 //
 // Dos caminos:
-//  · PESTAÑA / PANTALLA (getDisplayMedia): el navegador deja elegir una pestaña (solo su audio,
-//    y se puede silenciar en la propia pestaña: suena solo aquí) o la pantalla entera con
-//    «compartir audio del sistema» (todo el ordenador; se pide que deje fuera el de esta página).
+//  · PESTAÑA (getDisplayMedia): solo el audio de una pestaña del mismo navegador (p. ej. un
+//    YouTube); la pestaña se queda en silencio y suena solo aquí. No se ofrece la pantalla
+//    entera ni el sonido del sistema.
 //  · DISPOSITIVO (getUserMedia): una entrada de audio de Windows. Con un cable virtual
 //    (VB-CABLE, Voicemeeter…) se manda ahí la salida de las apps que se quieran (Configuración →
 //    Sonido → Mezclador de volumen → salida de cada app): no suenan por los altavoces, solo aquí.
@@ -19,7 +19,7 @@ const RAW = { echoCancellation: false, noiseSuppression: false, autoGainControl:
 export class LineIn {
   constructor() {
     this.stream = null;
-    this.kind = '';      // 'pantalla' | 'dispositivo'
+    this.kind = '';      // 'pestaña' | 'dispositivo'
     this.label = '';
     this.deviceId = '';
     this.gainDb = 0;
@@ -81,25 +81,26 @@ export class LineIn {
     }
   }
 
-  async fromScreen() {
+  // SOLO UNA PESTAÑA: su audio y nada más (ni micro ni sonido del sistema). La pestaña se queda
+  // en silencio (suppressLocalAudioPlayback) y se oye solo a través del programa.
+  // Tiene que estar en el MISMO navegador que el programa (Chrome con Chrome).
+  async fromTab() {
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true, // el navegador no deja pedir solo audio; la imagen se tira enseguida
-      audio: { ...RAW, suppressLocalAudioPlayback: true, restrictOwnAudio: true },
-      systemAudio: 'include',
-      windowAudio: 'system',
-      selfBrowserSurface: 'exclude',
-      surfaceSwitching: 'include',
+      video: { displaySurface: 'browser' }, // el navegador no deja pedir solo audio; la imagen se tira enseguida
+      audio: { ...RAW, suppressLocalAudioPlayback: true },
+      preferCurrentTab: false,
+      selfBrowserSurface: 'exclude',  // esta misma pestaña no sale en la lista
+      systemAudio: 'exclude',         // nada del sonido del sistema
+      monitorTypeSurfaces: 'exclude', // ni la pantalla entera
+      surfaceSwitching: 'include',    // «compartir esta pestaña en su lugar» para cambiar de vídeo
     });
-    const v = stream.getVideoTracks()[0]?.getSettings?.() || {};
-    const a = stream.getAudioTracks()[0];
-    const s = a?.getSettings?.() || {};
-    const surf = v.displaySurface;
-    await this.use(stream, 'pantalla', surf === 'browser' ? 'PESTAÑA' : surf === 'monitor' ? 'TODO EL ORDENADOR' : 'VENTANA');
-    // si se coge todo el ordenador y el navegador no deja fuera el audio de esta página,
-    // el programa se oiría a sí mismo (eco que crece): se avisa
-    this.note = surf === 'monitor' && s.restrictOwnAudio !== true
-      ? 'ojo: este navegador puede estar cogiendo también el sonido del programa (eco). Si pasa, usa una pestaña o un cable virtual'
-      : surf === 'browser' ? 'la pestaña queda en silencio: solo se oye aquí' : '';
+    const surf = stream.getVideoTracks()[0]?.getSettings?.().displaySurface;
+    if (surf && surf !== 'browser') {
+      stream.getTracks().forEach((t) => t.stop());
+      throw new Error('no es pestaña');
+    }
+    await this.use(stream, 'pestaña', 'PESTAÑA');
+    this.note = 'la pestaña queda en silencio: solo se oye aquí · para cambiar de pestaña, «compartir esta pestaña en su lugar» en la barra de Chrome';
   }
 
   async fromDevice(deviceId) {

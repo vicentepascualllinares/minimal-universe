@@ -47,8 +47,8 @@ export function optionsPanel(root, engine, onClose) {
       <div class="op-row">
         <span class="op-lab">FUENTE · <b class="op-in-state">NADA</b></span>
         <div class="op-out-row">
-          <button class="op-mini op-in-screen" title="el navegador deja elegir: una PESTAÑA (solo su audio; la pestaña se queda en silencio y se oye solo aquí) o la PANTALLA entera marcando «compartir audio del sistema» (todo el ordenador)">PESTAÑA / ORDENADOR</button>
-          <select class="op-select op-in-dev" title="una entrada de audio de Windows (micro, interfaz o cable virtual)"></select>
+          <button class="op-mini op-in-screen" title="solo el audio de una pestaña de este mismo navegador (p. ej. un YouTube): la pestaña se queda en silencio y se oye solo aquí">PESTAÑA</button>
+          <select class="op-select op-in-dev" title="o una entrada de audio de Windows (interfaz o cable virtual)"></select>
           <button class="op-mini op-in-dev-go">USAR</button>
           <button class="op-mini op-in-stop">QUITAR</button>
         </div>
@@ -204,8 +204,8 @@ export function optionsPanel(root, engine, onClose) {
   const listInputs = async () => {
     let devs = [];
     try { devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput'); } catch {}
-    const opts = [['', 'ENTRADA DEL SISTEMA']];
-    devs.forEach((d, i) => { if (d.deviceId && d.deviceId !== 'default') opts.push([d.deviceId, d.label || `ENTRADA ${i + 1}`]); });
+    const opts = [['', 'O UN DISPOSITIVO…']]; // nunca el micro por defecto: hay que elegirlo
+    devs.forEach((d, i) => { if (d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications') opts.push([d.deviceId, d.label || `ENTRADA ${i + 1}`]); });
     inDev.innerHTML = opts.map(([id, l]) => `<option value="${id}">${l}</option>`).join('');
     inDev.value = opts.some(([id]) => id === li.deviceId) ? li.deviceId : '';
   };
@@ -213,15 +213,28 @@ export function optionsPanel(root, engine, onClose) {
     try { await fn(); showIn(); }
     catch (e) {
       const msg = e?.name === 'NotAllowedError' ? 'cancelado o sin permiso'
-        : e?.message === 'sin audio' ? 'eso no traía audio: en una pestaña marca «compartir audio»; en la pantalla, «compartir audio del sistema»'
+        : e?.message === 'sin audio' ? 'no llegó audio: en la ventana de Chrome deja marcado «compartir también el audio de la pestaña»'
+        : e?.message === 'no es pestaña' ? 'elige una pestaña (no una ventana ni la pantalla)'
         : `no se pudo: ${e?.message || e}`;
       showIn(msg);
     }
     listInputs(); // con permiso ya se ven los nombres
   };
-  if (navigator.mediaDevices?.getDisplayMedia) q('.op-in-screen').addEventListener('click', () => tryIn(() => li.fromScreen()));
+  if (navigator.mediaDevices?.getDisplayMedia) q('.op-in-screen').addEventListener('click', () => tryIn(() => li.fromTab()));
   else q('.op-in-screen').hidden = true;
-  q('.op-in-dev-go').addEventListener('click', () => tryIn(() => li.fromDevice(inDev.value)));
+  q('.op-in-dev-go').addEventListener('click', () => {
+    if (!inDev.value) {
+      // sin permiso el navegador no enseña las entradas: se pide una vez solo para ver los nombres
+      if (inDev.options.length < 2) {
+        return tryIn(async () => {
+          const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+          s.getTracks().forEach((t) => t.stop());
+        });
+      }
+      return showIn('elige antes un dispositivo en la lista');
+    }
+    tryIn(() => li.fromDevice(inDev.value));
+  });
   q('.op-in-stop').addEventListener('click', () => { li.stop(); showIn(); });
   inGain.value = li.gainDb;
   inGain.addEventListener('input', () => { li.setGainDb(+inGain.value); showIn(); });

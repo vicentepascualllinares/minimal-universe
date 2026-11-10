@@ -92,6 +92,42 @@ tope de voces, AudioWorklet).
    envejecerían más rápido en los tramos altos. Por decidir: qué cosas muta exactamente cada
    grupo, a qué ritmo, y si la mutación también puede oscilar o evolucionar con la parte
    (sesión 10).
+13. **AUTO-PLAY: que el programa toque un TEMA** (apuntado 2026-11-10, tras un primer intento
+   que se probó y se borró). La idea es que el programa toque solo un universo, con intención.
+   - ⚠ **Enfoque de tema, no de sesión DJ.** El primer intento pensaba como un DJ: saltos de
+     arriba abajo (CONTRASTES), NUEVO UNIVERSO como "cambio de disco", vuelta a empezar... El
+     auto-play tiene que ser **un tema**: un solo universo con principio, desarrollo, clímax y
+     final, que cuente algo y se acabe. Combinar universos es cosa del auto-DJ (sesión 14).
+   - Seguramente va unida a las **partes que evolucionan solas** (sesión 10) y a las
+     **transiciones según el viaje** (sesión 9): cuanto más sepa cada parte y cada viaje de
+     música, menos tiene que "inventar" el auto-play.
+   - Lo que sirvió del primer intento y conviene conservar:
+     - **Tocar con "manos"**: eventos de puntero sintéticos sobre los botones y faders reales
+       (cada dedo con su `pointerId`). La interfaz se ve moverse sola, pasa por el mismo camino
+       que una persona (CLIC, CORTE, versiones, LOOP) y permite mantener varias partes a la vez
+       mientras se mueve un fader. Si la persona toca algo, el auto-play se aparta unos compases.
+     - **Cuándo pulsar** para que cada cosa caiga en su sitio (en pasos de semicorchea, 16 por
+       compás, midiendo la posición en la rejilla del motor:
+       `step − (nextGrid − (currentTime + lookahead)) / stepDur`). Para que pase en el paso N:
+       viaje de *b* compases que llega en la frase X → pulsar en X − 16·b − 8; CLIC INSTANTÁNEO →
+       N − 2; CORTE → bajar el dedo en N − 1 − 150 ms, soltarlo en el paso anterior al final;
+       AHORA, faders, GLOBAL, NUEVO UNIVERSO y LOOP → N − 6.
+     - Una **escala de energía** de las 16 partes (BREAK 1 la más baja, DROP 2 la más alta) y las
+       reglas de oficio: cambios en límite de frase, un cambio cada vez, quitar pesa más que
+       poner, tensión (BUILD, KICK-OUT) que pide que vuelva el kick, un arco grande con subidas
+       y bajadas pequeñas dentro, y faders que se mueven alrededor del carácter con el que salió
+       el universo, no hacia valores fijos.
+   - Por decidir: cuánto dura un tema, si la forma la elige el auto-play o el usuario (o el
+     universo al generarse), qué hace al terminar (parar, esperar, pasar la mano al auto-DJ) y
+     si se puede tocar "a medias" (el auto-play lleva la estructura y la persona la complejidad,
+     o al revés).
+14. **AUTO-DJ: combinar universos** (apuntado 2026-11-10, después de la sesión 13). Dos niveles:
+   - un **auto-play en cada universo** (sesión 13: cada uno toca su tema);
+   - un **auto-DJ** por encima que los combina en el modo DJ: cuándo entra el otro universo, en
+     qué parte de cada tema, la mezcla (EASY EQ, crossfader, relevo de kick y bajo) y el arco de
+     la sesión entera (aquí sí tienen sentido los contrastes y el "cambio de disco").
+   - Por decidir: cómo se hablan los dos niveles (el auto-DJ pide a cada auto-play "llega a un
+     BREAK en 32 compases", "alarga el DROP"...) y qué hace la persona cuando toca encima.
 
 ## Auto-arreglos (OPCIONES → AUTO-ARREGLOS)
 

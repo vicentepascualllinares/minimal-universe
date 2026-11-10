@@ -57,7 +57,7 @@ MÁXIMO se pide en número.
 
 ### Prueba de estrés (hacerla tras cada funcionalidad gorda)
 
-1. Modo **DJ** (dos universos, el peor caso), los dos en **TODO**, COMPLEJIDAD GLOBAL a tope.
+1. Modo **DJ** (dos universos, el peor caso), los dos en **DROP** (antes TODO), COMPLEJIDAD GLOBAL a tope.
 2. Poner el medidor a cero y dejarlo **5 minutos**. Hacer algunos viajes con FX.
 3. Repetir en el **móvil** (con INICIAR (movil).bat) y, si se puede, en un **portátil viejo**.
 4. Apuntar el resultado en la tabla de §5.
@@ -74,7 +74,7 @@ for (const k of Object.getOwnPropertyNames(P)) if (k.startsWith('create') && typ
 }
 ```
 
-Elegir DJ, poner los dos universos en TODO y luego:
+Elegir DJ, poner los dos universos en DROP y luego:
 
 ```js
 const orig = MU.tick.bind(MU), times = [];

@@ -6,7 +6,7 @@ import * as V from './voices.js';
 import { Channel, Saturator, glide, fixChannels } from './dsp.js';
 import { makeGenerators } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
-import { Arrangement, INSTRUMENTS, SCENES } from '../music/arrangement.js';
+import { Arrangement, INSTRUMENTS, mixOf } from '../music/arrangement.js';
 import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
 import { blockRate } from './quality.js';
@@ -98,9 +98,24 @@ export class Deck {
     const tLp = ctx.createBiquadFilter();
     tLp.type = 'lowpass'; tLp.frequency.value = 20000; tLp.Q.value = 4;
     const gap = ctx.createGain();
+    // AUTO-ARREGLOS (ver autoArrange y kickGap):
+    //   lows      graves que bajan en el último compás antes del drop (estante grave; a 0 dB no hace nada)
+    //   contrast  el universo algo más bajo mientras no hay kick
+    //   pre       hueco antes del kick. Al final del universo, con las voces de transición
+    //             dentro: el silencio es de todo lo que suena en este universo
+    this.lows = ctx.createBiquadFilter();
+    this.lows.type = 'lowshelf';
+    this.lows.frequency.value = 200;
+    this.lows.gain.value = 0;
+    this.contrast = ctx.createGain();
+    this.pre = ctx.createGain();
+    this.pre.connect(out);
+    this.kickWas = 1;          // presencia del kick en el paso anterior (ver scheduleStep)
+    this.kickEntry = false;    // el kick acaba de entrar de golpe: el hueco va antes de su primer golpe
+    this.autoOn = { bass: false, lows: false, contrast: 1 }; // lo que está haciendo ahora cada auto-arreglo
     this.sum.connect(this.sat.input);
-    this.sat.output.connect(tHp).connect(tLp).connect(gap).connect(out);
-    this.fx = new TransitionFx(this, ctx, out, { hp: tHp, lp: tLp, gap });
+    this.sat.output.connect(tHp).connect(tLp).connect(this.lows).connect(gap).connect(this.contrast).connect(this.pre);
+    this.fx = new TransitionFx(this, ctx, this.pre, { hp: tHp, lp: tLp, gap });
 
     this.ch = {};
     for (const k of INSTRUMENTS) {
@@ -195,6 +210,16 @@ export class Deck {
   // Devuelve 'pause' si la pulsación solo pausó o reanudó (entonces no hay corte).
   press(name) {
     const A = this.arr;
+    // VERSIÓN mantenida (SHIFT): esta parte va en la otra versión. Si es la que ya suena (o a la
+    // que se va), es como pulsar VERSIÓN; si es otra, se viaja a ella directamente en esa versión
+    const h = this.vHold;
+    if (h) {
+      h.used = true;
+      if (A.version !== h.v) {
+        if (name === A.target && !this.loop) { this.setVersion(h.v); return 'pause'; }
+        A.version = h.v; // el viaje de abajo ya sale hacia la otra versión
+      }
+    }
     if (this.loop) { // LOOP: solo se deja pendiente
       A.setTarget(name);
       A.home = name;
@@ -245,12 +270,56 @@ export class Deck {
       return A.land();
     }
     if (!force && A.target === name && (!A.travel || A.travel.bars === g.bars)) return; // ya está (o ya va)
-    const kind = classify(A.cur, SCENES[name].mix);
+    const kind = classify(A.cur, mixOf(name, A.version));
     // la FORMA solo cuenta en los viajes: lo instantáneo (el CORTE, o CLIC en INSTANTÁNEO) salta
     const cut = this.form === 'golpe' && g.bars > 0;
     const stagger = !cut && g.bars > 0 && this.flow === 'escalonado' ? this.fxPal.order : null;
     A.goTo(name, g.bars, this.startStepFor(g.bars, g.quant), { drop: cut, stagger });
     this.fx?.start(A.travel, g.fx ? kind : 'none', this.fxPal, this.fxRng, cut);
+  }
+
+  // ── VERSIÓN (1 · 2): dos posibilidades de cada parte (no «más» o «menos»: otra forma del mismo
+  // momento). Es del universo: la parte que suena y cualquiera a la que vayas van en la versión
+  // elegida. Un mando cualquiera (pantalla, teclado, MIDI) llama a versionDown / versionUp:
+  //   CLIC (al soltar)            cambia de versión
+  //   MANTENER + pulsar una parte esa parte, en la otra versión (como SHIFT en un controlador);
+  //                               al soltar VERSIÓN no cambia nada más
+  versionDown() { this.vHold = { used: false, v: 1 - this.arr.version }; }
+  versionUp() {
+    const h = this.vHold;
+    this.vHold = null;
+    if (h && !h.used) this.setVersion(h.v);
+  }
+
+  // Qué pasa al cambiar de versión, según el momento:
+  //   LOOP          queda pendiente y entra al soltar el loop (como las partes)
+  //   parado        salta directo
+  //   en un viaje   (esperando la frase o a medias) el viaje sigue igual y llega a la otra
+  //                 versión, sin saltos (ver Arrangement.retarget). Si se vuelve a la de antes
+  //                 en un viaje de versión que aún no ha empezado, se anula
+  //   quieto        la otra versión de la misma parte entra en el SIGUIENTE COMPÁS: DE GOLPE, de
+  //                 golpe en ese 1; PROGRESIVA, en 1 compás (SUAVE o ESCALONADA). Sin FX: no es un
+  //                 viaje de parte, es la misma parte de otra forma
+  setVersion(v) {
+    const A = this.arr;
+    if (v === A.version) return;
+    A.version = v;
+    if (this.loop) return A.compute();
+    if (!this.engine.playing) {
+      A.goTo(A.target, 0, 0);
+      if (this.ctx) this.fx.cancel(this.ctx.currentTime);
+      return A.land();
+    }
+    if (A.travel) {
+      A.retarget();
+      if (A.travel.version && A.idleTravel()) { this.fx.cancel(this.ctx.currentTime); A.travel = null; A.compute(); }
+      return;
+    }
+    const golpe = this.form === 'golpe';
+    const bar = Math.ceil(this.engine.step / 16) * 16;
+    A.goTo(A.target, golpe ? 0 : 1, bar, { stagger: !golpe && this.flow === 'escalonado' ? this.fxPal.order : null });
+    A.travel.version = true; // viaje de versión (no de parte)
+    this.fx.start(A.travel, 'none', this.fxPal, this.fxRng);
   }
 
   toggleTravelPause() {
@@ -484,6 +553,15 @@ export class Deck {
     const b = Math.floor(n / 16);
     this.fx.step(n, gridT); // antes que las notas: en la llegada de un viaje DE GOLPE, el DROP
     if (s === 0 || !this.bars.kick) this.prepareBar(b, n - s, gridT);
+    // ¿ENTRA EL KICK DE GOLPE? En el paso anterior no sonaba y ahora está entero: un DROP DE
+    // GOLPE, un cambio INSTANTÁNEO, un CORTE o soltar el LOOP de golpe. Si entra poco a poco
+    // (PROGRESIVA) no hay una entrada que marcar
+    const kp = this.arr.state.kick.progress;
+    const entered = this.kickWas <= 0.001 && kp >= 0.9;
+    if (entered) this.kickEntry = true;
+    else if (kp <= 0.001) this.kickEntry = false; // se fue antes de sonar
+    this.kickWas = kp;
+    this.autoArrange(n, gridT, kp, entered);
     const ctx = this.ctx;
     const noise = this.engine.noise;
     const e = this.e;
@@ -499,6 +577,10 @@ export class Deck {
 
     let ev;
     if ((ev = B.kick[s]) && A.audible('kick', t)) {
+      if (this.kickEntry) {
+        this.kickEntry = false;
+        if (this.engine.auto.kickGap) this.kickGap(t);
+      }
       V.kick(ctx, C.kick.input, t, ev.vel, e.kick, root, noise);
       const depth = e.kick.duck * ev.vel * A.state.kick.progress;
       // SIDECHAIN al bajo: el suyo o, con EASY EQ en DJ, el bajo que suene en la mezcla
@@ -599,6 +681,91 @@ export class Deck {
     let p = 0;
     for (const v of ch.meterBuf) p = Math.max(p, Math.abs(v));
     return p;
+  }
+
+  // paso en el que cae un DROP que se sabe por adelantado: un viaje DE GOLPE en el que entra
+  // el kick (ahora no suena y en el destino sí). null si no hay. Lo instantáneo (INSTANTÁNEO,
+  // CORTE) no se puede anticipar, y en un viaje progresivo el kick ya suena antes de llegar
+  dropStep() {
+    const T = this.arr.travel;
+    if (!T || !T.drop || !T.bars || T.paused || this.loop) return null;
+    if (this.arr.state.kick.progress > 0.001 || T.to.kick < 0.5) return null;
+    return T.startStep + T.bars * 16;
+  }
+
+  // AUTO-ARREGLOS que dependen del momento del tema (en cada paso, exactos a la muestra en gridT):
+  //   BAJO FUERA        el bajo calla el último tiempo antes del drop y vuelve en el 1
+  //   GRAVES QUE BAJAN  durante el último compás antes del drop los graves bajan poco a poco
+  //                     (estante en 200 Hz) y vuelven en el 1
+  //   MENOS VOLUMEN SIN KICK  sin kick el universo suena algo más bajo; al entrar el kick
+  //                     recupera el nivel (de golpe si entra de golpe): el drop parece más grande
+  // Si el viaje se cancela, se pausa o se apaga la opción, todo vuelve a su sitio desde ese paso.
+  autoArrange(n, t, kp, entered) {
+    const O = this.engine.auto, S = this.autoOn;
+    const sd = this.engine.stepDur;
+    const N = this.dropStep();
+    const left = N === null ? Infinity : N - n; // pasos que faltan para el drop
+
+    const bass = O.bassOut && left > 0 && left <= 4;
+    if (bass !== S.bass) {
+      S.bass = bass;
+      // baja en 4 ms acabando justo en el último tiempo; vuelve en 2 ms acabando en el 1
+      this.rampTo(this.ch.bass.auto.gain, bass ? 1 : 0, bass ? 0 : 1, t - (bass ? 0.004 : 0.002), t);
+    }
+
+    const lows = O.lowsDip && left > 0 && left <= 16;
+    if (lows !== S.lows) {
+      S.lows = lows;
+      if (lows) this.rampTo(this.lows.gain, 0, O.lowsDb, t, t + left * sd - 0.005); // hasta justo antes del 1
+      else this.rampTo(this.lows.gain, O.lowsDb, 0, t - 0.005, t);
+    }
+
+    const low = O.breakDip ? Math.pow(10, O.breakDb / 20) : 1;
+    const g = low + (1 - low) * kp;
+    if (Math.abs(g - S.contrast) > 1e-3) {
+      // entra de golpe: casi seco en ese paso; baja despacio; sube con el kick progresivo
+      const tc = entered ? 0.003 : g < S.contrast ? 0.4 : 0.05;
+      S.contrast = g;
+      this.contrast.gain.setTargetAtTime(g, t, tc);
+    }
+  }
+
+  // rampa lineal hasta `to` entre a y b, cortando lo que hubiera programado desde a. Parte del
+  // valor que tendría el parámetro en a según la última rampa (se apunta en `this.ramps`), con un
+  // punto fijo en a. No se usa cancelAndHold: en Chrome, sin eventos previos, la rampa que va
+  // detrás empezaba antes de tiempo (medido: el bajo se cortaba ~60 ms antes del último tiempo)
+  rampTo(param, from, to, a, b) {
+    const now = this.ctx.currentTime;
+    a = Math.max(now, a);
+    b = Math.max(a + 0.001, b);
+    const R = (this.ramps ||= new Map());
+    const r = R.get(param);
+    const v = !r ? from : a >= r.b ? r.v1 : a <= r.a ? r.v0 : r.v0 + (r.v1 - r.v0) * (a - r.a) / (r.b - r.a);
+    param.cancelScheduledValues(a);
+    param.setValueAtTime(v, a);
+    param.linearRampToValueAtTime(to, b);
+    R.set(param, { v0: v, v1: to, a, b });
+  }
+
+  // AUTO-ARREGLOS · HUECO ANTES DEL KICK: el universo entero calla unos milisegundos justo
+  // antes del primer golpe del kick que entra (lo de cortar la cola antes del drop, en vivo).
+  // Se programa a la vez que ese golpe, así que ya no se puede deshacer: si el golpe suena,
+  // el hueco también. Rampas cortas a los dos lados (sin clics): baja en 4 ms y vuelve en
+  // 2 ms, entero justo en el ataque del kick
+  kickGap(t) {
+    const g = this.pre.gain;
+    const now = this.ctx.currentTime;
+    const len = this.engine.auto.kickGapS;
+    const down = 0.004, up = 0.002;
+    const a = Math.max(now, t - len - down); // empieza a bajar (si va tarde, ya)
+    const s = Math.max(a + 0.001, t - len);  // en silencio
+    const u = Math.max(s, t - up);           // empieza a volver
+    if (u <= now) return; // demasiado tarde para que se oiga: mejor nada que un salto
+    g.cancelScheduledValues(a);
+    g.setValueAtTime(1, a);
+    g.linearRampToValueAtTime(0, s);
+    g.setValueAtTime(0, u);
+    g.linearRampToValueAtTime(1, t);
   }
 
   // SIDECHAIN: un kick (de este universo o, con EASY EQ, del otro) empuja a este bajo

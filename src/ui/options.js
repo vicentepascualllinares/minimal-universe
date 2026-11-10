@@ -1,4 +1,4 @@
-// OPCIONES: preferencias del instrumento, por apartados (DJ, RENDIMIENTO).
+// OPCIONES: preferencias del instrumento, por apartados (DJ, AUTO-ARREGLOS, RENDIMIENTO).
 // Se abre encima del escenario como el MIXER; la música sigue sonando.
 // Calidad, búfer, margen y salida de audio se guardan en este navegador (son del aparato);
 // el resto todavía no se guarda: vendrá con las cuentas.
@@ -13,6 +13,19 @@ const choice = (attr, k, t) => `<button class="op-choice" ${attr}="${k}"><b>${t.
 const plain = (attr, k, t) => `<button class="op-choice op-plain" ${attr}="${k}" title="${t.desc}"><b>${t.label}</b></button>`;
 const inOrder = (modes, keys, attr) => keys.map((k) => plain(attr, k, modes[k])).join('');
 const ms = (s) => `${Math.round(s * 1000)} ms`;
+const dB = (v) => `${String(v).replace('.', ',').replace('-', '−')} dB`;
+
+// AUTO-ARREGLOS: un interruptor por truco (ver Deck.autoArrange y Deck.kickGap)
+const AUTOS = [
+  { k: 'kickGap', label: 'HUECO ANTES DEL KICK', amount: (o) => ms(o.kickGapS),
+    desc: 'cuando entra el kick de golpe (venía de una escena sin kick), el universo calla un instante justo antes de su primer golpe: más pegada' },
+  { k: 'bassOut', label: 'BAJO FUERA ANTES DEL DROP', amount: () => 'ÚLTIMO TIEMPO',
+    desc: 'el bajo calla el último tiempo antes del drop y vuelve con el kick en el 1' },
+  { k: 'lowsDip', label: 'GRAVES QUE BAJAN ANTES DEL DROP', amount: (o) => `${dB(o.lowsDb)} · ÚLTIMO COMPÁS`,
+    desc: 'durante el último compás antes del drop los graves (por debajo de ~200 Hz) bajan poco a poco; vuelven enteros en el 1' },
+  { k: 'breakDip', label: 'MENOS VOLUMEN SIN KICK', amount: (o) => dB(o.breakDb),
+    desc: 'mientras no hay kick el universo suena un poco más bajo; al entrar el kick recupera el nivel: el drop parece más grande' },
+];
 
 export function optionsPanel(root, engine, onClose) {
   root.innerHTML = `
@@ -26,6 +39,17 @@ export function optionsPanel(root, engine, onClose) {
         <div class="op-choices">${Object.entries(EQ_TYPES).map(([k, t]) => choice('data-v', k, t)).join('')}</div>
         <span class="op-note">como «EQ Type» en rekordbox · afecta a los dos universos del modo DJ</span>
       </div>
+    </div>
+    <div class="op-sec">
+      <div class="op-sec-title">AUTO-ARREGLOS</div>
+      ${AUTOS.map((a) => `
+      <div class="op-row">
+        <span class="op-lab">${a.label}</span>
+        <div class="op-choices">
+          <button class="op-choice" data-a="${a.k}"><b></b><small>${a.desc}</small></button>
+        </div>
+      </div>`).join('')}
+      <span class="op-note">trucos que en producción se hacen a mano; aquí, en vivo · pulsa cada uno para encenderlo o apagarlo · «drop» = un viaje DE GOLPE en el que entra el kick</span>
     </div>
     <div class="op-sec">
       <div class="op-sec-title">RENDIMIENTO</div>
@@ -73,7 +97,14 @@ export function optionsPanel(root, engine, onClose) {
   const buffers = [...root.querySelectorAll('.op-choice[data-b]')];
   const qualities = [...root.querySelectorAll('.op-choice[data-q]')];
   const margins = [...root.querySelectorAll('.op-choice[data-g]')];
+  const autos = [...root.querySelectorAll('.op-choice[data-a]')];
   const show = () => {
+    for (const b of autos) {
+      const on = !!engine.auto[b.dataset.a];
+      b.classList.toggle('on', on);
+      const txt = on ? `ENCENDIDO · ${AUTOS.find((a) => a.k === b.dataset.a).amount(engine.auto)}` : 'APAGADO';
+      if (b.firstChild.textContent !== txt) b.firstChild.textContent = txt;
+    }
     eqs.forEach((b) => b.classList.toggle('on', b.dataset.v === engine.eqType));
     meters.forEach((b) => b.classList.toggle('on', engine.meters[b.dataset.m]));
     buffers.forEach((b) => b.classList.toggle('on', b.dataset.b === engine.bufferMode));
@@ -82,6 +113,9 @@ export function optionsPanel(root, engine, onClose) {
   };
   for (const b of eqs) {
     b.addEventListener('click', () => { engine.setEqType(b.dataset.v); show(); });
+  }
+  for (const b of autos) {
+    b.addEventListener('click', () => { engine.auto[b.dataset.a] = !engine.auto[b.dataset.a]; show(); });
   }
   // cada medidor se enciende o se apaga por separado
   for (const b of meters) {

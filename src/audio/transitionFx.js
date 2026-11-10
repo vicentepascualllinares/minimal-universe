@@ -11,7 +11,11 @@ import { planTransition, varyPalette } from '../music/transitions.js';
 import { degreeToSemis } from '../music/emotion.js';
 import { glide } from './dsp.js';
 
-const FX_LEVEL = 0.5; // nivel del bus de transiciones respecto a los instrumentos
+// nivel del bus de transiciones: como cada instrumento, con el PICO MÁXIMO EN 0 dBFS antes de su
+// fader (VOLUMEN DE FX). Medido (2026-11-10) con el nivel de antes (0,5) en 9 viajes de 4
+// compases con FX en 3 universos: pico más alto −4,0 dBFS (los golpes de llegada cuando entra
+// el kick). El balance lo pone el fader (presets en mix.js)
+const FX_LEVEL = 0.5 / Math.pow(10, -4.0 / 20);
 
 export class TransitionFx {
   // `filters` = { hp, lp, gap }: los nodos de tensión del universo (entre su suma y su salida)
@@ -21,7 +25,7 @@ export class TransitionFx {
     this.f = filters;
     this.bus = ctx.createGain();
     // × el VOLUMEN DE FX del universo (fader en su columna TRANSICIÓN y en el MIXER)
-    this.bus.gain.value = FX_LEVEL * (deck.engine.fxGain?.[deck.engine.decks.indexOf(deck)] ?? 1);
+    this.bus.gain.value = FX_LEVEL * (deck.engine.fxGain[deck.engine.decks.indexOf(deck)] ?? 1);
     this.bus.connect(out);
     this.plan = null;
     this.live = []; // reverses en curso (se pueden cortar)

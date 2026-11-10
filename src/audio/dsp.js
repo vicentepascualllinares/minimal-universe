@@ -116,12 +116,15 @@ const STEREO_IN = new Set(['perc']);
 // cómo entra/sale cada instrumento cuando la transición es por filtro
 const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc: 'lp', chord: 'lp', pad: 'lp' };
 
-// PERFIL DE MEZCLA (igual en todos los universos: es el mismo género).
-// Referencia = el kick. Medido con todo sonando y emoción neutra:
-//   bass  picos ≈ 3–4 dB bajo el kick, loudness ≈ 5 LU por debajo (kick y bass mandan)
-//   clap  picos ≈ 6 dB bajo el kick     · perc / acordes ≈ 10 dB
-//   hats  picos ≈ 12–15 dB bajo el kick · pad (fondo) ≈ 16 LU por debajo
-export const LEVEL = { kick: 0.59, bass: 0.4, clap: 0.6, hat: 0.44, ohat: 0.34, perc: 0.3, chord: 0.28, pad: 0.26 };
+// NIVEL DE CADA INSTRUMENTO: todos salen de su canal con el PICO MÁXIMO EN 0 dBFS (antes del
+// fader del MIXER). La mezcla es solo la posición de los faders (presets: ver mix.js).
+// Cómo se sacó (2026-11-10): con la ganancia de antes (`OLD`), 8 universos al azar con todo
+// sonando a tope (presencia 1) y 6 compases cada uno; `PEAK` = el pico más alto de cada canal
+// entre los 8 (en dBFS). La ganancia nueva lo lleva a 0 dBFS. Según el color del universo el
+// pico real queda entre 0 y unos −5 dB (el pad, que sigue a la emoción, hasta −5).
+const OLD = { kick: 0.59, bass: 0.4, clap: 0.6, hat: 0.44, ohat: 0.34, perc: 0.3, chord: 0.28, pad: 0.26 };
+export const PEAK = { kick: -3.7, bass: -9.3, clap: -10.7, hat: -12.7, ohat: -14.4, perc: -11.6, chord: -12.9, pad: -14.9 };
+export const LEVEL = Object.fromEntries(Object.entries(OLD).map(([k, g]) => [k, g / Math.pow(10, PEAK[k] / 20)]));
 
 // LIMPIEZA: high-pass fijo para que solo kick y bass vivan en los graves (club = mono abajo)
 const CLEAN_HP = { kick: 28, bass: 30, clap: 160, hat: 300, ohat: 300, perc: 150, chord: 150, pad: 140 };
@@ -148,6 +151,7 @@ export class Channel {
     this.duck = ctx.createGain();
     this.user = ctx.createGain(); // volumen del MIXER global (0 dB por defecto)
     this.role = ctx.createGain(); // EASY EQ · GRAVES: 0 si otro universo tiene este papel (ver lowRoles)
+    this.auto = ctx.createGain(); // AUTO-ARREGLOS: p. ej. el bajo fuera antes del drop (ver Deck.autoArrange)
     this.out = ctx.createGain();
     this.level = LEVEL[name];
     this.out.gain.value = this.level;
@@ -161,7 +165,7 @@ export class Channel {
       this.mud.frequency.value = f; this.mud.gain.value = g; this.mud.Q.value = q;
       chain = chain.connect(this.mud);
     }
-    chain.connect(this.fade).connect(this.duck).connect(this.user).connect(this.role).connect(this.out).connect(dest);
+    chain.connect(this.fade).connect(this.duck).connect(this.user).connect(this.role).connect(this.auto).connect(this.out).connect(dest);
     this.last = { f: -1, vol: -1, m: -1 };
   }
 

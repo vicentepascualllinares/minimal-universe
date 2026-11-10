@@ -1,11 +1,20 @@
-// ESTRUCTURA — 8 ESCENAS: los momentos de un tema, uno por botón.
+// ESTRUCTURA — 8 PARTES: los momentos de un tema, uno por botón. Se llaman por lo que son en
+// la estructura (minimal, rominimal, deep house, techno, experimental), no por lo que suena:
+// más adelante la parte decidirá también arreglos, mezcla y transiciones.
 //
-//   sin kick  │ BREAK       SIN DRUMS    SIN GRAVES   SIN KICK
-//   con kick  │ SOLO DRUMS  ESQUELETO    SIN BAJO     TODO
+//   sin kick  │ BREAK   DRIFT   BUILD   KICK-OUT
+//   con kick  │ INTRO   GROOVE  MAIN    DROP
 //
-// Rejilla 2×4, como los pads de un controlador (8 por universo). Arriba no hay
-// kick y abajo sí: en las dos columnas de la derecha, la de abajo es la de arriba
-// con kick (bajar = DROP, subir = kick-out).
+// Rejilla 2×4, como los pads de un controlador (8 por universo). Arriba no hay kick y abajo sí
+// (bajar = entra el kick). Parejas: KICK-OUT es el DROP sin kick y BUILD, el MAIN sin graves.
+//   INTRO     la pista de entrada (y de salida): batería seca para mezclar
+//   GROOVE    el «roller» hipnótico, el corazón del rominimal: donde el tema vive más tiempo
+//   MAIN      el groove lleno antes del pico: todo el ritmo y los acordes asomando, sin pad
+//   DROP      el pico: todo dentro
+//   BREAK     el breakdown: cae la batería y manda la atmósfera
+//   DRIFT     lo experimental / ambient: flota sin rejilla marcada, bajo y armonía suspendidos
+//   BUILD     la subida: sin graves, arriba el ritmo; pide un drop
+//   KICK-OUT  el bajo sigue rodando sin kick: tensión antes de que vuelva
 //
 // Cada escena dice cuánto suena cada instrumento (presencia 0..1). Lo que suena
 // (`cur`) viaja de una escena a otra en N compases (o al instante); en el viaje
@@ -26,30 +35,52 @@ const ALL_DRUMS = { kick: 1, hat: 1, perc: 1, clap: 1, ohat: 1 };
 const NO_DRUMS = { kick: 0, hat: 0, perc: 0, clap: 0, ohat: 0 };
 const TOPS = { hat: 1, perc: 1, clap: 0.9, ohat: 0.75 };
 
-const scene = (label, mix) => ({ label, mix: { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, chord: 0, pad: 0, ...mix } });
+const EMPTY = { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, chord: 0, pad: 0 };
+// una parte = su nombre y sus DOS VERSIONES (1 y 2): dos posibilidades del mismo momento del
+// tema. La 1 es la de siempre. Lo que no se nombra en una versión NO suena en ella (presencia 0)
+const scene = (label, v1, v2) => ({ label, mixes: [{ ...EMPTY, ...v1 }, { ...EMPTY, ...v2 }] });
 
 export const SCENES = {
   // ── sin kick
-  break: scene('BREAK', { hat: 0.3, perc: 0.5, chord: 0.35, pad: 1 }),       // atmósfera: manda el pad, un hat lejano
-  sindrums: scene('SIN DRUMS', { ...NO_DRUMS, bass: 1, chord: 1, pad: 0.85 }),
-  singraves: scene('SIN GRAVES', { ...TOPS, chord: 0.9, pad: 0.75 }),        // el groove arriba, sin kick ni bajo
-  sinkick: scene('SIN KICK', { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6 }), // kick-out: el bajo sigue rodando
+  break: scene('BREAK',
+    { pad: 1, chord: 0.45, hat: 0.3 },                                  // manda el pad: acordes flojos y un hat lejano
+    { pad: 1, chord: 1, hat: 0.3, perc: 0.6 }),                         // acordes enteros y algo de percusión
+  drift: scene('DRIFT',
+    { bass: 1, chord: 1, pad: 0.85 },                                   // bajo y armonía flotando, sin batería
+    { bass: 1, chord: 1, pad: 0.85, hat: 0.4, perc: 0.6 }),             // con pulso: hats lejanos y percusión
+  build: scene('BUILD',
+    { ...TOPS, chord: 0.9, pad: 0.6 },                                  // el ritmo arriba, sin kick ni bajo
+    { hat: 1, perc: 1, chord: 0.9, pad: 0.6 }),                         // sin clap ni open hat
+  kickout: scene('KICK-OUT',
+    { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6 },           // el DROP sin kick
+    { bass: 1, hat: 1, perc: 1, chord: 0.9 }),                          // bajo, hats, percusión y acordes
   // ── con kick
-  drums: scene('SOLO DRUMS', { kick: 1, ...TOPS }),
-  esqueleto: scene('ESQUELETO', { kick: 1, bass: 1, hat: 1, perc: 0.4 }),    // el núcleo del rominimal
-  sinbajo: scene('SIN BAJO', { ...ALL_DRUMS, chord: 0.9, pad: 0.6 }),
-  todo: scene('TODO', { ...ALL_DRUMS, bass: 1, chord: 0.9, pad: 0.6 }),
+  intro: scene('INTRO',
+    { kick: 1, hat: 0.85, perc: 0.4 },                                  // kick y hats secos, algo de percusión
+    { kick: 1, ...TOPS }),                                              // toda la batería (el antiguo SOLO DRUMS)
+  groove: scene('GROOVE',
+    { kick: 1, bass: 1, hat: 1, perc: 0.5 },                            // el roller: kick, bajo, hats
+    { kick: 1, bass: 1, ...TOPS }),                                     // toda la batería y bajo, sin música
+  main: scene('MAIN',
+    { ...ALL_DRUMS, bass: 1, clap: 0.9, ohat: 0.75, chord: 0.6 },       // todo el ritmo, acordes suaves, sin pad
+    { ...ALL_DRUMS, bass: 1, clap: 0.9, ohat: 0.75, chord: 0.95 }),     // acordes enteros, aún sin pad
+  drop: scene('DROP',
+    { ...ALL_DRUMS, bass: 1, chord: 0.9, pad: 0.6 },                    // todo
+    { ...ALL_DRUMS, bass: 1, chord: 1, pad: 0.95 }),                    // todo, con acordes y pad enteros
 };
+
+// mezcla de una parte en una versión (0 = la 1, 1 = la 2)
+export const mixOf = (name, v = 0) => SCENES[name].mixes[v];
 
 // orden de los botones: fila de arriba (sin kick) y fila de abajo (con kick)
 export const GRID = [
-  ['break', 'sindrums', 'singraves', 'sinkick'],
-  ['drums', 'esqueleto', 'sinbajo', 'todo'],
+  ['break', 'drift', 'build', 'kickout'],
+  ['intro', 'groove', 'main', 'drop'],
 ];
 
-// capas que tiene una escena (para pintar K B T M en su botón)
-export const LAYERS = (name) => {
-  const m = SCENES[name].mix;
+// capas que tiene una parte en una versión (para pintar K B T M en su botón)
+export const LAYERS = (name, v = 0) => {
+  const m = mixOf(name, v);
   return {
     K: m.kick > 0.5,
     B: m.bass > 0.5,
@@ -58,9 +89,9 @@ export const LAYERS = (name) => {
   };
 };
 
-// cuánto se parece una presencia a una escena (1 = es esa escena)
-export function likeness(p, name) {
-  const m = SCENES[name].mix;
+// cuánto se parece una presencia a una parte en una versión (1 = es esa)
+export function likeness(p, name, v = 0) {
+  const m = mixOf(name, v);
   let d = 0;
   for (const k of INSTRUMENTS) d += Math.abs(p[k] - m[k]);
   return 1 - d / INSTRUMENTS.length;
@@ -107,10 +138,13 @@ export function stagger(from, to, bars, nudge = {}) {
 }
 
 export class Arrangement {
-  constructor(name = 'todo') {
+  constructor(name = 'drop') {
     this.home = name;    // la escena elegida (el último clic); al soltar un CORTE se vuelve aquí
     this.target = name;  // a dónde va lo que suena (en LOOP: lo que entrará al soltar)
-    this.cur = { ...SCENES[name].mix }; // presencia que suena ahora
+    // VERSIÓN (0 = la 1, 1 = la 2): la del universo entero; cualquier parte a la que se vaya
+    // llega en esta versión (ver Deck.setVersion)
+    this.version = 0;
+    this.cur = { ...mixOf(name) }; // presencia que suena ahora
     this.travel = null;
     this.frozen = false; // LOOP: lo que suena no se mueve
     this.state = {};
@@ -125,11 +159,46 @@ export class Arrangement {
   // `stagger` (ESCALONADA): el empujón al orden de la paleta; null = SUAVE
   goTo(name, bars, startStep, { drop = false, stagger: nudge = null } = {}) {
     this.target = name;
-    const from = { ...this.cur }, to = { ...SCENES[name].mix };
+    const from = { ...this.cur }, to = { ...mixOf(name, this.version) };
     this.travel = {
       name, bars, startStep, done: 0, paused: false, drop, from, to,
       steps: nudge && !drop ? stagger(from, to, bars, nudge) : null,
     };
+  }
+
+  // VERSIÓN cambiada a mitad de un viaje: el viaje sigue (mismo inicio, misma duración, mismos
+  // FX) pero llega a la otra versión. Sin saltos: cada instrumento sigue desde donde está ahora.
+  //   aún no ha empezado a moverse  → solo cambia a dónde va
+  //   a medio camino                → se recalcula de dónde «venía» para que la curva pase por
+  //                                   donde está y acabe en el destino nuevo
+  //   ya había llegado (ESCALONADA) → se mueve otra vez, en lo que queda de viaje
+  // DE GOLPE: no se mueve hasta llegar; solo cambia el destino
+  retarget() {
+    const T = this.travel;
+    if (!T) return;
+    const to = mixOf(T.name, this.version);
+    if (!T.drop) {
+      for (const k of INSTRUMENTS) {
+        if (Math.abs(to[k] - T.to[k]) < 1e-6) continue;
+        const w = T.steps?.[k];
+        const x = w ? clamp((T.done - w[0]) / (w[1] - w[0])) : T.done;
+        const sx = smooth(x);
+        if (sx <= 0) continue;
+        if (sx < 1 - 1e-3) { T.from[k] = (this.cur[k] - to[k] * sx) / (1 - sx); continue; }
+        T.from[k] = this.cur[k];
+        T.steps ||= {};
+        T.steps[k] = [T.done, Math.max(1, T.done + 1e-3)];
+      }
+    }
+    T.to = { ...to };
+  }
+
+  // ¿el viaje aún no ha movido nada y acaba donde ya suena? (p. ej. VERSIÓN pulsada dos veces
+  // antes de empezar): entonces sobra
+  idleTravel() {
+    const T = this.travel;
+    if (!T || T.done > 0) return false;
+    return INSTRUMENTS.every((k) => Math.abs(T.to[k] - this.cur[k]) < 1e-3);
   }
 
   // LOOP: solo cambia lo que entrará al soltar
@@ -142,7 +211,7 @@ export class Arrangement {
   // salida instantánea del LOOP
   snap() {
     this.travel = null;
-    this.cur = { ...SCENES[this.target].mix };
+    this.cur = { ...mixOf(this.target, this.version) };
     this.compute();
   }
 
@@ -176,7 +245,7 @@ export class Arrangement {
   }
 
   compute() {
-    const pt = SCENES[this.target].mix;
+    const pt = mixOf(this.target, this.version);
     for (const k of INSTRUMENTS) {
       const s = this.state[k];
       const a = amountOf(k, this.cur[k]);

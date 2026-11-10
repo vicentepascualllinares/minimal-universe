@@ -12,6 +12,8 @@ import { glide, ceiling } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 import { QUALITY_MODES } from './quality.js';
 import { Recorder } from './recorder.js';
+import { MIX_PRESETS, DEFAULT_MIX } from './mix.js';
+import { FADER_ZERO, dbFader, dbGain } from '../core/fader.js';
 
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -66,6 +68,15 @@ export class Engine {
     this.late = 0;      // TARDE: pasos programados tarde (hilo principal atascado)
     this.rec = new Recorder(); // GRABAR (ver recorder.js)
     this.generated = false;    // ¿se ha pulsado GENERAR alguna vez? (hasta entonces no suena nada)
+    // OPCIONES → AUTO-ARREGLOS: trucos de producción que el programa hace solo, en vivo.
+    // kickGap = HUECO ANTES DEL KICK (ver Deck.kickGap); bassOut, lowsDip y breakDip, ver
+    // Deck.autoArrange. Aún no se guardan: vendrá con las cuentas
+    this.auto = {
+      kickGap: true, kickGapS: 0.03,
+      bassOut: true,
+      lowsDip: true, lowsDb: -6,
+      breakDip: true, breakDb: -1.5,
+    };
     this.meters = { cortes: true, tarde: true }; // OPCIONES → RENDIMIENTO: qué se ve en la cabecera (miden siempre)
     // búfer y salida de audio (ver BUFFER_MODES)
     const bm = store.get('mu.buffer');
@@ -84,13 +95,14 @@ export class Engine {
     this.lookahead = MARGIN_S[this.marginMode] ?? PROFILE.lookahead; // s programados por adelantado
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
     this.decks = [
-      // los dos arrancan en SOLO DRUMS: la entrada natural de un tema (y para mezclar)
-      new Deck(this, 'A', { scene: 'drums', v: -0.3, a: -0.25 }),
-      new Deck(this, 'B', { scene: 'drums', v: 0.2, a: 0.15 }),
+      // los dos arrancan en INTRO: la entrada natural de un tema (y para mezclar)
+      new Deck(this, 'A', { scene: 'intro', v: -0.3, a: -0.25 }),
+      new Deck(this, 'B', { scene: 'intro', v: 0.2, a: 0.15 }),
     ];
     this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
     this.eqType = 'iso'; // EQ de la mesa DJ: 'iso' (silencia, −∞) | 'eq' (atenúa, −26 dB)
-    // MIXER: ganancia por instrumento de cada universo (1 = 0 dB = el perfil por defecto).
+    // MIXER: ganancia por instrumento de cada universo (1 = 0 dB = el pico máximo del
+    // instrumento en 0 dBFS). Arranca con el preset por defecto (ver mix.js y applyMix).
     // En DJ van vinculados por defecto (lo decide la vista: ver instMixer)
     this.inst = [0, 1].map(() => Object.fromEntries(INSTRUMENTS.map((k) => [k, 1])));
     // estado de la mesa (lo que muestran los controles)
@@ -109,10 +121,25 @@ export class Engine {
     // VOLUMEN DE FX por universo: ganancia (1 = 0 dB) y la posición de su fader, que comparten
     // la columna TRANSICIÓN del universo y el MIXER (ver setFxFader en instMixer.js)
     this.fxGain = [1, 1];
-    this.fxPos = [0.75, 0.75];
+    this.fxPos = [FADER_ZERO, FADER_ZERO];
+    this.applyMix(DEFAULT_MIX);
     // REGISTRO DE INCIDENCIAS (ver logIncident)
     try { this.incidents = JSON.parse(store.get('mu.incidents') || '[]'); } catch { this.incidents = []; }
     if (!Array.isArray(this.incidents)) this.incidents = [];
+  }
+
+  // PRESET DE MEZCLA del MIXER (mix.js): pone los faders de los instrumentos y de FX de los dos
+  // universos. El máster no lo toca. `mixVersion` avisa a las vistas para que sigan a los faders
+  applyMix(name) {
+    const P = MIX_PRESETS[name];
+    if (!P) return;
+    this.mixPreset = name;
+    for (const i of [0, 1]) {
+      for (const k of INSTRUMENTS) this.setInst(i, k, dbGain(P.db[k]));
+      this.fxPos[i] = dbFader(P.db.fx);
+      this.setFxGain(i, dbGain(P.db.fx));
+    }
+    this.mixVersion = (this.mixVersion || 0) + 1;
   }
 
   // VOLUMEN DE FX de un universo (0 = A, 1 = B): sus efectos de transición

@@ -67,35 +67,67 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 
 ## Estructura: los momentos de un tema
 
-Ocho escenas en una rejilla 2×4, como los pads de un controlador (8 por universo; en DJ, 16):
+Ocho **partes** en una rejilla 2×4, como los pads de un controlador (8 por universo; en DJ, 16).
+Se llaman por lo que son en la estructura de un tema (minimal, rominimal, deep house, techno,
+experimental), no por lo que suena: más adelante, la parte decidirá también arreglos, mezcla y
+transiciones (no es lo mismo ir de BREAK a DROP que de DROP a BREAK).
 
 ```
-sin kick │ BREAK       SIN DRUMS   SIN GRAVES   SIN KICK
-con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
+sin kick │ BREAK   DRIFT   BUILD   KICK-OUT
+con kick │ INTRO   GROOVE  MAIN    DROP
 ```
 
-| Escena | Qué suena |
-|---|---|
-| **BREAK** | el pad a tope, algo de percusión, unos acordes y un hat lejano. Sin kick ni bajo |
-| **SIN DRUMS** | bajo, acordes y pad |
-| **SIN GRAVES** | hats, percusión, clap, acordes y pad: el groove arriba, sin kick ni bajo |
-| **SIN KICK** | todo menos el kick: el bajo sigue rodando (kick-out) |
-| **SOLO DRUMS** | kick, hats, clap, open hat y percusión: la entrada / salida para mezclar |
-| **ESQUELETO** | kick, bajo y hat (algo de percusión): el núcleo del rominimal |
-| **SIN BAJO** | todo menos el bajo |
-| **TODO** | todo; el pad algo al fondo y filtrado |
+Cada parte tiene **dos versiones** (botón **VER 1 · 2**, ver abajo): dos posibilidades del mismo
+momento, no «más» o «menos». La 1 es la de siempre. En cada versión suena **solo** lo que dice
+la tabla (auditado: en las 16 combinaciones, nada de lo que no toca programa notas ni deja sonido
+por encima de −80 dB una vez asentada la parte).
+
+| Parte | Qué es | Versión 1 | Versión 2 |
+|---|---|---|---|
+| **INTRO** | la pista de entrada (y de salida): batería seca para mezclar | kick, hats y algo de percusión | toda la batería: + clap y open hat |
+| **GROOVE** | el «roller» hipnótico, el corazón del rominimal: donde el tema vive más tiempo | kick, bajo, hats y algo de percusión | toda la batería y bajo, sin música: + clap, open hat y percusión entera |
+| **MAIN** | el groove lleno antes del pico | kick, bajo, toda la batería y acordes suaves; sin pad | lo mismo con los acordes enteros; aún sin pad |
+| **DROP** | el pico: todo dentro | todo; el pad algo al fondo | todo, con acordes y pad enteros |
+| **BREAK** | el breakdown: cae la batería y manda la atmósfera | el pad a tope, acordes flojos y un hat lejano | el pad, acordes enteros, un hat lejano y algo de percusión |
+| **DRIFT** | lo experimental / ambient: flota, bajo y armonía suspendidos | bajo, acordes y pad | lo mismo con pulso: hats lejanos y percusión |
+| **BUILD** | la subida: sin graves, arriba el ritmo; pide un drop | hats, percusión, clap, open hat, acordes y pad | hats, percusión, acordes y pad (sin clap ni open hat) |
+| **KICK-OUT** | el bajo sigue rodando sin kick: tensión antes de que vuelva | todo menos el kick | bajo, hats, percusión y acordes |
+
+**VERSIÓN** (**VER 1 · 2**, a la derecha de las partes; en DJ, una por universo):
+- Es **del universo**, no de cada parte: la parte que suena y cualquiera a la que vayas van en la
+  versión elegida. En cada botón, K B T M enseña las capas de esa versión; el botón se marca en la 2.
+- **Clic** (al soltar): cambia de versión.
+  - **Quieto**: la otra versión de la misma parte entra en el **siguiente compás**. DE GOLPE, de
+    golpe en ese 1; PROGRESIVA, en 1 compás (SUAVE o ESCALONADA). Sin FX: es la misma parte de
+    otra forma, no un viaje.
+  - **En un viaje** (esperando la frase o a medias): el viaje sigue igual (inicio, duración, FX) y
+    **llega a la otra versión**, sin saltos: cada instrumento sigue desde donde está. Así, para ir
+    de GROOVE 1 a MAIN 2 no hace falta acertar antes: pulsa MAIN y luego VER mientras llega.
+  - Dos clics antes de que empiece el cambio de versión lo anulan.
+  - Con **LOOP** queda pendiente y entra al soltar el loop, como las partes. **Parado**, salta directo.
+- **Mantener VER + pulsar una parte** (como SHIFT en un controlador): ir a esa parte **en la otra
+  versión**, sin tocar la que suena hasta que empiece el viaje. Si es la parte que ya suena, es
+  como un clic. Al soltar VER no cambia nada más.
+- **CORTE** (mantener una parte): suena en la versión que mande y, al soltarlo, se vuelve a la
+  parte elegida en la versión que mande en ese momento.
+
+Se basan en lo que se repite en estos géneros: intro y outro de batería para que el DJ mezcle,
+un groove que se mantiene mucho tiempo con cambios pequeños (rominimal, Villalobos), el drop
+como llegada de todo, el breakdown donde cae la batería, la subida sin graves y el kick-out con
+el bajo rodando. DRIFT viene del ambient y de los directos modulares: algo que flota y se disuelve.
 
 - En cada botón, **K B T M** dice qué capas tiene: kick, bajo, tops (hats/perc/clap) y música
   (acordes/pad).
-- En las dos columnas de la derecha, la escena de abajo es la de arriba con kick: **bajar** =
-  DROP, **subir** = kick-out.
-- La escena que suena se ilumina; en un viaje se iluminan las dos a medias. El borde marca
-  la escena elegida; el destino de un viaje parpadea.
+- Parejas: **KICK-OUT** es el DROP sin kick y **BUILD**, el MAIN sin graves. **Bajar** = entra
+  el kick.
+- La parte que suena se ilumina (en cualquiera de sus versiones); en un viaje se iluminan las dos
+  a medias. El borde marca la parte elegida; el destino de un viaje parpadea y, arriba, se lee
+  con su versión («→ MAIN 2 · ENTRA EN 3»).
 - **Formas del viaje** (TRANSICIÓN):
   - **DE GOLPE**: suena el origen hasta el final del viaje y en el 1 de la llegada todo salta
     al destino (**drop**). Los compases son la espera, con sus FX (riser, redoble, tensión).
   - **PROGRESIVA · SUAVE**: todos los instrumentos cambian a la vez, poco a poco, durante todo
-    el viaje. De SOLO DRUMS a TODO en 8 compases, el bajo y los acordes van subiendo juntos.
+    el viaje. De INTRO a DROP en 8 compases, el bajo y los acordes van subiendo juntos.
   - **PROGRESIVA · ESCALONADA**: uno tras otro, cada uno con un barrido corto que acaba justo
     en su compás. Primero lo que sale y luego lo que entra; de adorno a cimiento (pad, open
     hat, percusión, acordes, hat, clap, bajo y el kick el último). El viaje se reparte en
@@ -121,7 +153,7 @@ con kick │ SOLO DRUMS  ESQUELETO   SIN BAJO     TODO
   vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
 - Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
   es solo el cambio (de golpe o progresivo, según TRANSICIÓN).
-- **Al abrir**, los universos empiezan en **SOLO DRUMS**. **Parado** (antes del primer GENERAR
+- **Al abrir**, los universos empiezan en **INTRO**. **Parado** (antes del primer GENERAR
   o en PAUSA), pulsar una escena salta a ella directamente, sin viaje ni FX: es desde donde
   empieza (o sigue) a sonar. Un viaje que quedó a medias al pausar sigue al volver a tocar,
   salvo que pulses una escena antes.
@@ -136,9 +168,9 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
 | Viaje | Qué pasa |
 |---|---|
 | **Entra el kick** (de la fila de arriba a la de abajo) | **build**: riser (ruido y/o tono que sube), redoble que acelera (negras → corcheas → semicorcheas → fusas), el universo se va adelgazando con un high-pass e impacto y plato al llegar. DE GOLPE, a veces, además, un silencio de ½–2 tiempos antes del 1. |
-| **Entra la música sobre el kick** (SOLO DRUMS → TODO, ESQUELETO → TODO, SIN BAJO → TODO…) | riser suave, redoble corto y plato al llegar |
+| **Entra la música sobre el kick** (INTRO → DROP, GROOVE → MAIN, MAIN → DROP…) | riser suave, redoble corto y plato al llegar |
 | **Se va el kick** (de la fila de abajo a la de arriba) | downfilter (el universo entero se cierra los últimos compases), plato al revés que muere en el 1, golpe grave y caída de ruido después |
-| **Se va la música** (TODO → SOLO DRUMS, TODO → SIN BAJO…) | un reverse corto, redoble del último tiempo y plato |
+| **Se va la música** (DROP → INTRO, DROP → GROOVE…) | un reverse corto, redoble del último tiempo y plato |
 | **Sin kick** (entre escenas de la fila de arriba) | solo un barrido suave |
 
 - **Cuantos más compases, más capas**: con INSTANTÁNEO solo hay golpe o plato al llegar; con 1–2,
@@ -168,7 +200,9 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
     tonal y lo propio se suman a ellos; no los sustituyen.
 - **VOLUMEN DE FX** de cada universo: un fader bajo el botón FX de su columna TRANSICIÓN (A a la
   izquierda, B a la derecha) y, el mismo, en el **MIXER** (caja FX, A y B, nunca vinculados, con
-  medidor). 0 dB = como sonaba; +6 arriba, −48 y silencio abajo; imán y doble clic = 0 dB. Mueve
+  medidor). 0 dB = el pico más alto de los efectos en 0 dBFS; el preset MINIMAL lo deja en
+  −7 dB (ver MIXER). +6 arriba, −48 y silencio abajo; imán a 0 dB y al valor del preset; doble
+  clic = el valor del preset. Mueve
   solo las voces de transición (riser, redoble, golpes, platos, reverse, caída): los barridos
   de filtro y el silencio antes del drop son la propia música. En el móvil, solo en el MIXER.
 - Pulsar otra escena o activar el LOOP corta la transición en curso.
@@ -179,9 +213,9 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
 KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **CHORD** · **PAD**.
 
 - **CHORD** — acordes dub: stabs cortos con filtro que se cierra. Ritmo en
-  contratiempo que nunca pisa al kick. A tope en SIN DRUMS y en TODO, un poco en el BREAK.
+  contratiempo que nunca pisa al kick. A tope en DRIFT y en DROP, un poco en el BREAK.
 - **PAD** — la atmósfera: un acorde largo con filtro que respira y un poco de aire (ruido
-  filtrado). Manda en el BREAK y en SIN DRUMS; en TODO se aparta.
+  filtrado). Manda en el BREAK y en DRIFT; en DROP se aparta.
 - Los dos comparten una progresión de 8 compases en grados de escala (un solo acorde, o la
   casa y otro: iv, VI, VII o v). Si el modo cambia, se recolorean al compás siguiente.
 - El kick los hace bombear un poco (sidechain), y NUEVO UNIVERSO cambia también la armonía.
@@ -259,6 +293,26 @@ se guarda (vendrá con las cuentas).
   mixers Pioneer DJM):
   - **ISOLATOR** — a la izquierda del todo la banda desaparece (−∞ … +6 dB).
   - **EQ** — atenúa sin llegar a silenciar (−26 … +6 dB).
+- **AUTO-ARREGLOS**: trucos que en producción se hacen a mano y aquí el programa hace solo,
+  en vivo. Cada uno se enciende o se apaga pulsando su caja.
+  - **HUECO ANTES DEL KICK** (encendido por defecto, **30 ms**): cuando el kick **entra de
+    golpe** viniendo de una escena sin kick (DE GOLPE, INSTANTÁNEO, un CORTE o soltar el LOOP
+    de golpe), el universo entero (con sus FX de transición) calla un instante justo antes del
+    primer golpe del kick. Da más pegada a la entrada. Si el kick entra poco a poco
+    (PROGRESIVA), no hay entrada que marcar y no se hace. Rampas de 4 ms al bajar y 2 ms al
+    volver, entero justo en el ataque del kick: medido sin clics.
+  - Los tres siguientes miran el **drop**: un viaje **DE GOLPE** en el que entra el kick. Es el
+    único que se sabe por adelantado. Lo INSTANTÁNEO o el CORTE caen en la siguiente negra o
+    corchea y no dan tiempo, y en un viaje PROGRESIVO el kick ya suena antes de llegar. Si el
+    viaje se cancela o se pausa, o se apaga la opción, todo vuelve a su sitio desde ese paso.
+  - **BAJO FUERA ANTES DEL DROP** (encendido, **último tiempo**): el bajo calla el último
+    tiempo antes del drop (baja en 4 ms) y vuelve en el 1 con el kick.
+  - **GRAVES QUE BAJAN ANTES DEL DROP** (encendido, **−6 dB · último compás**): durante el
+    último compás antes del drop, los graves de todo el universo (estante por debajo de
+    ~200 Hz) bajan poco a poco y vuelven enteros en el 1.
+  - **MENOS VOLUMEN SIN KICK** (encendido, **−1,5 dB**): mientras no hay kick el universo suena
+    un poco más bajo (baja despacio, en ~1 s). Al entrar el kick recupera el nivel: de golpe en
+    un drop, poco a poco si entra progresivo. Así el drop parece más grande.
 En RENDIMIENTO cada ajuste muestra solo el nombre (la descripción sale al pasar el ratón) y
 sus opciones van de menos a más calidad; AUTO, que se mueve solo por esa escala, va al final.
 
@@ -300,10 +354,20 @@ sus opciones van de menos a más calidad; AUTO, que se mueve solo por esa escala
 Botón **MIXER** en la cabecera (o tecla **M**; Esc cierra). Un fader por instrumento y, al
 lado de cada fader, un **medidor** con lo que suena ahora. En **DJ** salen **A y B** en cada
 instrumento, **VINCULADOS** por defecto: mover un instrumento en un universo lo mueve igual en el
-otro (conservando la diferencia que tuvieran, como un grupo de faders; doble clic, los dos a 0 dB).
-El botón VINCULADOS los separa. En el móvil, en DJ, no se ven los dB (no caben).
-Siempre arranca en 0 dB = la mezcla por defecto.
-Arriba +6 dB, abajo hasta −48 dB y silencio. **Imán** a 0 dB: mientras lo mueves va libre; si lo sueltas a menos de 0,75 dB, se va a 0 dB (el sonido al instante; el mando se desliza unas milésimas). En DJ, cada instrumento va en su caja (A y B juntos). Doble clic = 0 dB. RESTABLECER = todo a 0 dB.
+otro (conservando la diferencia que tuvieran, como un grupo de faders; doble clic, los dos al
+valor del preset). El botón VINCULADOS los separa. En el móvil, en DJ, no se ven los dB (no caben).
+
+**0 dB = el pico máximo del instrumento en 0 dBFS.** Cada instrumento (y los FX) sale de su
+canal con su pico más alto en 0 dB, y la mezcla es **solo la posición de los faders**. Arriba,
+**MEZCLA** elige el **preset**: **MINIMAL** (por defecto) o **PLANO** (todo a 0 dB). Elegir uno
+mueve los faders de instrumentos y FX de los dos universos (el máster no). Si luego tocas alguno,
+sale **RETOCADA** y el dB de ese fader se enciende. Ver "Mezcla por defecto".
+Los medidores de instrumentos y FX van en la **misma escala que el fader** (0 dB a tres cuartos,
++6 arriba, −48 abajo): como cada canal tiene su pico en 0 dB antes del fader, el medidor de un
+instrumento llega como mucho a la altura de su fader (según el universo, puede pasarse unas
+décimas). El del máster sigue en dBFS (de −60 a 0, arriba del todo).
+
+Arriba +6 dB, abajo hasta −48 dB y silencio. **Imán** a 0 dB y al valor del preset: mientras lo mueves va libre; si lo sueltas a menos de 0,75 dB de uno de los dos, se va ahí (el sonido al instante; el mando se desliza unas milésimas). En DJ, cada instrumento va en su caja (A y B juntos). Doble clic = el valor del preset. RESTABLECER = el preset entero (y el máster a 0 dB).
 La música sigue sonando mientras está abierto. (Todavía no se guarda: vendrá con las cuentas.)
 
 **MASTER** (a la derecha, aparte): la **ganancia del máster** va **antes del limitador**: subirla
@@ -320,17 +384,38 @@ replantea qué mide LIM; ver [HOJA_DE_RUTA.md](HOJA_DE_RUTA.md).)
 
 ## Mezcla por defecto
 
-Es el mismo género en todos los universos, así que el perfil es uno solo (`src/audio/dsp.js`).
-Medido con todo sonando y un color neutro (loudness K-ponderado ≈ LUFS):
+Es el mismo género en todos los universos, así que hay un solo perfil.
 
-| | Respecto al kick |
-|---|---|
-| Kick | pico ≈ −3 dBFS en su canal |
-| Bass | picos ≈ 3–5 dB por debajo; kick y bass mandan |
-| Clap | picos ≈ 6–8 dB por debajo |
-| Perc · acordes | ≈ 9–10 dB por debajo |
-| Hats · open hat | ≈ 12–13 dB por debajo |
-| Pad | ≈ 16 LU por debajo: es el fondo |
+**Nivel de cada instrumento** (`LEVEL` en `src/audio/dsp.js`): todos salen de su canal con el
+**pico máximo en 0 dBFS**, antes del fader. Se midió el pico más alto de cada canal en 8
+universos al azar con todo sonando a tope, y la ganancia lo lleva a 0 dB. Según el color del
+universo, el pico real queda entre +0,6 y unos −4 dB (comprobado en 3 universos más). Los
+**FX de transición**, igual (`FX_LEVEL` en `transitionFx.js`: medidos en 9 viajes con FX).
+
+**Presets** (`src/audio/mix.js`), solo la posición de los faders:
+
+| Fader | MINIMAL | PLANO | Por qué (MINIMAL) |
+|---|---|---|---|
+| Kick | −4 | 0 | el ancla; por debajo de 0 para dejar margen a la suma |
+| Bass | −9 | 0 | rodando justo bajo el kick; kick y bajo mandan |
+| Perc | −10 | 0 | en rominimal la percusión es la protagonista: por encima de clap y hats |
+| Clap | −12 | 0 | marca, pero detrás (no golpea como en tech house) |
+| Hat | −13 | 0 | presentes y sin morder |
+| Open | −15 | 0 | es largo: se oye más de lo que marca el pico |
+| Chord | −14 | 0 | los acordes de deep/minimal acompañan, no tapan el groove |
+| Pad | −16 | 0 | el fondo: se siente más que se oye |
+| FX | −7 | 0 | las transiciones se insinúan; sin retocar, los golpes de llegada sonaban casi como el kick |
+
+- **MINIMAL** parte de la mezcla de antes (que ya seguía esas reglas: en estos dB era kick −3,7,
+  bass −9,3, perc −11,6, clap −10,7, hat −12,7, open −14,4, chord −12,9, pad −14,9 y FX −4) y la
+  retoca: percusión +1,6 dB; clap, acordes y pad algo más atrás; FX −3 dB. El nivel total sin FX
+  queda casi igual, así que la saturación del universo, el glue y el limitador trabajan como
+  siempre. Medido: picos de cada canal a ±1,5 dB de su fader (el pad, hasta −4) y el universo
+  entero con picos ≈ −4 dBFS.
+- **PLANO** pone cada canal con su pico en 0 dBFS: suena mucho más fuerte y la saturación del
+  universo y el limitador trabajan bastante más. Es el punto de partida neutro.
+- Esto es solo el balance. Cuánto suena la mezcla al final (RMS, LUFS) es cosa de la futura
+  sesión de mezcla y máster (ver [HOJA_DE_RUTA.md](HOJA_DE_RUTA.md)).
 
 - **Master**: ≈ −13 LUFS con picos ≈ −4 dBFS. Deja margen: no va "a tope" (los masters de
   club suelen estar entre −9 y −6 LUFS, pero esto es un instrumento en directo que entra en
@@ -342,7 +427,7 @@ Medido con todo sonando y un color neutro (loudness K-ponderado ≈ LUFS):
   El pad ya no dobla la tónica grave: esa octava es del bajo.
 - **Sidechain**: el kick aparta al bajo ≈ 3 dB (quieto) a 7 dB (intenso), a acordes y pad un
   poco. En **DJ** es **cruzado** cuando hace falta: si un universo tiene un bajo sonando **sin
-  kick propio** (p. ej. A en SOLO DRUMS y B en SIN DRUMS), el kick que suena del otro también
+  kick propio** (p. ej. A en INTRO y B en DRIFT), el kick que suena del otro también
   lo aparta, en proporción a lo que la mesa deja oír de ese kick (fader y LOW). Con EASY EQ ya
   era así; ahora también con la EQ normal. Si el bajo tiene su propio kick, solo lo empuja el
   suyo (no hay doble bombeo).

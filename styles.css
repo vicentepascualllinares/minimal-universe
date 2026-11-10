@@ -178,6 +178,14 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-read .m-grdb.on { color: var(--gr); }
 .im-link { font-size: 9px; letter-spacing: 0.2em; padding: 4px 8px 4px 10px; border: 1px solid var(--faint); color: var(--dim); margin-top: 4px; }
 .im-link.on { color: var(--fg); border-color: var(--dim); }
+/* PRESET DE MEZCLA: MINIMAL / PLANO y, si se ha tocado algún fader, RETOCADA */
+.im-presets { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+.im-plab { color: var(--faint); font-size: 9px; letter-spacing: 0.2em; }
+.im-preset { font-size: 9px; letter-spacing: 0.2em; padding: 4px 8px 4px 10px; border: 1px solid var(--line); color: var(--dim); }
+.im-preset:hover { color: var(--fg); }
+.im-preset.on { color: var(--fg); border-color: var(--dim); }
+.im-touched { color: var(--faint); font-size: 8px; letter-spacing: 0.16em; visibility: hidden; }
+.im-touched.on { visibility: visible; }
 .im-name { color: var(--fg); font-size: 9px; letter-spacing: 0.16em; }
 .im-zero { position: absolute; left: 50%; top: 25%; width: 20px; height: 1px; background: var(--dim); transform: translateX(-50%); }
 .im-foot { display: flex; gap: 28px; }
@@ -246,7 +254,7 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 /* ESTRUCTURA: 8 escenas en 2×4, arriba sin kick, abajo con kick (como los pads de un controlador) */
 .scenes {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, 1fr) auto;
   grid-template-rows: 1fr 1fr;
   gap: 10px 5px;
   padding: 5px;
@@ -278,6 +286,20 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .scene.press { background: rgba(var(--glow, 200, 200, 205), 0.3); }
 .scene.held { border-color: rgba(var(--glow, 200, 200, 205), 0.95); }  /* CORTE mantenido */
 .scene.pend { border-color: rgba(var(--glow, 200, 200, 205), 0.85); border-style: dashed; } /* LOOP: entrará al soltar */
+/* VERSIÓN 1 · 2: a la derecha de las partes, de arriba abajo (como un SHIFT en un controlador) */
+.ver {
+  grid-column: 5; grid-row: 1 / span 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 8px 7px; border: 1px solid var(--faint);
+  font-size: clamp(7px, calc(var(--pad) / 32), 10px); letter-spacing: 0.08em;
+  touch-action: none; transition: border-color 0.2s, background-color 0.15s;
+}
+.ver:hover { border-color: #3c3c43; }
+.ver-lab { color: var(--dim); }
+.ver b { font-weight: normal; color: var(--faint); font-size: 1.3em; }
+.ver b.on { color: var(--fg); }
+.ver.v2 { border-color: var(--dim); }
+.ver.press { background: rgba(var(--glow, 200, 200, 205), 0.3); }
 /* COMPLEJIDAD por grupos: 4 faders en el hueco del antiguo pad de emoción */
 .cx-box { display: flex; justify-content: space-around; align-items: stretch; padding: 12px 4px 10px; }
 .cxf { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }

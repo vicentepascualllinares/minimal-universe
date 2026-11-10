@@ -4,7 +4,7 @@
 import { VSlider, HSlider } from './slider.js';
 import { INSTRUMENTS, SCENES, GRID, LAYERS, likeness } from '../music/arrangement.js';
 import { GROUPS, GROUP_LABEL, shapeComplexity } from '../music/complexity.js';
-import { faderDb, snap, setFxFader, FADER_ZERO, fmtDb } from './instMixer.js';
+import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
 
@@ -12,11 +12,15 @@ const opts = (cls, values, on) =>
   `<div class="opts ${cls}">${values.map((v) => `<button data-v="${v[0]}"${v[0] === on ? ' class="on"' : ''}>${v[1]}</button>`).join('')}</div>`;
 const nums = (arr) => arr.map((n) => [String(n), String(n)]);
 
-// botón de una escena: su nombre y sus capas (K kick · B bajo · T hats/perc · M acordes/pad)
+// capas de una parte en una versión (K kick · B bajo · T hats/perc · M acordes/pad)
+const layHtml = (name, v) => {
+  const L = LAYERS(name, v);
+  return ['K', 'B', 'T', 'M'].map((l) => `<i${L[l] ? ' class="on"' : ''}>${l}</i>`).join('');
+};
+// botón de una parte: su nombre y sus capas (las de la VERSIÓN que manda: se repintan al cambiarla)
 const sceneBtn = (name) => {
-  const L = LAYERS(name);
-  const lay = ['K', 'B', 'T', 'M'].map((l) => `<i${L[l] ? ' class="on"' : ''}>${l}</i>`).join('');
-  const text = SCENES[name].label.replace('ESQUELETO', 'ESQUE&shy;LETO'); // si no cabe, corta con guion
+  const lay = layHtml(name, 0);
+  const text = SCENES[name].label.replace('KICK-OUT', 'KICK-&#8203;OUT'); // si no cabe, corta tras el guion
   return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span><span class="sc-lay">${lay}</span></button>`;
 };
 
@@ -35,7 +39,10 @@ function template(label) {
   <div class="row">
     <section class="pad p-struct">
       <div class="pad-title">ESTRUCTURA<span class="ph-ticks" title="la frase: un trazo por compás. Los viajes aterrizan al empezar la frase"></span><span class="p-status"></span></div>
-      <div class="pad-box scenes">${GRID.flat().map(sceneBtn).join('')}</div>
+      <div class="pad-box scenes">
+        <button class="ver" title="VERSIÓN: dos posibilidades de cada parte · clic: cambiar (quieto, entra en el siguiente compás; en un viaje, cambia a dónde llega) · mantener + pulsar una parte: esa parte en la otra versión"><span class="ver-lab">VER</span><b data-v="0">1</b><b data-v="1">2</b></button>
+        ${GRID.flat().map(sceneBtn).join('')}
+      </div>
     </section>
     <section class="col trans">
       <div class="col-title">TRANSICIÓN</div>
@@ -126,7 +133,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     showGesture();
   });
   showGesture();
-  // VOLUMEN DE FX: el mismo fader que en el MIXER (imán y doble clic a 0 dB); la posición vive en
+  // VOLUMEN DE FX: el mismo fader que en el MIXER (imán a 0 dB y al preset; doble clic, el preset); la posición vive en
   // el motor, así las dos vistas van juntas
   const di = deck.engine.decks.indexOf(deck);
   const fxDb = q('.t-vol-db');
@@ -134,14 +141,18 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   const showFx = (v) => {
     fxSeen = v;
     fxDb.textContent = fmtDb(faderDb(v));
-    fxDb.classList.toggle('moved', Math.abs(v - FADER_ZERO) > 0.004);
+    fxDb.classList.toggle('moved', Math.abs(v - presetPos(deck.engine, 'fx')) > 0.004);
   };
   const fxVol = new VSlider(q('.t-vol .fader'), {
     value: fxSeen,
     onChange: (v) => { setFxFader(deck.engine, di, v); showFx(v); },
-    onEnd: (v) => { const s = snap(v); if (s !== v) { setFxFader(deck.engine, di, s); showFx(s); fxVol.glideTo(s); } },
+    onEnd: (v) => { const s = snapMix(deck.engine, 'fx', v); if (s !== v) { setFxFader(deck.engine, di, s); showFx(s); fxVol.glideTo(s); } },
   });
-  q('.t-vol .t-track').addEventListener('dblclick', () => { fxVol.set(FADER_ZERO); setFxFader(deck.engine, di, FADER_ZERO); showFx(FADER_ZERO); });
+  // doble clic: lo que dice el preset de mezcla del MIXER
+  q('.t-vol .t-track').addEventListener('dblclick', () => {
+    const p = presetPos(deck.engine, 'fx');
+    fxVol.set(p); setFxFader(deck.engine, di, p); showFx(p);
+  });
   showFx(fxSeen);
   // FORMA del viaje: DE GOLPE / PROGRESIVA; y, solo en progresiva, ESCALONADA / SUAVE
   const showForm = () => {
@@ -200,6 +211,29 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     el.addEventListener('pointercancel', up);
     el.addEventListener('contextmenu', (ev) => ev.preventDefault()); // mantener pulsado en el móvil
   }
+  // VERSIÓN: apoyar / soltar (el universo decide si era un clic o un SHIFT: ver Deck.versionDown)
+  const verBtn = q('.ver');
+  {
+    let pid = null;
+    verBtn.addEventListener('pointerdown', (ev) => {
+      if (pid !== null) return;
+      pid = ev.pointerId;
+      try { verBtn.setPointerCapture(pid); } catch {}
+      verBtn.classList.add('press');
+      deck.versionDown();
+    });
+    const up = (ev) => {
+      if (ev.pointerId !== pid) return;
+      pid = null;
+      verBtn.classList.remove('press');
+      deck.versionUp();
+    };
+    verBtn.addEventListener('pointerup', up);
+    verBtn.addEventListener('pointercancel', up);
+    verBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  }
+  const verMarks = [...verBtn.querySelectorAll('b')];
+  let verSeen = -1;
   const pStatus = q('.p-status');
   const phTicks = q('.ph-ticks');
 
@@ -228,10 +262,19 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       const AR = deck.arr;
       const T = AR.travel;
       const L = deck.loop;
+      // VERSIÓN: la que manda, encendida; las capas de cada botón son las de esa versión
+      if (verSeen !== AR.version) {
+        verSeen = AR.version;
+        verMarks.forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === verSeen));
+        verBtn.classList.toggle('v2', verSeen === 1);
+        for (const el of sceneEls) el.querySelector('.sc-lay').innerHTML = layHtml(el.dataset.s, verSeen);
+      }
       for (const el of sceneEls) {
         const name = el.dataset.s;
-        // cuánto suena ahora esta escena (en un viaje, se encienden las dos a medias)
-        const m = Math.pow(Math.max(0, 1 - 8 * (1 - likeness(AR.cur, name))), 1.5).toFixed(2);
+        // cuánto suena ahora esta parte, en cualquiera de sus dos versiones (en un viaje, se
+        // encienden las dos a medias)
+        const like = Math.max(likeness(AR.cur, name, 0), likeness(AR.cur, name, 1));
+        const m = Math.pow(Math.max(0, 1 - 8 * (1 - like)), 1.5).toFixed(2);
         if (el.style.getPropertyValue('--m') !== m) el.style.setProperty('--m', m);
         const dest = !!T && T.name === name;
         el.classList.toggle('dest', dest && !T.paused);
@@ -248,7 +291,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         const when = ti.paused ? 'PAUSA'
           : ti.wait > 0.02 ? `ENTRA EN ${Math.ceil(ti.wait)}`
           : ti.left < 0.95 ? 'ÚLTIMO COMPÁS' : `${Math.ceil(ti.left)} COMP.`;
-        st = `→ ${SCENES[ti.name].label} · ${when}`;
+        st = `→ ${SCENES[ti.name].label} ${AR.version + 1} · ${when}`;
       } else if (engine.ready) {
         // antes de pulsar: cuándo empezaría un viaje de CLIC con los compases elegidos
         st = deck.gesture.click.bars === 0 || pv.wait < 0.02 ? 'ENTRA YA' : `ENTRA EN ${Math.ceil(pv.wait)}`;

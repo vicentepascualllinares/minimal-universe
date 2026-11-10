@@ -23,6 +23,7 @@
 
 import { Rng, clamp } from '../core/rng.js';
 import { INSTRUMENTS } from './arrangement.js';
+import { NORMAL, sFloat, sWeighted, sChance } from './styles.js';
 
 // CÓMO ENTRA Y SALE CADA INSTRUMENTO en un viaje progresivo: 1 = con filtro (HP en kick y
 // bajo, LP con resonancia en el resto), 0 = con volumen. Todos, además, con densidad (de pocas
@@ -44,33 +45,35 @@ export function classify(from, to) {
 }
 
 // PALETA del universo: qué riser, qué redoble, qué golpe, cuánta tensión.
-export function makePalette(seed) {
+// `sty` = el ESTILO del universo (styles.js): en ROMINIMAL, sobria («not about moments or big drops»)
+export function makePalette(seed, sty = NORMAL) {
   const r = new Rng(seed ^ 0x2545f491);
   const pal = {
-    amount: r.float(0.55, 1),                          // universos sobrios .. intensos
-    riser: r.weighted(['noise', 'tone', 'both'], [3, 2, 3]),
+    amount: sFloat(r, sty, 'fx.amount', 0.55, 1),      // universos sobrios .. intensos
+    riser: sWeighted(r, sty, 'fx.riser', ['noise', 'tone', 'both'], [3, 2, 3]),
     wave: r.pick(['sawtooth', 'sawtooth', 'square', 'triangle']),
     riseOct: r.pick([3, 3, 4]),                        // octavas sobre la tónica del kick
     riseSemis: r.pick([12, 12, 19, 24]),               // cuánto sube el riser
     noiseQ: r.float(0.7, 3.5),
-    wobble: r.chance(0.35),                            // el riser late cada vez más rápido
+    wobble: sChance(r, sty, 'fx.wobble', 0.35),        // el riser late cada vez más rápido
     roll: r.weighted(['snare', 'clap', 'rim', 'tom'], [4, 2, 2, 2]),
     rollTone: r.float(150, 300),
     rollRise: r.pick([0, 0, 5, 7, 12]),                // semitonos que sube el redoble
     rollDecay: r.float(0.07, 0.16),
     snap: r.float(1500, 4500),
-    boom: r.chance(0.75),                              // golpe grave afinado en la tónica
-    thud: r.chance(0.6),                               // golpe de ruido sordo
+    boom: sChance(r, sty, 'fx.boom', 0.75),            // golpe grave afinado en la tónica
+    thud: sChance(r, sty, 'fx.thud', 0.6),             // golpe de ruido sordo
     boomDrop: r.float(3, 8),
     boomDecay: r.float(0.6, 1.5),
     crashBase: r.float(320, 520),
-    crashDecay: r.float(1.1, 2.4),
+    crashDecay: sFloat(r, sty, 'fx.crashDecay', 1.1, 2.4),
     crashMetal: r.float(0.2, 0.6),                     // metal .. ruido
-    tensionHz: r.float(250, 800),                      // hasta dónde sube el HP en un build
-    downHz: r.float(350, 1200),                        // hasta dónde baja el LP en un fall
-    gap: r.chance(0.45) ? r.pick([0.5, 1, 1, 2]) : 0,  // tiempos de silencio antes del drop
-    down: r.chance(0.65),                              // caída de ruido al llegar a un fall
+    tensionHz: sFloat(r, sty, 'fx.tensionHz', 250, 800), // hasta dónde sube el HP en un build
+    downHz: sFloat(r, sty, 'fx.downHz', 350, 1200),    // hasta dónde baja el LP en un fall
+    gap: sChance(r, sty, 'fx.gapP', 0.45) ? r.pick([0.5, 1, 1, 2]) : 0, // tiempos de silencio antes del drop
+    down: sChance(r, sty, 'fx.down', 0.65),            // caída de ruido al llegar a un fall
   };
+  pal.sty = sty; // cada transición tira alrededor de la paleta con los pesos del estilo (varyPalette)
   if (!pal.boom && !pal.thud) pal.boom = true;
   // (al final, para que lo de arriba no cambie con la misma semilla)
   pal.how = {};   // cómo entra cada instrumento (ver HOW)
@@ -102,13 +105,14 @@ const ARPS = ['escala', 'acorde', 'quintas'];
 
 export function varyPalette(pal, r, recent = []) {
   const around = (v, amt) => v * (1 + r.float(-amt, amt));
+  const S = pal.sty || NORMAL;
   let v, sig;
   for (let tries = 0; tries < 8; tries++) {
     v = { ...pal };
-    v.riser = r.chance(0.4) ? pal.riser : r.weighted(RISERS, [1, 1, 1, 3]); // el tonal, el más buscado
+    v.riser = r.chance(0.4) ? pal.riser : sWeighted(r, S, 'fx.vRiser', RISERS, [1, 1, 1, 3]); // el tonal, el más buscado
     v.arp = r.pick(ARPS);
-    v.roll = r.chance(0.4) ? pal.roll : r.weighted(ROLLS, [1, 1, 1, 1, 3]); // la voz propia, la más buscada
-    v.rollPattern = r.weighted(ROLL_PATTERNS, [4, 2, 2, 2]);
+    v.roll = r.chance(0.4) ? pal.roll : sWeighted(r, S, 'fx.vRoll', ROLLS, [1, 1, 1, 1, 3]); // la voz propia, la más buscada
+    v.rollPattern = sWeighted(r, S, 'fx.vPattern', ROLL_PATTERNS, [4, 2, 2, 2]);
     const imp = r.weighted(['boom', 'thud', 'both', 'kick'], [pal.boom ? 3 : 1, pal.thud ? 3 : 1, 2, 3]);
     v.boom = imp === 'boom' || imp === 'both';
     v.thud = imp === 'thud' || imp === 'both';

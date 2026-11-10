@@ -35,12 +35,31 @@ export class EmotionState {
     this.v = v; this.a = a;   // valor real (con inercia, como un sistema analógico)
     this.inertia = 2.2;       // segundos (constante de tiempo)
     this.ramp = null;
+    // ESTILO del color (ver styleColor en styles.js): [cuánto, lo0, hi0, lo1, hi1...]. Viaja con la
+    // misma inercia que el color: un universo nuevo llega a su estilo a la vez que a su color.
+    // null = nunca ha habido estilo (todo como siempre)
+    this.sx = null; this.tsx = null;
+    this.sxMoving = false;
   }
   setTarget(v, a) { this.tv = clamp(v, -1, 1); this.ta = clamp(a, -1, 1); }
-  snap() { this.v = this.tv; this.a = this.ta; this.ramp = null; }
+  // `x` = el color del estilo del universo nuevo (rollStyle().color), o null (NORMAL: lo que hubiera
+  // se va a 0 sin mover sus rangos)
+  setStyle(x) {
+    if (!x) {
+      if (this.tsx) { this.tsx = Float64Array.from(this.tsx); this.tsx[0] = 0; }
+      return;
+    }
+    if (!this.sx) { this.sx = Float64Array.from(x); this.sx[0] = 0; } // venía sin estilo: solo sube el cuánto
+    this.tsx = Float64Array.from(x);
+  }
+  snap() {
+    this.v = this.tv; this.a = this.ta; this.ramp = null;
+    if (this.tsx) this.sx = Float64Array.from(this.tsx);
+    this.sxMoving = false;
+  }
   // rampa suave hacia el objetivo durante `dur` segundos, empezando dentro de `delay`
   rampTo(dur, delay = 0) {
-    this.ramp = { fv: this.v, fa: this.a, t: -Math.max(0, delay), dur: Math.max(0.01, dur) };
+    this.ramp = { fv: this.v, fa: this.a, fsx: this.sx && Float64Array.from(this.sx), t: -Math.max(0, delay), dur: Math.max(0.01, dur) };
   }
   update(dt) {
     const R = this.ramp;
@@ -51,12 +70,26 @@ export class EmotionState {
       const s = k * k * (3 - 2 * k);
       this.v = R.fv + (this.tv - R.fv) * s;
       this.a = R.fa + (this.ta - R.fa) * s;
+      if (this.tsx && R.fsx) {
+        for (let i = 0; i < this.sx.length; i++) this.sx[i] = R.fsx[i] + (this.tsx[i] - R.fsx[i]) * s;
+        this.sxMoving = k < 1;
+      }
       if (k >= 1) this.ramp = null;
       return;
     }
     const k = 1 - Math.exp(-dt / this.inertia);
     this.v += (this.tv - this.v) * k;
     this.a += (this.ta - this.a) * k;
+    if (this.tsx) {
+      // ¿sigue viajando? (para el banco de sonidos: grabar a menudo mientras cambia, ver refreshSounds)
+      let moving = false;
+      for (let i = 0; i < this.sx.length; i++) {
+        const d = this.tsx[i] - this.sx[i];
+        this.sx[i] += d * k;
+        if (Math.abs(d) > 0.004 * (Math.abs(this.tsx[i]) + 0.01)) moving = true;
+      }
+      this.sxMoving = moving;
+    }
   }
 }
 

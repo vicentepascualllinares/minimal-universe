@@ -15,6 +15,7 @@
 // del centro, como los faders de complejidad.
 
 import { clamp, lerp } from '../core/rng.js';
+import { NORMAL, sFloat, sWeighted } from './styles.js';
 
 export const KIT_GROUPS = ['hat', 'perc', 'foley'];
 export const MAX_VARIETY = 5;
@@ -30,11 +31,13 @@ export const presence = (v, i) => clamp(varietyCount(v) - i);
 // lo que se enseña: los que se oyen (el que entra cuenta desde que da algún golpe)
 export const varietyShown = (v) => Math.min(MAX_VARIETY, Math.floor(varietyCount(v) - 0.35) + 1);
 
-export function randomKit(r) {
+// `sty` = el ESTILO del universo (styles.js): sus rangos (los del arquetipo) sustituyen a estos
+export function randomKit(r, sty = NORMAL) {
+  const f = (g, p, a, b) => sFloat(r, sty, `kit.${g}.${p}`, a, b);
   return {
-    hat: { amt: r.float(0.3, 0.7), vary: r.float(0.1, 0.75) },
-    perc: { amt: r.float(0.3, 0.7), vary: r.float(0.25, 0.85) },
-    foley: { amt: r.float(0.3, 0.7), vary: r.float(0.15, 0.75) }, // (al final: lo demás sale igual)
+    hat: { amt: f('hat', 'amt', 0.3, 0.7), vary: f('hat', 'vary', 0.1, 0.75) },
+    perc: { amt: f('perc', 'amt', 0.3, 0.7), vary: f('perc', 'vary', 0.25, 0.85) },
+    foley: { amt: f('foley', 'amt', 0.3, 0.7), vary: f('foley', 'vary', 0.15, 0.75) }, // (al final: lo demás sale igual)
   };
 }
 
@@ -95,9 +98,17 @@ const inharm = (r, a, b) => {
   }
 };
 
-export function drawHatEngine(r, name) {
+// `sty` = el ESTILO del universo: sus pesos de motor por tipo (puede traer motores que el tipo no
+// tiene sin estilo, p. ej. granos en el TICK) y los bits del ruido
+export function drawHatEngine(r, name, sty = NORMAL) {
   const W = HAT_ENGINE_WEIGHTS[name];
-  const engine = r.weighted(Object.keys(W), Object.values(W));
+  const S = sty.t ? sty.k[`hatEng.${name}`] : null;
+  let engine;
+  if (!S) engine = r.weighted(Object.keys(W), Object.values(W));
+  else {
+    const keys = [...new Set([...Object.keys(W), ...Object.keys(S)])];
+    engine = r.weighted(keys, keys.map((k) => lerp(W[k] ?? 0, S[k] ?? W[k] ?? 0, sty.t)));
+  }
   if (engine === 'metal') {
     // 808 (las de siempre) o un juego propio: 6 parciales entre 1 y ~4
     if (r.chance(0.4)) return { engine };
@@ -106,7 +117,7 @@ export function drawHatEngine(r, name) {
     return { engine, ratios };
   }
   if (engine === 'fm') return { engine, cr: r.float(4, 9), ratio: inharm(r, 1.25, 3.8), index: r.float(1.8, 5.5), noise: r.float(0.04, 0.18) };
-  if (engine === 'hiss') return { engine, res: r.float(2, 10), peak: r.float(0.2, 0.9), bits: r.weighted([0, 6, 8], [2, 1.5, 1]) };
+  if (engine === 'hiss') return { engine, res: r.float(2, 10), peak: r.float(0.2, 0.9), bits: sWeighted(r, sty, 'hiss.bits', [0, 6, 8], [2, 1.5, 1]) };
   if (engine === 'cymbal') return { engine, plate: r.int(1, 2 ** 30), lo: r.float(0.35, 0.8), ring: r.float(0.6, 1.5), tilt: r.float(-0.2, 0.5), wash: r.float(0.1, 0.5), exc: r.float(0.001, 0.004) };
   return { engine, q: r.float(1.5, 6), f: r.float(0.45, 0.85), f2: r.chance(0.5) ? r.float(1.2, 1.6) : 0, rate: r.float(400, 1500), gtau: r.float(0.0005, 0.0015), shake: r.float(0.015, 0.035) };
 }

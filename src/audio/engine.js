@@ -139,6 +139,7 @@ export class Engine {
     const P = MIX_PRESETS[name];
     if (!P) return;
     this.mixPreset = name;
+    this.styleSaved = [null, null]; // la mezcla vuelve a ser tuya: un universo NORMAL ya no la restaura (ver styleMix)
     for (const i of [0, 1]) {
       for (const k of INSTRUMENTS) this.setInst(i, k, dbGain(P.db[k]));
       this.fxPos[i] = dbFader(P.db.fx);
@@ -147,10 +148,42 @@ export class Engine {
     this.mixVersion = (this.mixVersion || 0) + 1;
   }
 
-  // VOLUMEN DE FX de un universo (0 = A, 1 = B): sus efectos de transición
-  setFxGain(i, g) {
+  // VOLUMEN DE FX de un universo (0 = A, 1 = B): sus efectos de transición (`at` = desde cuándo)
+  setFxGain(i, g, at) {
     this.fxGain[i] = g;
-    if (this.ready) this.decks[i].fx?.setLevel(g * this.heard(i, 'fx'));
+    if (this.ready) this.decks[i].fx?.setLevel(g * this.heard(i, 'fx'), at);
+  }
+
+  // ESTILO (styles.js): la MEZCLA con la que nace un universo con estilo: los faders de sus
+  // instrumentos y de FX (del preset que manda a la del estilo, según cuánto estilo) y sus MUTE (los
+  // de sus instrumentos: los que pide el estilo y ninguno más; el de FX y los SOLO no se tocan). En el
+  // tiempo `at`: el 1 del compás en que entra. El MIXER lo enseña (RETOCADA, los MUTE encendidos).
+  // La mezcla que había ANTES del estilo se guarda: si luego nace un universo NORMAL, vuelve (faders
+  // y MUTE de los instrumentos), así lo normal suena como siempre y no hereda los MUTE del estilo.
+  // Elegir un preset en el MIXER la olvida: la mezcla vuelve a ser tuya (ver applyMix)
+  styleMix(deck, sty, at) {
+    const i = this.decks.indexOf(deck);
+    if (i < 0) return;
+    const saved = (this.styleSaved ||= [null, null]);
+    if (!(sty.t > 0)) {
+      const S = saved[i];
+      if (!S) return; // NORMAL tras NORMAL: el MIXER no se toca, como siempre
+      saved[i] = null;
+      for (const k of INSTRUMENTS) this.mute[i][S.mute.includes(k) ? 'add' : 'delete'](k);
+      for (const k of INSTRUMENTS) this.setInst(i, k, S.inst[k], at);
+      this.fxPos[i] = S.fxPos;
+      this.setFxGain(i, S.fxGain, at);
+      this.mixVersion = (this.mixVersion || 0) + 1;
+      return;
+    }
+    if (!saved[i]) saved[i] = { inst: { ...this.inst[i] }, mute: [...this.mute[i]], fxPos: this.fxPos[i], fxGain: this.fxGain[i] };
+    const P = MIX_PRESETS[this.mixPreset].db;
+    const lerpDb = (k) => P[k] + (sty.mix[k] - P[k]) * sty.t;
+    for (const k of INSTRUMENTS) this.mute[i][sty.mutes.includes(k) ? 'add' : 'delete'](k);
+    for (const k of INSTRUMENTS) this.setInst(i, k, dbGain(lerpDb(k)), at);
+    this.fxPos[i] = dbFader(lerpDb('fx'));
+    this.setFxGain(i, dbGain(lerpDb('fx')), at);
+    this.mixVersion = (this.mixVersion || 0) + 1; // las vistas del MIXER y el fader de FX lo siguen
   }
 
   // MUTE y SOLO del MIXER, por universo e instrumento (`k` = un instrumento o 'fx'). Solo "en su
@@ -549,11 +582,12 @@ export class Engine {
     return merge;
   }
 
-  // MIXER: volumen de un instrumento en el universo i (0 = A, 1 = B)
-  setInst(i, k, gain) {
+  // MIXER: volumen de un instrumento en el universo i (0 = A, 1 = B). `at` = desde cuándo (por
+  // defecto, ya; un universo que nace con estilo lo pone en el 1 de su compás)
+  setInst(i, k, gain, at) {
     this.inst[i][k] = gain;
     const d = this.decks[i];
-    if (this.ready && d.ch) glide(d.ch[k].user.gain, gain * this.heard(i, k), this.ctx.currentTime, 0.02);
+    if (this.ready && d.ch) glide(d.ch[k].user.gain, gain * this.heard(i, k), Math.max(at ?? 0, this.ctx.currentTime), 0.02);
   }
   // lo que deja pasar el MIXER en un canal: el fader por el MUTE / SOLO
   instGain(deck, k) {

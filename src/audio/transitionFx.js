@@ -74,7 +74,8 @@ export class TransitionFx {
 
   // VOLUMEN DE FX (1 = 0 dB = como sonaba). Solo las voces de transición (riser, redoble, golpes,
   // platos, reverse, caída): los filtros de tensión y el silencio antes del drop son la música
-  setLevel(g) { glide(this.bus.gain, FX_LEVEL * g, this.ctx.currentTime, 0.02); }
+  // (`at` = desde cuándo; por defecto, ya)
+  setLevel(g, at = this.ctx.currentTime) { glide(this.bus.gain, FX_LEVEL * g, Math.max(at, this.ctx.currentTime), 0.02); }
 
   // MIXER: pico de lo que suenan ahora los efectos (el medidor se crea la primera vez)
   level() {

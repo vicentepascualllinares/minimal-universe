@@ -244,11 +244,33 @@ body.mode-dj .deck.left .row { flex-direction: row-reverse; }   /* pads hacia la
 }
 .cx.active .h-handle { height: 20px; }
 /* DJ en ordenador: la cabecera es estrecha, las etiquetas pasan a − / + */
-body.mode-dj .cx { margin: 0 14px; gap: 8px; }
+body.mode-dj .cx { margin: 0 10px; gap: 8px; }
 body.mode-dj .cx-lab { font-size: 0; letter-spacing: 0; }
 body.mode-dj .cx-lab.lo::after { content: "−"; font-size: 12px; }
 body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .seed.pending { color: var(--fg); animation: blink 0.5s steps(2) infinite; }
+
+/* ESTILO de la próxima generación (NORMAL ↔ ROMINIMAL), junto a NUEVO UNIVERSO. La marca = el
+   estilo del universo que suena */
+.gen { display: flex; align-items: center; gap: 14px; }
+.deck.right .gen { flex-direction: row-reverse; }
+.sty { width: 190px; display: flex; align-items: center; gap: 8px; }
+.sty-lab { font-size: 8px; letter-spacing: 0.14em; color: var(--fg); transition: opacity 0.2s; white-space: nowrap; }
+.sty-lab.lo { opacity: calc(0.25 + (1 - var(--v, 0)) * 0.6); }
+.sty-lab.hi { opacity: calc(0.25 + var(--v, 0) * 0.75); }
+.sty .h-track { height: 22px; }
+.sty .h-handle { height: 10px; }
+.sty.active .h-handle { height: 16px; }
+.sty-now { position: absolute; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--glow, 200, 200, 205), 0.9); transform: translate(-50%, -50%); pointer-events: none; }
+.sty-now[hidden] { display: none; }
+/* en DJ (y en pantallas pequeñas) la cabecera es estrecha: una perilla en vez del fader (van juntos) */
+.sty-k { display: none; align-items: center; gap: 4px; }
+.sty-k .knob { width: 24px; height: 24px; }
+.sty-klab { font-size: 9px; letter-spacing: 0.06em; color: var(--fg); opacity: calc(0.3 + var(--v, 0) * 0.7); }
+body.mode-dj .sty { display: none; }
+body.mode-dj .sty-k { display: flex; gap: 3px; }
+body.mode-dj .sty-k .knob { width: 22px; height: 22px; }
+body.mode-dj .gen { gap: 8px; }
 
 .pad { display: flex; flex-direction: column; gap: 8px; }
 .pad-title, .col-title { color: var(--dim); font-size: 10px; height: 13px; white-space: nowrap; }
@@ -654,6 +676,10 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   .cx-lab { font-size: 0; letter-spacing: 0; }
   .cx-lab.lo::after { content: "−"; font-size: 13px; }
   .cx-lab.hi::after { content: "+"; font-size: 13px; }
+  .gen, .deck.right .gen { flex-direction: row; gap: 10px; }
+  .sty { display: none; }
+  .sty-k { display: flex; }
+  .sty-k .knob { width: 30px; height: 30px; }
 
   .unit { display: none; }
   .col { gap: 5px; }

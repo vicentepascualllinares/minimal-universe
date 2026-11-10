@@ -10,6 +10,7 @@ import {
 import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 import { Knob } from './knob.js';
 import { KIT_GROUPS, varietyShown } from '../music/kit.js';
+import { STYLES, DEFAULT_STYLE, styleName } from '../music/styles.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
 // las dos perillas del KIT (bajo HAT, PERC y FOLEY)
@@ -37,7 +38,15 @@ function template(label) {
       <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><div class="h-handle"></div></div>
       <span class="cx-lab hi">COMPLEJO</span>
     </div>
-    <button class="seed">NUEVO UNIVERSO</button>
+    <div class="gen">
+      <div class="sty">
+        <span class="sty-lab lo">NORMAL</span>
+        <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><i class="sty-now"></i><div class="h-handle"></div></div>
+        <span class="sty-lab hi">${STYLES[DEFAULT_STYLE].label}</span>
+      </div>
+      <div class="sty-k"><div class="sty-knob"></div><span class="sty-klab">RO</span></div>
+      <button class="seed">NUEVO UNIVERSO</button>
+    </div>
   </div>
   <div class="rows">
   <div class="row">
@@ -440,6 +449,24 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   loopBtn.addEventListener('pointerdown', () => deck.toggleLoop());
   const seedBtn = q('.seed');
   seedBtn.addEventListener('pointerdown', () => deck.reseed());
+  // ESTILO de la próxima generación (styles.js): NORMAL (izquierda, lo de siempre) ↔ el género
+  // (derecha). Solo cuenta al pulsar NUEVO UNIVERSO. La marca = el estilo del universo que suena.
+  // Doble clic = NORMAL. En UN UNIVERSO, un fader; en DJ y en pantallas pequeñas (cabecera estrecha),
+  // una perilla. Los dos van juntos
+  const styEl = q('.sty');
+  const styK = q('.sty-k');
+  const styNow = q('.sty-now');
+  const setStyle = (v) => {
+    deck.styleNext = v;
+    styFader.set(v);
+    styKnob.set(v);
+    styK.style.setProperty('--v', v);
+  };
+  const styFader = new HSlider(styEl, { value: deck.styleNext, reset: 0, onChange: (v) => setStyle(v) });
+  const styKnob = new Knob(q('.sty-knob'), { value: deck.styleNext, def: 0, bipolar: false, onChange: (v) => setStyle(v) });
+  styK.style.setProperty('--v', deck.styleNext);
+  const styLabel = STYLES[DEFAULT_STYLE].label;
+  let stySeen = '';
 
   const cells = {};
   for (const k of INSTRUMENTS) {
@@ -601,6 +628,19 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       const cur = L && !armed ? (heardBar - L.startBar) % L.n : -1;
       [...loopTicks.children].forEach((t, i) => t.classList.toggle('now', i === cur));
       seedBtn.classList.toggle('pending', deck.pendingSeed !== null);
+      // ESTILO: la marca y el cartel siguen al universo que suena (y al que viene, si espera el compás)
+      const sk = `${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.pendingSty?.t ?? -1}`;
+      if (sk !== stySeen) {
+        stySeen = sk;
+        styNow.style.left = `${deck.sty.t * 100}%`;
+        styNow.hidden = !(deck.sty.t > 0);
+        const now = deck.sty.t > 0 ? `${styleName(deck.sty)}: ${deck.sty.archDesc}` : 'NORMAL (lo de siempre)';
+        const next = Math.round(deck.styleNext * 100);
+        const tip = `ESTILO del próximo NUEVO UNIVERSO: NORMAL ← → ${styLabel} (${next ? `${next} %` : 'NORMAL'}) · solo cuenta al generar · doble clic = NORMAL`;
+        styEl.title = `${tip}\nel que suena (la marca): ${now}`;
+        styK.title = `${tip}\nel que suena: ${now}`;
+        styK.classList.toggle('on', deck.styleNext > 0);
+      }
 
       // instrumentos: destellos sincronizados con el audio
       if (engine.ready) {

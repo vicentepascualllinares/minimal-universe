@@ -9,7 +9,8 @@
 //   BASS   simple: tónica y octava          máximo: todas las notas, variaciones
 //   INSTR. simple: un acorde de 2 notas     máximo: progresión, 4 notas, stabs seguidos
 
-import { clamp } from '../core/rng.js';
+import { clamp, lerp } from '../core/rng.js';
+import { NORMAL, sFloat, sChance, sWeighted } from './styles.js';
 
 export const GROUPS = ['kick', 'perc', 'bass', 'inst'];
 export const GROUP_LABEL = { kick: 'KICK', perc: 'PERCS', bass: 'BASS', inst: 'INSTR.' };
@@ -23,10 +24,14 @@ const YIELD = { perc: 1, foley: 0.9, chord: 0.9, ohat: 0.8, clap: 0.45, hat: 0.4
 const dens = (c) => clamp(0.35 + 0.65 * c);
 
 // `cx` = { kick, perc, bass, inst, global } (0..1, lo que marcan los faders)
-export function shapeComplexity(cx) {
+// `sty` = el ESTILO del universo (styles.js): mueve cuándo el bajo pasa de solo tónica a pocas notas
+// y a todas (en ROMINIMAL, una o dos alturas aunque ruede en semicorcheas)
+export function shapeComplexity(cx, sty = NORMAL) {
   const G = cx.global;
   const eff = (g) => clamp(cx[g] * G); // lo que de verdad se aplica
   const k = eff('kick'), p = eff('perc'), b = eff('bass'), i = eff('inst');
+  const BP = sty.t ? sty.k['bass.pitch'] : null;
+  const [pr, pf] = BP ? [lerp(0.3, BP[0], sty.t), lerp(0.55, BP[1], sty.t)] : [0.3, 0.55];
   return {
     eff: { kick: k, perc: p, bass: b, inst: i },
     kick: {
@@ -51,7 +56,7 @@ export function shapeComplexity(cx) {
       cx: {
         fast: 1 - b,
         bassVariant: b > 0.3,
-        bassPitches: b < 0.3 ? 'root' : b < 0.55 ? 'few' : 'all',
+        bassPitches: b < pr ? 'root' : b < pf ? 'few' : 'all',
       },
     },
     inst: {
@@ -177,29 +182,38 @@ export function oscAt(o, a, step) {
 const GEST_IDX = GESTURES.map((_, i) => i);
 const GEST_W = [0, 3, 2.5, 2, 2, 1.2, 1.2];
 const ON_P = { kick: 0.3, perc: 0.55, bass: 0.45, inst: 0.45 };
-export function randomOsc(rng, cx) {
+// qué variante toca cada gesto. Con ESTILO, el peso de cada velocidad (osc.slow: en ROMINIMAL, las
+// lentas). Una tirada igual que antes
+function variantOf(rng, sty, G) {
+  const slow = sty.t ? sty.k['osc.slow'] : null;
+  if (!slow) return rng.int(0, G.vars.length - 1);
+  return rng.weighted(G.vars.map((_, i) => i), G.vars.map(([rate]) => lerp(1, slow[rate] ?? 1, sty.t)));
+}
+// `sty` = el ESTILO del universo (styles.js): cuáles se encienden, cuánto se alejan (B), qué gesto y
+// qué variante. Sin él, lo de siempre
+export function randomOsc(rng, cx, sty = NORMAL) {
   const out = {};
   for (const g of GROUPS) {
     const a = cx[g];
     const up = a < 0.3 ? true : a > 0.75 ? false : rng.chance(0.6);
     const o = {
-      on: rng.chance(ON_P[g]),
-      b: clamp(a + (up ? 1 : -1) * rng.float(0.2, 0.55)),
-      vars: GESTURES.map((G) => rng.int(0, G.vars.length - 1)),
+      on: sChance(rng, sty, `oscOn.${g}`, ON_P[g]),
+      b: clamp(a + (up ? 1 : -1) * sFloat(rng, sty, 'osc.b', 0.2, 0.55)),
+      vars: GESTURES.map((G) => variantOf(rng, sty, G)),
       edited: false,
       layers: [],
     };
-    out[g] = applyGesture(o, rng.weighted(GEST_IDX, GEST_W));
+    out[g] = applyGesture(o, sWeighted(rng, sty, 'osc.gest', GEST_IDX, GEST_W));
   }
   return out;
 }
 
-// NUEVO UNIVERSO: cada grupo sale con su propio carácter
-export function randomComplexity(rng) {
+// NUEVO UNIVERSO: cada grupo sale con su propio carácter (con ESTILO, en sus rangos)
+export function randomComplexity(rng, sty = NORMAL) {
   return {
-    kick: rng.float(0.05, 0.75),
-    perc: rng.float(0.2, 0.95),
-    bass: rng.float(0.15, 0.9),
-    inst: rng.float(0.15, 0.85),
+    kick: sFloat(rng, sty, 'cx.kick', 0.05, 0.75),
+    perc: sFloat(rng, sty, 'cx.perc', 0.2, 0.95),
+    bass: sFloat(rng, sty, 'cx.bass', 0.15, 0.9),
+    inst: sFloat(rng, sty, 'cx.inst', 0.15, 0.85),
   };
 }

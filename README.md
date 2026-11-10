@@ -68,7 +68,8 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
 | **CANT · VAR** (bajo HAT, PERC y FOLEY) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
-| **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. |
+| **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. Nace con el **ESTILO** que marca el fader de al lado. |
+| **ESTILO** (junto a NUEVO UNIVERSO) | **NORMAL ← → ROMINIMAL**: con qué género nace el **próximo** universo. NORMAL (izquierda) = lo de siempre, idéntico; ROMINIMAL (derecha) = el género puro; en medio, los valores intermedios. Solo cuenta al pulsar NUEVO UNIVERSO. En UN UNIVERSO es un fader; en DJ y en el móvil, una perilla (**RO**). Doble clic = NORMAL. La marca del fader = el estilo del universo que suena; al pasar el ratón, su arquetipo. Ver "Estilo: NORMAL ↔ ROMINIMAL". |
 
 ## Estructura: los momentos de un tema
 
@@ -460,6 +461,36 @@ más brillante, golpes más blandos o más duros, notas más largas o más corta
 swing), que cambia con NUEVO UNIVERSO, con un fundido de unos 2 s. El kick siempre suena en
 la tónica y el swing no pasa del 58 %. El color del universo en pantalla lo refleja.
 
+## Estilo: NORMAL ↔ ROMINIMAL
+
+(2026-11-10) Un fader por universo, junto a NUEVO UNIVERSO, que decide con qué **género** nace el
+próximo universo. Investigación, fuentes, rasgos por dimensión y qué falta: **[ROMINIMAL.md](ROMINIMAL.md)**.
+
+- **NORMAL** (a la izquierda) es lo de siempre, **idéntico**: con la misma semilla sale el mismo
+  universo, tirada por tirada (comprobado: 300 universos, 60 000 comprobaciones, 0 diferencias), y
+  NUEVO UNIVERSO no toca el MIXER.
+- **ROMINIMAL** (a la derecha) cambia **de qué** se sortea, no solo cuánto: el timbre de cada
+  instrumento (kick corto y seco, hats con grano, percusión de madera, rim y clics, bajo subgrave de
+  una o dos notas, stabs dub, pad oscuro que sube despacio, swing alto), los ritmos (el «salto» del
+  kick, el bajo en los huecos del kick, polimetría impar, casi siempre un solo acorde), la
+  complejidad y sus osciladores (más encendidos, cortos y lentos), CANT · VAR, la mutación, las
+  transiciones (sobrias) y la **mezcla** con la que nace: los faders de sus instrumentos y de FX y
+  sus **MUTE** en el MIXER.
+- **Arquetipos**: cada universo ROMINIMAL sale de una de las combinaciones del género: **RODANTE**
+  (la percusión manda), **ESQUELETO** (lo mínimo), **BOSQUE** (foley y un poco de hats), **DUB**
+  (acordes dub y bajo redondo), **ORGÁNICO** (pad que sube, teclas, madera) o **CLICS** (escuela
+  Villalobos / Perlon). Y su modo de bajo (pluck, sub, redondo, ácido) y de acordes (dub, teclas,
+  órgano). Al pasar el ratón por el fader se ve cuál suena.
+- **En medio**: rangos y pesos se interpolan; cada MUTE sale con su probabilidad × el fader (con
+  más fader, los mismos y alguno más); la mezcla va del preset del MIXER a la del estilo.
+- **MIXER**: el universo con estilo nace con su mezcla en el 1 del compás en que entra (sale
+  RETOCADA y los MUTE encendidos; todo se puede cambiar). La mezcla que había antes se guarda: si
+  luego nace un universo NORMAL, la recupera (no hereda los MUTE del estilo). Elegir un preset del
+  MIXER la olvida: la mezcla vuelve a ser tuya.
+- El color viaja como siempre (~2 s): un universo nuevo llega a la vez a su color y a su estilo.
+- No toca lo que es del intérprete ni lo global: estructura, transición, LOOP, GLOBAL, BPM, tónica
+  y modo (en ROMINIMAL.md §9, cómo tocarlo). No se guarda: cada sesión empieza en NORMAL.
+
 ## Mesa de mezcla (centro)
 
 | Control | Qué hace |
@@ -601,7 +632,8 @@ replantea qué mide LIM; ver [HOJA_DE_RUTA.md](HOJA_DE_RUTA.md).)
 
 ## Mezcla por defecto
 
-Es el mismo género en todos los universos, así que hay un solo perfil.
+Es el mismo género en todos los universos, así que hay un solo perfil. (Un universo que nace con
+**ESTILO** trae además su propia mezcla y sus MUTE: ver "Estilo: NORMAL ↔ ROMINIMAL".)
 
 **Nivel de cada instrumento** (`LEVEL` en `src/audio/dsp.js`): todos salen de su canal con el
 **pico máximo en 0 dBFS**, antes del fader. Se midió el pico más alto de cada canal en 8
@@ -687,4 +719,5 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/music/arrangement.js` — las 8 escenas (presencia por instrumento), umbrales, viajes.
 - `src/music/complexity.js` — la complejidad por grupos y el global: reglas por instrumento, presupuesto de protagonismo y los OSCILADORES (patrones, unidades, valor en cada paso).
 - `src/music/kit.js` — CANTIDAD y VARIEDAD de hats y percs: las curvas de las perillas y los tipos de hat (FINO, OSCURO, TICK, MEDIO).
+- `src/music/styles.js` — los ESTILOS (de momento ROMINIMAL) como datos: rangos, pesos, arquetipos, modos, timbre y mezcla; las tiradas con estilo (con NORMAL, las de siempre) y el color llevado a los rangos del género. Investigación: ROMINIMAL.md.
 - `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).

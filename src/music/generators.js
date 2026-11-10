@@ -5,10 +5,13 @@
 // Cada generador devuelve, por compás, un array de 16 pasos: null | evento.
 // `e` llega con `e.gen` ya ajustado por la COMPLEJIDAD y con `e.cx` (ver complexity.js).
 // Hats y percs además con `e.kit` = { amt, vary } de su grupo: CANTIDAD y VARIEDAD (ver kit.js).
+// `sty` = el ESTILO con el que nació el universo (styles.js): cambia rangos y pesos de las tiradas
+// de siempre (con NORMAL, exactamente las de siempre) y añade lo que solo existe con estilo.
 
-import { Rng, euclid, clamp } from '../core/rng.js';
+import { Rng, euclid, clamp, lerp } from '../core/rng.js';
 import { HAT_KINDS, amountMul, presence, drawHatEngine } from './kit.js';
 import { FOLEY_KINDS } from './sounds.js';
+import { NORMAL, sWeighted, sPick, sFloat, mixW } from './styles.js';
 
 const isDown = (s) => s % 4 === 0;
 const isOff8 = (s) => s % 4 === 2;
@@ -28,28 +31,51 @@ export function trimLens(st) {
 }
 
 // ───────────────────────── KICK
+const KICK_GHOST = [7, 10, 14, 15];
 export class KickGen {
-  constructor(rng) { this.rng = rng; }
+  constructor(rng, sty = NORMAL) { this.rng = rng; this.sty = sty; }
   bar(b, d, e) {
     const st = new Array(16).fill(null);
-    for (const s of [0, 4, 8, 12]) st[s] = { vel: s === 0 ? 1 : 0.94 };
+    const S = this.sty, t = S.t;
+    // ESTILO: el peso de cada tiempo (en ROMINIMAL, la 1ª mitad del compás pesa más)
+    const V = t ? S.k['kick.vel'] : null;
+    for (const s of [0, 4, 8, 12]) {
+      const v = s === 0 ? 1 : 0.94;
+      st[s] = { vel: V ? lerp(v, V[s >> 2], t) : v };
+    }
     const r = this.rng;
     // (la caída del último tiempo al final de frase es un AUTO-ARREGLO: ver Deck.kickDrop)
     // kicks fantasma (tensión / euforia): groove roto
-    if (r.chance(e.gen.ghostKick * 0.7)) st[r.pick([7, 10, 14, 15])] = { vel: 0.42 };
+    if (r.chance(e.gen.ghostKick * 0.7)) st[sPick(r, S, 'kick.ghost', KICK_GHOST)] = { vel: 0.42 };
     if (e.cx.doubleGhost && r.chance(e.gen.ghostKick * 0.5)) st[r.pick([3, 6, 11])] = { vel: 0.36 };
+    if (t) {
+      // ESTILO (no depende de la complejidad: es del género). El SALTO: un fantasma flojo en la 1ª
+      // mitad del compás («a swinging or skipping momentum»); y el golpe que cae «en medio» de un
+      // loop de 4 compases (al final del 2º). Solo donde no hay ya un golpe
+      if (r.chance((S.k['kick.skip'] ?? 0) * t)) {
+        const s = r.weighted([3, 6, 7], [1, 1.5, 2]);
+        if (!st[s]) st[s] = { vel: r.float(0.3, 0.45) };
+      }
+      if (b % 4 === 1 && r.chance((S.k['kick.pickup'] ?? 0) * t)) {
+        const s = r.pick([14, 15]);
+        if (!st[s]) st[s] = { vel: 0.4 };
+      }
+    }
     if (d < 0.25 && b % 2 === 1) st[8] = null; // muy poca presencia: respira
     return st;
   }
 }
 
 // ───────────────────────── CLAP
+const CLAP_STYLES = ['24', '4', '24ghost', 'late'];
+const CLAP_W = [5, 2, 2, 1.5];
 export class ClapGen {
-  constructor(rng) {
+  constructor(rng, sty = NORMAL) {
     this.rng = rng;
-    this.style = rng.weighted(['24', '4', '24ghost', 'late'], [5, 2, 2, 1.5]);
+    this.sty = sty;
+    this.style = sWeighted(rng, sty, 'clap.style', CLAP_STYLES, CLAP_W);
   }
-  mutate() { this.style = this.rng.weighted(['24', '4', '24ghost', 'late'], [5, 2, 2, 1.5]); }
+  mutate() { this.style = sWeighted(this.rng, this.sty, 'clap.style', CLAP_STYLES, CLAP_W); }
   bar(b, d, e) {
     const st = new Array(16).fill(null);
     const r = this.rng;
@@ -79,7 +105,7 @@ export class ClapGen {
 const HAT_DENS = 0.68; // la densidad de siempre con la CANTIDAD en el centro
 
 export class HatGen {
-  constructor(rng) {
+  constructor(rng, sty = NORMAL) {
     this.rng = rng;
     this.roll();
     // después del motivo principal: la misma semilla sigue dando el mismo hat de antes
@@ -98,7 +124,7 @@ export class HatGen {
     });
     // el MOTOR de cada tipo (kit.js), de un dado aparte: la misma semilla da los mismos golpes
     const re = r.fork();
-    this.kinds.forEach((k) => (k.eng = drawHatEngine(re, k.name)));
+    this.kinds.forEach((k) => (k.eng = drawHatEngine(re, k.name, sty)));
   }
   roll() {
     const r = this.rng;
@@ -195,36 +221,55 @@ export class OHatGen {
 const PERC_TYPES = ['tone', 'fm', 'noise', 'reso', 'bell', 'modal', 'ks', 'glitch', 'grains'];
 const PERC_W = [3, 4, 2.5, 2.5, 1, 2, 2, 1.5, 1.5];
 const LEAD_W = [3, 4, 0, 2.5, 0, 2.5, 2, 0, 0];
-function makePercSound(r, lead = false) {
-  const type = r.weighted(PERC_TYPES, lead ? LEAD_W : PERC_W);
+// alturas (grados de la escala): las de siempre, y con ESTILO también 2ª, 4ª y 6ª (las tres
+// últimas, con peso 0 sin estilo). DEG_W = el reparto de siempre (el 0 y el 4 salían el doble)
+const DEG = [0, 0, 2, 4, 4, 6, 7, 9, 11];
+const DEG_ST = [0, 2, 4, 6, 7, 9, 11, 1, 3, 5];
+const DEG_W = [2, 1, 2, 1, 1, 1, 1, 0, 0, 0];
+function percDeg(r, sty) {
+  const s = sty.t ? sty.k['perc.deg'] : null;
+  if (!s) return r.pick(DEG);
+  return r.weighted(DEG_ST, mixW(DEG_W, DEG_ST.map((d, i) => s[d] ?? DEG_W[i]), sty.t));
+}
+function makePercSound(r, lead = false, sty = NORMAL) {
+  const type = sWeighted(r, sty, lead ? 'perc.lead' : 'perc.type', PERC_TYPES, lead ? LEAD_W : PERC_W);
   return {
     type,
-    deg: r.pick([0, 0, 2, 4, 4, 6, 7, 9, 11]),
+    deg: percDeg(r, sty),
     oct: r.pick([2, 3, 3, 4]),
     wave: r.pick(['sine', 'triangle', 'sine']),
     bend: r.float(0.15, 1.2),
     ratioH: r.pick([1, 2, 3, 0.5, 4]),
     ratioI: r.pick([1.414, 2.76, 3.53, 1.19, 4.33, 5.4]),
     index: r.float(0.5, 2),
-    decay: type === 'noise' ? r.float(0.02, 0.07) : r.float(0.04, 0.22),
+    decay: type === 'noise' ? r.float(0.02, 0.07) : sFloat(r, sty, 'perc.decay', 0.04, 0.22),
     nfreq: r.float(900, 6000),
     q: r.float(2, 14),
-    pan: r.float(-0.75, 0.75),
+    pan: sFloat(r, sty, 'perc.pan', -0.75, 0.75),
     timbre: r.int(1, 2 ** 30), // semilla de los números fijos de su motor (sounds.js)
   };
 }
 
 const leadMinK = (l) => (l.lead ? Math.ceil(l.len / 4) : 1);
 
-function makeLane(r, lead = false) {
-  const len = lead ? r.weighted([16, 12, 8, 6], [3, 2, 1.5, 1]) : r.weighted([16, 12, 10, 7, 6, 5, 3], [4, 2, 1, 2, 1, 1.5, 0.8]);
+function makeLane(r, lead = false, sty = NORMAL) {
+  const len = lead ? sWeighted(r, sty, 'lead.len', [16, 12, 8, 6], [3, 2, 1.5, 1])
+    : sWeighted(r, sty, 'perc.len', [16, 12, 10, 7, 6, 5, 3], [4, 2, 1, 2, 1, 1.5, 0.8]);
   const k = lead ? r.int(Math.ceil(len / 4), Math.ceil(len / 2)) : clamp(r.int(1, Math.ceil(len / 2)), 1, len);
   return {
     lead, len, k, rot: lead ? 2 * r.int(0, len / 2 - 1) : r.int(0, len - 1),
-    rank: null, sound: makePercSound(r, lead),
-    acc: Array.from({ length: len }, () => r.float(0.4, 1)),
-    prob: r.float(0.75, 1),
+    rank: null, sound: makePercSound(r, lead, sty),
+    acc: Array.from({ length: len }, () => sFloat(r, sty, 'perc.acc', 0.4, 1)),
+    prob: sFloat(r, sty, 'perc.prob', 0.75, 1),
   };
+}
+
+// al mutar, qué se hace: con ESTILO, los pesos del estilo (los de cambiar de sonido, × `strength`)
+function mutOp(r, sty, key, ops, w0, strength) {
+  const s = sty.t ? sty.k[key] : null;
+  if (!s) return r.weighted(ops, w0);
+  const w1 = ops.map((op, i) => (s[op] === undefined ? w0[i] : s[op] * (op === 'sound' || op === 'len' ? strength : 1)));
+  return r.weighted(ops, mixW(w0, w1, sty.t));
 }
 
 // CANTIDAD de un carril: en qué orden entran sus golpes. Primero los del patrón euclídeo
@@ -252,20 +297,21 @@ function laneRank(l) {
 }
 
 export class PercGen {
-  constructor(rng) {
+  constructor(rng, sty = NORMAL) {
     this.rng = rng;
-    this.lanes = [0, 1, 2, 3, 4].map((n) => makeLane(rng, n === 0));
+    this.sty = sty;
+    this.lanes = [0, 1, 2, 3, 4].map((n) => makeLane(rng, n === 0, sty));
     this.lanes.forEach(laneRank);
   }
   mutate(strength = 1) {
     const r = this.rng;
     const l = r.pick(this.lanes);
-    const op = r.weighted(['rot', 'k', 'sound', 'len'], [4, 3, 1.2 * strength, 0.8 * strength]);
+    const op = mutOp(r, this.sty, 'perc.mut', ['rot', 'k', 'sound', 'len'], [4, 3, 1.2 * strength, 0.8 * strength], strength);
     // la principal gira de dos en dos: sus golpes base siguen en corcheas
     if (op === 'rot') l.rot = (((l.rot + (l.lead ? r.pick([2, -2, 4]) : r.pick([1, -1, 2, 3]))) % l.len) + l.len) % l.len;
     else if (op === 'k') l.k = clamp(l.k + r.pick([1, -1]), leadMinK(l), Math.ceil(l.len * 0.6));
-    else if (op === 'sound') l.sound = makePercSound(r, l.lead);
-    else Object.assign(l, makeLane(r, l.lead));
+    else if (op === 'sound') l.sound = makePercSound(r, l.lead, this.sty);
+    else Object.assign(l, makeLane(r, l.lead, this.sty));
     laneRank(l);
   }
   // `abs` = número absoluto del primer paso del compás (para la polimetría).
@@ -320,22 +366,34 @@ function makeFoleyLane(r, kind) {
   };
 }
 
+// en qué orden salen los materiales (los primeros, los carriles que entran antes con la VARIEDAD).
+// Con ESTILO, barajado con peso: cada material con la llave (1 − u)^(1/peso), de mayor a menor (con
+// todos los pesos a 1 es el mismo orden de siempre)
+function foleyOrder(rng, sty) {
+  const keyed = FOLEY_KINDS.map((k) => [k, rng.next()]);
+  const s = sty.t ? sty.k['foley.mat'] : null;
+  if (!s) return keyed.sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+  const w = (k) => lerp(1, s[k] ?? 1, sty.t);
+  return keyed.map(([k, u]) => [k, Math.pow(1 - u, 1 / w(k))]).sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+}
+
 export class FoleyGen {
-  constructor(rng) {
+  constructor(rng, sty = NORMAL) {
     this.rng = rng;
-    const kinds = FOLEY_KINDS.map((k) => [k, rng.next()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+    this.sty = sty;
+    const kinds = foleyOrder(rng, sty);
     this.lanes = [0, 1, 2, 3, 4].map((n) => makeFoleyLane(rng, kinds[n]));
     this.lanes.forEach(laneRank);
   }
   mutate(strength = 1) {
     const r = this.rng;
     const l = r.pick(this.lanes);
-    const op = r.weighted(['rot', 'k', 'sound'], [4, 3, strength]);
+    const op = mutOp(r, this.sty, 'foley.mut', ['rot', 'k', 'sound'], [4, 3, strength], strength);
     if (op === 'rot') l.rot = (((l.rot + r.pick([1, -1, 2, 3])) % l.len) + l.len) % l.len;
     else if (op === 'k') l.k = clamp(l.k + r.pick([1, -1]), 1, Math.ceil(l.len / 4));
     else { // otro objeto, de un material que no esté en ningún carril
       const used = new Set(this.lanes.map((x) => x.sound.mat));
-      l.sound = foleyObject(r, r.pick(FOLEY_KINDS.filter((k) => !used.has(k))));
+      l.sound = foleyObject(r, sPick(r, this.sty, 'foley.mat', FOLEY_KINDS.filter((k) => !used.has(k))));
     }
     laneRank(l);
   }
@@ -368,13 +426,18 @@ export class FoleyGen {
 // ───────────────────────── BASS
 // El motivo guarda GRADOS de escala, no notas: si la emoción cambia el modo
 // (frigio → dórico...), la misma frase se recolorea sin perder identidad.
-function makeBassMotif(r) {
+// `sty`: el ESTILO cambia el peso de cada sitio del compás (bass.cat: corchea en contratiempo,
+// semicorchea, el 1, los otros tiempos), las alturas y los largos
+const BASS_CAT = [0.3, 0.5, 1.1, 0.85];
+function makeBassMotif(r, sty = NORMAL) {
+  const C = sty.t ? sty.k['bass.cat'] : null;
   return Array.from({ length: 16 }, (_, s) => {
-    const cat = isOff8(s) ? 0.3 : s % 2 === 1 ? 0.5 : s === 0 ? 1.1 : 0.85;
+    const i = isOff8(s) ? 0 : s % 2 === 1 ? 1 : s === 0 ? 2 : 3;
+    const cat = C ? lerp(BASS_CAT[i], C[i], sty.t) : BASS_CAT[i];
     return {
       w: clamp(cat + r.float(-0.28, 0.28), 0, 1.2),
-      deg: r.weighted([0, 7, 4, 6, 2, 1, 3, -3], [10, 3.5, 2.5, 2, 1.5, 1, 1, 1]),
-      len: r.weighted([1, 2, 3], [6, 2.5, 1]),
+      deg: sWeighted(r, sty, 'bass.deg', [0, 7, 4, 6, 2, 1, 3, -3], [10, 3.5, 2.5, 2, 1.5, 1, 1, 1]),
+      len: sWeighted(r, sty, 'bass.len', [1, 2, 3], [6, 2.5, 1]),
       vel: r.float(0.7, 1),
     };
   });
@@ -389,9 +452,10 @@ function simplifyDeg(deg, mode) {
 }
 
 export class BassGen {
-  constructor(rng) {
+  constructor(rng, sty = NORMAL) {
     this.rng = rng;
-    this.home = makeBassMotif(rng);
+    this.sty = sty;
+    this.home = makeBassMotif(rng, sty);
     const first = this.home.find((n) => n.w < 0.5); // la primera nota fuerte, tónica
     if (first) first.deg = 0;
     this.variant = this.derive(this.home, 2);
@@ -401,7 +465,7 @@ export class BassGen {
     const v = m.map((n) => ({ ...n }));
     for (let i = 0; i < changes; i++) {
       const s = r.int(1, 15);
-      if (r.chance(0.6)) v[s].deg = r.pick([0, 7, 4, 6, 2, 9, 11]);
+      if (r.chance(0.6)) v[s].deg = sPick(r, this.sty, 'bass.derive', [0, 7, 4, 6, 2, 9, 11]);
       else v[s].w = clamp(v[s].w + r.float(-0.4, 0.4), 0, 1.2);
     }
     return v;
@@ -449,13 +513,25 @@ const PROG_W = [4, 2.5, 2, 1.5];
 const ALTS = [3, 5, -2, -1, 4]; // iv, VI, VI grave, VII grave, v
 const ALT_W = [3, 3, 2, 2, 1.5];
 
+// cada cuántos compases respira el pad: 2 o 4 (el 4, el doble); con ESTILO también 8
+const PAD_EVERY = [2, 4, 4];
+function padEveryOf(r, sty) {
+  const s = sty.t ? sty.k['harm.padEvery'] : null;
+  if (!s) return r.pick(PAD_EVERY);
+  const items = [2, 4, 8], w0 = [1, 2, 0];
+  return r.weighted(items, mixW(w0, items.map((x, i) => s[x] ?? w0[i]), sty.t));
+}
+const CHORD_LEN = [1, 2, 3, 6];
+const CHORD_LEN_W = [5, 3, 1.5, 0.7];
+
 export class HarmonyGen {
-  constructor(rng) {
+  constructor(rng, sty = NORMAL) {
     this.rng = rng;
-    this.voicing = rng.pick(VOICINGS);
-    this.prog = rng.weighted(PROGS, PROG_W);
-    this.alt = rng.weighted(ALTS, ALT_W);
-    this.padEvery = rng.pick([2, 4, 4]); // cada cuántos compases respira el pad
+    this.sty = sty;
+    this.voicing = sPick(rng, sty, 'harm.voicing', VOICINGS);
+    this.prog = sWeighted(rng, sty, 'harm.prog', PROGS, PROG_W);
+    this.alt = sWeighted(rng, sty, 'harm.alt', ALTS, ALT_W);
+    this.padEvery = padEveryOf(rng, sty); // cada cuántos compases respira el pad
     this.rollRhythm();
   }
   // ritmo de los stabs: los contratiempos entran antes, el tiempo fuerte lo deja al kick
@@ -465,20 +541,20 @@ export class HarmonyGen {
       const cat = isOff8(s) ? 0.25 : s % 2 === 1 ? 0.55 : isDown(s) ? 0.9 : 0.6;
       return clamp(cat + r.float(-0.3, 0.3));
     });
-    this.len = Array.from({ length: 16 }, () => r.weighted([1, 2, 3, 6], [5, 3, 1.5, 0.7]));
+    this.len = Array.from({ length: 16 }, () => sWeighted(r, this.sty, 'chord.len', CHORD_LEN, CHORD_LEN_W));
   }
   mutate() {
-    const r = this.rng;
-    const op = r.weighted(['rhythm', 'alt', 'prog', 'voicing'], [4, 2, 1.5, 0.8]);
+    const r = this.rng, S = this.sty;
+    const op = sWeighted(r, S, 'harm.mut', ['rhythm', 'alt', 'prog', 'voicing'], [4, 2, 1.5, 0.8]);
     if (op === 'rhythm') {
       for (let i = 0; i < 2; i++) {
         const s = r.int(0, 15);
         this.w[s] = clamp(this.w[s] + r.float(-0.35, 0.35));
-        this.len[s] = r.weighted([1, 2, 3, 6], [5, 3, 1.5, 0.7]);
+        this.len[s] = sWeighted(r, S, 'chord.len', CHORD_LEN, CHORD_LEN_W);
       }
-    } else if (op === 'alt') this.alt = r.weighted(ALTS, ALT_W);
-    else if (op === 'prog') this.prog = r.weighted(PROGS, PROG_W);
-    else this.voicing = r.pick(VOICINGS);
+    } else if (op === 'alt') this.alt = sWeighted(r, S, 'harm.alt', ALTS, ALT_W);
+    else if (op === 'prog') this.prog = sWeighted(r, S, 'harm.prog', PROGS, PROG_W);
+    else this.voicing = sPick(r, S, 'harm.voicing', VOICINGS);
   }
   // `cx`: con poca complejidad, un solo acorde y menos notas
   chordAt(b, cx) {
@@ -522,17 +598,18 @@ export class HarmonyGen {
   }
 }
 
-export function makeGenerators(seed) {
+// `sty` = el ESTILO del universo (styles.js: rollStyle). Sin él (NORMAL), lo de siempre
+export function makeGenerators(seed, sty = NORMAL) {
   const root = new Rng(seed);
   return {
-    kick: new KickGen(root.fork()),
-    clap: new ClapGen(root.fork()),
-    hat: new HatGen(root.fork()),
+    kick: new KickGen(root.fork(), sty),
+    clap: new ClapGen(root.fork(), sty),
+    hat: new HatGen(root.fork(), sty),
     ohat: new OHatGen(root.fork()),
-    perc: new PercGen(root.fork()),
-    bass: new BassGen(root.fork()),
-    harmony: new HarmonyGen(root.fork()),
+    perc: new PercGen(root.fork(), sty),
+    bass: new BassGen(root.fork(), sty),
+    harmony: new HarmonyGen(root.fork(), sty),
     rng: root.fork(),
-    foley: new FoleyGen(root.fork()), // al final: los demás siguen saliendo iguales con la misma semilla
+    foley: new FoleyGen(root.fork(), sty), // al final: los demás siguen saliendo iguales con la misma semilla
   };
 }

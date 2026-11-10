@@ -9,6 +9,10 @@ tope de voces, AudioWorklet).
 
 1. **Texturas**: capas de fondo, ruido con vida y movimiento lento. Que el silencio entre
    golpes también suene a algo.
+   - **ROMINIMAL lo pide** (ROMINIMAL.md §7, 2026-11-10): crujido de vinilo y pops («three-dimensional
+     quality»), ruido de sala, field recordings (pájaros, lluvia, ciudad), drones, susurros. Cuando
+     existan, entran en el perfil ROMINIMAL de `styles.js` (cuánto, en qué arquetipo: BOSQUE y
+     ORGÁNICO los primeros).
 2. **Capas para crear cada sonido**: cada instrumento hecho de varias capas (cuerpo, golpe,
    aire...), en vez de una sola voz.
 3. **ADN de los sonidos**: que cada sonido tenga una descripción propia que se pueda
@@ -16,6 +20,9 @@ tope de voces, AudioWorklet).
    las capas y a las cuentas, para guardar.
 4. **Mezcla y máster**: un sonido profesional, cohesivo y con nivel. Cadenas de mezcla por
    canal, por universo y en el máster, seguramente con cadenas de **clippers y limitadores**.
+   - ROMINIMAL (ROMINIMAL.md §7): máster «de vinilo» (rango dinámico, sin limitar a tope), mono por
+     debajo de ~200 Hz (hoy 120), sibilancia de hats controlada, kick con paso alto y realce hacia
+     1 kHz. Quizá cadenas por estilo.
    - ⚠ Al llegar aquí hay que **replantear el medidor del limitador** (LIM, en la mesa DJ y en el
      MASTER del MIXER). Hoy mide solo `limiter.reduction` del máster (un DynamicsCompressor);
      no ve el glue ni el techo (`ceiling` en dsp.js), y con varias etapas habrá que decidir
@@ -23,6 +30,12 @@ tope de voces, AudioWorklet).
    - Hoy A, B y los canales no tienen limitador: solo medidor de nivel.
 5. **Efectos creativos**: reverb, delay y compañía. Hoy todo es seco a propósito: se quitaron
    hasta esta sesión. Los risers y los platos de las transiciones son los que más lo piden.
+   - **ROMINIMAL lo pide** (ROMINIMAL.md §7): el **delay como parte del ritmo** (ecos dub de corchea
+     en stabs y percusión, ping-pong), reverbs **cortas y deliberadas** (salas, nada de colas
+     lavadas), **filtros lentos** y LFO al corte, **grano** (reducción de bits o de muestreo en buses
+     o en el máster para «pegar» fuentes), paneo con LFO aleatorio, realimentación, cinta. En las
+     transiciones de un universo rominimal, tirar de reverb o delay al final de frase en vez de
+     risers. Cada efecto, con su peso en el perfil del estilo.
    - **Transiciones, nivel 3** (pendiente; los niveles 1 y 2 ya están, 2026-11-08): gestos sobre
      la **música real** del universo. Grabar el último compás que sonó y manipularlo: reverse de
      verdad, stutter o beat repeat que acelera, tape stop, gate rítmico. Único cada vez. Necesita
@@ -34,6 +47,11 @@ tope de voces, AudioWorklet).
    - como **capas** dentro de los instrumentos
    - como **objetos de FOLEY**: el canal ya existe (2026-11-10) y pasa por el banco de sonidos;
      un objeto podrá ser una receta del taller o una grabación, sin cambiar nada más
+   - **ROMINIMAL lo pide** (ROMINIMAL.md §7): **VOZ** (fragmentos hablados que asoman de fondo,
+     susurros, voces distorsionadas, vocoder, procesado tipo cinta; nunca protagonista; una soprano o
+     un coro en lo orgánico), **instrumentos acústicos** (piano, Rhodes, órgano, clarinete, cuerdas,
+     contrabajo), metales balcánicos y discos rumanos de folk, jazz y librería troceados hasta no
+     reconocerlos, y micro-sampling. Hará falta un canal de VOZ (o de samples) en el MIXER.
 7. **Sonidos nuevos**: que no suene todo igual.
    **En marcha (2026-11-10), hats y percs**, en tres fases:
    - **Fase 1 (hecha)**: la base. Recetas (`sounds.js`), taller en JS puro (`drumsynth.js`),
@@ -61,6 +79,13 @@ tope de voces, AudioWorklet).
      Las **atmósferas** son otro elemento (camas continuas): van con las texturas (sesión 1).
    - **Fase 3**: tabla de estilos (rominimal, house, microhouse, experimental) con qué motores
      y qué rangos sortea cada uno, lista para la sesión 15 (universos según intención).
+     **Empezada con ROMINIMAL (2026-11-10)**: `styles.js` ya dice qué motores de hat y qué tipos de
+     percusión sortea el estilo (y cada arquetipo). Faltan los otros géneros.
+   - **ROMINIMAL pide sonidos que no hay** (ROMINIMAL.md §7): el **kick** rominimal de verdad (seno
+     con foldback, «woody, dusty», en capas; hoy todos los kicks son el mismo modelo y el estilo solo
+     mueve sus números), **rim / snap** en vez de clap, **teclas reales** (Rhodes, piano, órgano: hoy
+     los modos «teclas» y «órgano» son el mismo stab con otra envolvente), una voz de **bleeps /
+     micro-melodía**, un **acid** de verdad (303: deslizamientos y acentos) y un sub de seno puro.
    - **Lo que dijo la investigación** (2026-11-10), para las fases 2 y 3:
      - Metal = muchas parciales inarmónicas: 6 cuadradas (808) o 2 osciladores en FM
        (Machinedrum, Noise Engineering) y un paso alto fuerte; las frecuencias exactas importan
@@ -120,6 +145,10 @@ tope de voces, AudioWorklet).
    Por decidir: qué partes evolucionan y cómo, si se puede apagar, cuánto tarda, cómo encaja
    con la COMPLEJIDAD, con el LOOP y con las transiciones según el viaje (sesión 9), y si el
    intérprete puede elegir la velocidad o la dirección del proceso.
+   - ROMINIMAL (ROMINIMAL.md §7) es exactamente esto: arquitectura «horizontal», un elemento entra
+     o sale cada 8–16 compases, de uno en uno; GROOVE que rota percusiones; dos compases de
+     silencio de algo como recurso; nada de drops. Un universo con estilo podría traer su forma
+     de evolucionar.
 11. **VERSIÓN como variable de todo lo demás** (apuntado 2026-11-10): desde hoy cada parte tiene
    dos versiones, siempre la 1 con menos elementos y la 2 con más, y dos botones: AHORA (la parte
    que suena) y LUEGO (el destino), ver README. Hoy solo cambia qué suena. Más adelante puede
@@ -140,6 +169,10 @@ tope de voces, AudioWorklet).
    envejecerían más rápido en los tramos altos. Por decidir: qué cosas muta exactamente cada
    grupo, a qué ritmo, y si la mutación también puede oscilar o evolucionar con la parte
    (sesión 10).
+   - Con ESTILO (2026-11-10) ya cambia **qué** muta (en ROMINIMAL, percs y foley giran y
+     quitan/ponen golpes y casi nunca cambian de sonido; la armonía casi solo cambia de ritmo),
+     pero no **cuánto**: eso sigue atado a la complejidad. El rominimal pide mutación lenta y
+     constante.
 13. **AUTO-PLAY: que el programa toque un TEMA** (apuntado 2026-11-10, tras un primer intento
    que se probó y se borró). La idea es que el programa toque solo un universo, con intención.
    - ⚠ **Enfoque de tema, no de sesión DJ.** El primer intento pensaba como un DJ: saltos de
@@ -169,6 +202,9 @@ tope de voces, AudioWorklet).
      universo al generarse), qué hace al terminar (parar, esperar, pasar la mano al auto-DJ) y
      si se puede tocar "a medias" (el auto-play lleva la estructura y la persona la complejidad,
      o al revés).
+   - Un tema ROMINIMAL (ROMINIMAL.md §9): 7–15 minutos, GROOVE como casa, sin drops, viajes
+     PROGRESIVA · ESCALONADA largos, un elemento cada vez. El estilo del universo debería decirle
+     al auto-play cómo tocarlo.
 14. **AUTO-DJ: combinar universos** (apuntado 2026-11-10, después de la sesión 13). Dos niveles:
    - un **auto-play en cada universo** (sesión 13: cada uno toca su tema);
    - un **auto-DJ** por encima que los combina en el modo DJ: cuándo entra el otro universo, en
@@ -195,6 +231,35 @@ tope de voces, AudioWorklet).
      (experimental ↔ funcional, oscuro ↔ luminoso...) o las dos cosas; cómo se mezcla con el
      color (emoción) del universo; y cómo encaja con el ADN de los sonidos (sesión 3) y con
      "Sonidos nuevos" (sesión 7), que van muy de la mano.
+   - **EMPEZADA (2026-11-10) con ROMINIMAL**: un fader por universo junto a NUEVO UNIVERSO, de
+     NORMAL (idéntico a lo de siempre) a ROMINIMAL puro. El estilo es un perfil de datos
+     (`src/music/styles.js`): rangos, pesos y probabilidades que sustituyen a los de siempre en las
+     mismas tiradas, **arquetipos** (RODANTE, ESQUELETO, BOSQUE, DUB, ORGÁNICO, CLICS: las
+     combinaciones del género), modos de bajo y de acordes, rangos de timbre y la **mezcla y los
+     MUTE** con los que nace (lo apuntado arriba sobre mutear elementos ya se hace). Investigación,
+     fuentes y todo lo que falta: **[ROMINIMAL.md](ROMINIMAL.md)**.
+   - Lo que queda (ROMINIMAL.md §8): **más géneros** (house, microhouse, deep, experimental) como
+     otros objetos del mismo tipo; **elegir el género** (selector junto al fader, o el fader entre
+     dos estilos, o ejes); separar más cosas que hoy van juntas en la complejidad (acordes: notas ↔
+     ritmo; percusión: redobles ↔ semicorcheas); presencia de cada instrumento por parte y por
+     estilo; **voces por estilo** (sesión 7); groove por estilo; que el estilo *sugiera* BPM y
+     modo (no los imponga: son de los dos universos); guardar el estilo con el universo (cuentas).
+
+16. **GROOVE: swing, micro-timing y humanización** (apuntado antes de palabra, por escrito el
+   2026-11-10): una sesión propia, separada del diseño de sonido. Hoy hay un swing por universo
+   (tope 58 %), el clap atrasado y un empuje-tirón leve al azar. El ROMINIMAL (ROMINIMAL.md §3 y §7)
+   pide más: el swing es «lo más reconocible» del género; **swing por instrumento** (hats unos ms
+   antes o después, percusión con su propio swing), cuantización al 70–80 %, curvas tipo MPC por
+   encima del 58 %, un empuje-tirón «de batería de jazz» (no funk programado). Cada estilo con su
+   groove.
+
+## Arreglos pendientes
+
+- **Móvil en vertical (375 px), UN UNIVERSO** (visto el 2026-11-10, ya pasaba antes del ESTILO): el
+  universo se sale de la pantalla porque la tira de instrumentos (9 desde FOLEY, con las perillas
+  CANT · VAR) mide ~400 px y la fila de la cabecera (BPM, tónica, modo, GENERAR, GRABAR, MIXER,
+  OPCIONES, AUDIO OK) ~543 px, y no se parten en dos líneas. Por arreglar en la próxima sesión de
+  interfaz.
 
 ## Auto-arreglos (OPCIONES → AUTO-ARREGLOS)
 

@@ -14,7 +14,8 @@ import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
 import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
-import { Rng, makeDrift } from '../core/rng.js';
+import { NORMAL, rollStyle, styleColor } from '../music/styles.js';
+import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
 const glideAll = glide;
@@ -57,6 +58,12 @@ export class Deck {
     // KIT: CANTIDAD y VARIEDAD de hats y percs (ver kit.js). NUEVO UNIVERSO también los sortea
     // (cxVersion avisa a la vista igual que con la complejidad)
     this.kit = newKit();
+    // ESTILO (styles.js): `styleNext` = el fader de la cabecera (0 = NORMAL .. 1 = ROMINIMAL), con el
+    // que nacerá el PRÓXIMO universo; `sty` = el estilo con el que nació el que suena. No se guarda
+    // (como el resto de OPCIONES, vendrá con las cuentas): cada sesión empieza en NORMAL
+    this.styleNext = 0;
+    this.sty = NORMAL;
+    this.pendingSty = null;
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement(scene);
     this.events = [];
@@ -81,10 +88,17 @@ export class Deck {
     this.newFxPalette(this.seed);
   }
 
-  // TRANSICIONES: la paleta (qué riser, redoble, golpes...) sale de la semilla
+  // TRANSICIONES: la paleta (qué riser, redoble, golpes...) sale de la semilla (y del estilo)
   newFxPalette(seed) {
-    this.fxPal = makePalette(seed);
+    this.fxPal = makePalette(seed, this.sty);
     this.fxRng = new Rng(seed ^ 0x6a09e667);
+  }
+
+  // el COLOR que suena: el del universo (valencia, activación y deriva lenta) llevado a los rangos de
+  // su ESTILO (styleColor: con inercia, como el color)
+  colorAt(now) {
+    const em = this.emotion;
+    return styleColor(mapEmotion(em.v, em.a, this.drift(now)), em.sx);
   }
 
   // monta el audio del universo. Se vuelve a llamar si el motor rehace el audio
@@ -155,7 +169,7 @@ export class Deck {
     const root = this.engine.rootHz;
     const scale = this.loop ? this.loop.scale : this.engine.scale;
     const em = this.emotion;
-    const gap = em.ramp || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
+    const gap = em.ramp || em.sxMoving || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
     const put = (id, ch, rec, src) => {
       if (warm) this.engine.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p, true); // urgente: sonará en el próximo compás
       else this.drums.set(id, ch, rec, gap, src);
@@ -179,23 +193,28 @@ export class Deck {
     glide(param, v, now, tc);
   }
 
-  // NUEVO UNIVERSO: entra en el siguiente compás. Sus hats y percs se graban ya, así suenan
-  // desde el primer golpe
+  // NUEVO UNIVERSO: entra en el siguiente compás, con el ESTILO que marca ahora el fader. Sus hats y
+  // percs se graban ya, así suenan desde el primer golpe
   reseed() {
     this.pendingSeed = newSeed();
-    this.pendingGen = makeGenerators(this.pendingSeed);
+    this.pendingSty = rollStyle(this.pendingSeed, this.styleNext);
+    this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
     if (this.ctx) this.refreshSounds(this.pendingGen, true);
   }
 
-  // CARÁCTER del universo (sale de la semilla): color del sonido y complejidad
+  // CARÁCTER del universo (sale de la semilla y de su ESTILO): color del sonido y complejidad
   // de cada grupo. Sustituye al antiguo pad de EMOCIÓN: el timbre cambia con
   // inercia (~2 s); el global no se toca (es del intérprete).
   newCharacter(seed) {
     const r = new Rng(seed ^ 0x9e3779b9);
-    this.emotion.setTarget(r.float(-0.8, 0.8), r.float(-0.7, 0.7));
-    Object.assign(this.cx, randomComplexity(r));
-    this.osc = randomOsc(r, this.cx);
-    this.kit = randomKit(r); // al final: la misma semilla sigue dando el mismo color y complejidad
+    const S = this.sty, t = S.t;
+    // con estilo, el color se sortea en su zona (mismas dos tiradas)
+    const range = (a, b, R) => (t && R ? r.float(lerp(a, R[0], t), lerp(b, R[1], t)) : r.float(a, b));
+    this.emotion.setTarget(range(-0.8, 0.8, S.v), range(-0.7, 0.7, S.a));
+    this.emotion.setStyle(t ? S.color : null); // y el timbre, a los rangos del estilo
+    Object.assign(this.cx, randomComplexity(r, S));
+    this.osc = randomOsc(r, this.cx, S);
+    this.kit = randomKit(r, S); // al final: la misma semilla sigue dando el mismo color y complejidad
     this.cxVersion++;
   }
   setComplexity(group, v) { this.cx[group] = v; }
@@ -450,7 +469,7 @@ export class Deck {
     const now = this.ctx.currentTime;
     if (this.releaseMode === 'instant') {
       this.emotion.snap();
-      this.e = mapEmotion(this.emotion.v, this.emotion.a, this.drift(now));
+      this.e = this.colorAt(now);
       this.arr.snap();
       for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], t0);
     } else {
@@ -466,7 +485,7 @@ export class Deck {
       this.arr.update(pos); // congelado: solo se previsualiza lo pendiente
     } else {
       this.emotion.update(dt);
-      this.e = mapEmotion(this.emotion.v, this.emotion.a, this.drift(now));
+      this.e = this.colorAt(now);
       this.arr.update(pos);
       this.fx.update(now, pos);
       for (const k of INSTRUMENTS) {
@@ -522,15 +541,21 @@ export class Deck {
     if (this.pendingSeed !== null) {
       this.seed = this.pendingSeed;
       this.pendingSeed = null;
-      this.gen = this.pendingGen ?? makeGenerators(this.seed); // (ya creados en reseed: sus sonidos están grabados)
+      this.sty = this.pendingSty ?? NORMAL; // el ESTILO con el que nace (el fader al pulsar)
+      this.pendingSty = null;
+      this.gen = this.pendingGen ?? makeGenerators(this.seed, this.sty); // (ya creados en reseed: sus sonidos están grabados)
       this.pendingGen = null;
       this.newCharacter(this.seed);
       this.newFxPalette(this.seed);
+      // con estilo, nace también con su MEZCLA (faders y MUTE), en el 1 de este compás. En NORMAL el
+      // MIXER no se toca, como siempre, salvo para devolver la mezcla de antes si el universo que se
+      // va la traía de un estilo (ver Engine.styleMix)
+      this.engine.styleMix(this, this.sty, t0);
     }
     const G = this.gen;
     // la complejidad de los faders (A): manda en la mutación, la armonía y el protagonismo.
     // Lo que se toca sale de los OSCILADORES (ver byPulse, abajo)
-    const cx = shapeComplexity(this.cx);
+    const cx = shapeComplexity(this.cx, this.sty);
     // cada generador ve el carácter del universo (this.e) con la complejidad de su grupo
     // (estas, las del fader: para mutar y para el pad)
     const eP = { ...this.e, gen: cx.perc.gen, cx: cx.perc.cx };
@@ -598,7 +623,7 @@ export class Deck {
   // `make(shape)` = { instrumento: pasos } con la forma de complejidad de ese grupo.
   byPulse(g, absStep, base, gens, make) {
     const vals = [0, 4, 8, 12].map((s) => this.cxNow(g, absStep + s));
-    const shapeOf = (v) => (v === this.cx[g] ? base : shapeComplexity({ ...this.cx, [g]: v }))[g];
+    const shapeOf = (v) => (v === this.cx[g] ? base : shapeComplexity({ ...this.cx, [g]: v }, this.sty))[g];
     const uniq = [...new Set(vals)];
     if (uniq.length === 1) return make(shapeOf(uniq[0]));
     const saved = gens.map((x) => x.rng.save());

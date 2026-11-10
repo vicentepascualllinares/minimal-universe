@@ -43,6 +43,24 @@ export function optionsPanel(root, engine, onClose) {
       </div>
     </div>
     <div class="op-sec">
+      <div class="op-sec-title">ENTRADA DE AUDIO</div>
+      <div class="op-row">
+        <span class="op-lab">FUENTE · <b class="op-in-state">NADA</b></span>
+        <div class="op-out-row">
+          <button class="op-mini op-in-screen" title="el navegador deja elegir: una PESTAÑA (solo su audio; la pestaña se queda en silencio y se oye solo aquí) o la PANTALLA entera marcando «compartir audio del sistema» (todo el ordenador)">PESTAÑA / ORDENADOR</button>
+          <select class="op-select op-in-dev" title="una entrada de audio de Windows (micro, interfaz o cable virtual)"></select>
+          <button class="op-mini op-in-dev-go">USAR</button>
+          <button class="op-mini op-in-stop">QUITAR</button>
+        </div>
+        <span class="op-note op-in-note"></span>
+      </div>
+      <div class="op-row">
+        <span class="op-lab">NIVEL · <b class="op-in-db"></b> · ENTRA <b class="op-in-peak">−∞</b></span>
+        <input type="range" class="op-in-gain" min="-40" max="12" step="0.5" />
+        <span class="op-note">entra en general (no en un universo), antes del limitador del máster: GRABAR también lo coge · para elegir apps concretas y que no suenen por su lado: un cable virtual (VB-CABLE) como salida de esas apps en Windows (Sonido → Mezclador de volumen) y aquí, como dispositivo, «CABLE Output»</span>
+      </div>
+    </div>
+    <div class="op-sec">
       <div class="op-sec-title">AUTO-ARREGLOS</div>
       ${AUTOS.map((a) => `
       <div class="op-row">
@@ -169,6 +187,50 @@ export function optionsPanel(root, engine, onClose) {
     });
   }
 
+  // ── ENTRADA DE AUDIO (ver lineIn.js)
+  const li = engine.lineIn;
+  const inState = q('.op-in-state');
+  const inNote = q('.op-in-note');
+  const inDev = q('.op-in-dev');
+  const inGain = q('.op-in-gain');
+  const inDb = q('.op-in-db');
+  const inPeak = q('.op-in-peak');
+  const showIn = (err) => {
+    inState.textContent = li.on ? li.kind === 'dispositivo' ? (li.label || 'DISPOSITIVO').toUpperCase() : li.label : 'NADA';
+    inNote.textContent = err || li.note;
+    inDb.textContent = li.gainDb <= -40 ? 'APAGADO' : dB(li.gainDb > 0 ? `+${li.gainDb}` : li.gainDb);
+  };
+  li.onChange = () => showIn();
+  const listInputs = async () => {
+    let devs = [];
+    try { devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput'); } catch {}
+    const opts = [['', 'ENTRADA DEL SISTEMA']];
+    devs.forEach((d, i) => { if (d.deviceId && d.deviceId !== 'default') opts.push([d.deviceId, d.label || `ENTRADA ${i + 1}`]); });
+    inDev.innerHTML = opts.map(([id, l]) => `<option value="${id}">${l}</option>`).join('');
+    inDev.value = opts.some(([id]) => id === li.deviceId) ? li.deviceId : '';
+  };
+  const tryIn = async (fn) => {
+    try { await fn(); showIn(); }
+    catch (e) {
+      const msg = e?.name === 'NotAllowedError' ? 'cancelado o sin permiso'
+        : e?.message === 'sin audio' ? 'eso no traía audio: en una pestaña marca «compartir audio»; en la pantalla, «compartir audio del sistema»'
+        : `no se pudo: ${e?.message || e}`;
+      showIn(msg);
+    }
+    listInputs(); // con permiso ya se ven los nombres
+  };
+  if (navigator.mediaDevices?.getDisplayMedia) q('.op-in-screen').addEventListener('click', () => tryIn(() => li.fromScreen()));
+  else q('.op-in-screen').hidden = true;
+  q('.op-in-dev-go').addEventListener('click', () => tryIn(() => li.fromDevice(inDev.value)));
+  q('.op-in-stop').addEventListener('click', () => { li.stop(); showIn(); });
+  inGain.value = li.gainDb;
+  inGain.addEventListener('input', () => { li.setGainDb(+inGain.value); showIn(); });
+  if (navigator.mediaDevices?.enumerateDevices) {
+    listInputs();
+    navigator.mediaDevices.addEventListener?.('devicechange', listInputs);
+  }
+  showIn();
+
   root.querySelector('.im-close').addEventListener('click', onClose);
   show();
 
@@ -198,6 +260,9 @@ export function optionsPanel(root, engine, onClose) {
     frame() {
       show();
       showIncidents();
+      const pk = li.peakDb();
+      const pTxt = pk > -60 ? `${pk.toFixed(1).replace('.', ',').replace('-', '−')} dB` : '−∞';
+      if (inPeak.textContent !== pTxt) inPeak.textContent = pTxt;
       const L = engine.latencyInfo();
       const txt = engine.rebuilding ? 'rehaciendo el audio…'
         : !L ? ''

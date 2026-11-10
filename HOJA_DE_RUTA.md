@@ -46,6 +46,25 @@ tope de voces, AudioWorklet).
      puede hacer en el taller.
    - **Fase 3**: tabla de estilos (rominimal, house, microhouse, experimental) con qué motores
      y qué rangos sortea cada uno, lista para la sesión 15 (universos según intención).
+   - **Lo que dijo la investigación** (2026-11-10), para las fases 2 y 3:
+     - Metal = muchas parciales inarmónicas: 6 cuadradas (808) o 2 osciladores en FM
+       (Machinedrum, Noise Engineering) y un paso alto fuerte; las frecuencias exactas importan
+       poco. Menos "sintético": golpe en dos capas (ping con paso banda + cola con paso alto,
+       Synth Secrets), filtro que se cierra en la caída, velocidad → brillo y largo, azar por
+       golpe, resonadores repartidos en escala exponencial (300 Hz–20 kHz, mcld).
+     - Shaker: granos de ruido al azar con un resonador (PhISEM, Perry Cook / STK Shakers).
+       Rim, clave, conga: impulso a un resonador estrecho (puente en T de la 808). Cowbell 808:
+       2 ondas a 587 y 845 Hz con paso banda. Madera y metal afinados: modos 1 : 2,76 : 5,40 :
+       8,93 (Elements, Plonk). Karplus-Strong con poca realimentación = tic de madera.
+     - Rominimal / minimal: secos y cortos, transitorio muy rápido, hats a contratiempo sutiles,
+       shakers ligeros, notas fantasma, swing 55–60 %, saturación leve. House: abierto 909/707
+       a contratiempo cortado por el cerrado, semicorcheas flojas con acentos, rimshot 707,
+       6 bits del 909. Microhouse: clics, estática y ráfagas cortísimas en vez de hats.
+       Modular: modulación cruzada, ring mod, "lowpass gate" (filtro y volumen juntos).
+     - Fuentes: Sound On Sound · Synth Secrets (metallic percussion, cymbals, cowbells &
+       claves); Noise Engineering · Creating FM hats; mcld.co.uk/cymbalsynthesis; STK Shakers;
+       syntherjack (808 rimshot/clave); Mutable Rings/Elements, Intellijel Plonk; Attack
+       Magazine · Beat Dissected (minimal house, Spastik); TR-909 (Wikipedia).
    Lo demás sigue pendiente: hoy, por ejemplo, todos los kicks son el mismo kick. Más variedad
    por universo.
 8. **Síntesis modular procedimental**: un sistema interno de módulos (o algo en esa línea)

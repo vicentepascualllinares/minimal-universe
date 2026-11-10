@@ -15,9 +15,8 @@
 //              filtro de banda). Fase 2 (cada uno explicado sobre su función): hats 'fmhat',
 //              'hiss' (909/707), 'cymbal' (resonadores), 'grains' (shaker); percs 'reso' (rim,
 //              clave, conga), 'bell' (cowbell), 'modal' (madera, barra, tubo), 'ks'
-//              (Karplus-Strong), 'glitch' (clics y ráfagas) y 'grains'. FOLEY: 'crackle'
-//              (papel), 'jingle' (llaves), 'drop' (gota), 'swish' (tela); la taza y el clic de
-//              boca usan 'modal' y 'reso'
+//              (Karplus-Strong), 'glitch' (clics y ráfagas) y 'grains'. FOLEY: 'foley' (un objeto
+//              manipulado: gesto, microeventos y roce)
 //   p.len      duración (s) · p.atk ataque lineal (s) · p.tau constante de la caída (s)
 //   p.lvl      NIVEL (solo motores nuevos): RMS del tramo de 10 ms más fuerte (ver level)
 //   Etapas comunes (en neutro no hacen nada; ver COMMON):
@@ -342,82 +341,136 @@ const ENGINES = {
     for (let i = 0; i < n; i++) x[i] = hp.run(x[i]);
   },
 
-  // ─────────── FOLEY: objetos. Un golpe de foley es un GESTO: muchos microeventos con su propio
-  // tiempo dentro del sonido (grabados en él; el golpe sigue cayendo en su paso). Cada variante,
-  // otro gesto del mismo objeto
-
-  // PAPEL (crepitar): chasquidos sueltos de ruido de 0,1–0,9 ms, de amplitud muy desigual (`skew`:
-  // muchos pequeños, pocos fuertes), con la densidad de un gesto: sube en `swell` y cae con
-  // `shake`. Por un paso alto y un paso banda ancho. Empieza siempre con un chasquido
-  crackle(x, p, sr, rnd) {
-    const hp = new Biquad('highpass', sr).set(p.hp, 0), bp = new Biquad('bandpass', sr).set(p.freq, p.q);
-    let left = Math.round(0.0005 * sr), amp = 0.8 + 0.2 * rnd();
-    for (let i = 0; i < x.length; i++) {
-      const t = i / sr;
-      const dens = p.rate * (t < p.swell ? t / p.swell : Math.exp(-(t - p.swell) / p.shake));
-      if (left <= 0 && rnd() < dens / sr) {
-        amp = Math.pow(rnd(), p.skew);
-        left = Math.round((0.0001 + rnd() * 0.0008) * sr);
-      }
-      const v = left-- > 0 ? (rnd() * 2 - 1) * amp : 0;
-      x[i] = bp.run(hp.run(v));
-    }
-  },
-  // LLAVES, MONEDAS (cascabeles de PhISEM): choques al azar, más seguidos al principio (la
-  // energía cae con `shake`), cada uno golpea con fuerza distinta a `n` resonadores metálicos
-  // agudos (el llavero: `plate` fija sus frecuencias, igual en todas las variantes)
-  jingle(x, p, sr, rnd) {
-    const pr = rngOf(p.plate);
-    const res = [];
-    for (let k = 0; k < p.n; k++) {
-      const f = p.freq * (1 + 3 * pr());
-      res.push(new Biquad('bandpass', sr).set(f, Math.max(1, Math.PI * f * p.ring * (0.6 + 0.8 * pr()))));
-    }
-    const hp = new Biquad('highpass', sr).set(p.hp, 0);
-    const ed = Math.exp(-1 / (p.shake * sr)), pr2 = p.rate / sr;
-    const g = new Float64Array(p.n);
-    let en = 1;
-    for (let i = 0; i < x.length; i++) {
-      const hit = i === 0 || rnd() < pr2 * en;
-      if (hit) { const a = i === 0 ? 1 : (0.3 + 0.7 * rnd()) * en; for (let k = 0; k < p.n; k++) g[k] = a * rnd(); }
-      en *= ed;
-      let y = 0;
-      for (let k = 0; k < p.n; k++) y += res[k].run(hit ? g[k] : 0);
-      x[i] = hp.run(y);
-    }
-  },
-  // GOTA (el modelo de Perry Cook): un seno que se apaga en `ring` mientras su altura sube
-  // (`rise`: la burbuja que se cierra). A veces, una o dos gotas más pequeñas detrás (`extra`
-  // = probabilidad, en los siguientes `spread` s). Ataque de 0,5 ms: sin clic
-  drop(x, p, sr, rnd) {
+  // ─────────── FOLEY: un objeto que alguien MANIPULA. No es un golpe que se apaga: es un GESTO
+  // (arrugar, soltar y volver a arrugar; frotar; rebotar; derramar) con su propio tiempo dentro
+  // del sonido, grabado en él. Tres capas, como en los modelos físicos de foley:
+  //   ACTIVIDAD  la curva del gesto, A(t) 0..1: uno o varios EMPUJONES que suben (crescendo),
+  //              se aguantan y caen; entre uno y otro, el objeto casi se suelta. Rebotar = golpes
+  //              cada vez más seguidos y flojos (Gaver)
+  //   EVENTOS    microeventos al azar, más cuanta más actividad (la tasa sigue a A^1,5, como en el
+  //              arrugado de Cirio et al.), con energías en LEY DE POTENCIA (muchos flojos, pocos
+  //              fuertes: Houle y Sethna, Kramer y Lobkovsky). Cada uno golpea el CUERPO del objeto
+  //              (sus resonadores, `plate`), cada vez con otro reparto (otro trozo que cede).
+  //              Tipos: 'ring' (chasquido: un impulso), 'grain' (grano: ráfaga de ruido) y
+  //              'bubble' (burbuja de van den Doel: un seno que sube de altura al apagarse)
+  //   ROCE       ruido continuo que sigue a la actividad, más brillante cuanto más fuerte (el
+  //              "shhh" entre chasquidos)
+  // Cada variante es otra realización del mismo gesto (otros empujones, otros eventos).
+  foley(x, p, sr, rnd) {
     const n = x.length;
-    const count = 1 + (rnd() < p.extra ? 1 : 0) + (rnd() < p.extra * 0.5 ? 1 : 0);
-    for (let d = 0; d < count; d++) {
-      const st = d === 0 ? 0 : Math.floor((0.02 + rnd() * p.spread) * sr);
-      const f0 = p.freq * (d ? 0.8 + 0.6 * rnd() : 1), a = d ? 0.25 + 0.4 * rnd() : 1, T = p.ring * (d ? 0.6 : 1);
-      let ph = 0;
-      for (let i = 0; st + i < n; i++) {
-        const t = i / sr;
-        const env = (1 - Math.exp(-t / 0.0005)) * Math.exp(-t / T);
-        if (env < 1e-5 && t > T) break;
-        x[st + i] += a * env * Math.sin(ph);
-        ph += (TAU * f0 * (1 + (p.rise * t) / (3 * T))) / sr;
+    const { A, hits } = activity(p.g, n, sr, rnd);
+    // CUERPO: resonadores fijos del objeto (iguales en todas las variantes)
+    const pr = rngOf(p.plate);
+    const body = [];
+    for (let k = 0; k < p.nb; k++) {
+      const f = p.lo * Math.pow(p.hi / p.lo, (k + pr()) / p.nb);
+      body.push({ bq: new Biquad('bandpass', sr).set(f, Math.max(0.7, Math.PI * f * p.T * (0.5 + pr()))), g: 0 });
+    }
+    const ev = new Float32Array(n), fr = new Float32Array(n);
+    // EVENTOS
+    const amax = Math.pow(10, p.dyn); // rango de energías (décadas)
+    const energy = () => Math.min(amax, Math.pow(1 - rnd(), -1 / (p.alpha - 1))) / amax; // ley de potencia, 0..1
+    const W = Math.max(2, Math.round(p.w * sr));
+    const bubbles = [];
+    let left = 0, burstAmp = 0;
+    let hi = 0;
+    for (let i = 0; i < n; i++) {
+      const a = A[i];
+      let start = 0;
+      if (hi < hits.length && i >= hits[hi][0]) { start = hits[hi][1]; hi++; } // golpe del gesto (rebote, soltar)
+      else if (rnd() < (p.rate * Math.pow(a, 1.5)) / sr) start = Math.sqrt(energy()) * (0.4 + 0.6 * Math.sqrt(a));
+      if (start) {
+        if (p.ev === 'bubble') {
+          if (bubbles.length < 24) {
+            const f = p.lo * Math.pow(p.hi / p.lo, rnd()); // burbujas pequeñas = agudas
+            const T = p.T * (0.4 + 1.2 * rnd()) * Math.sqrt(p.lo / f);
+            // envolvente por recurrencia: ataque de 0,4 ms y caída T; la altura sube un 10 % por T (ξ ≈ 0,1)
+            bubbles.push({ ph: 0, d: (TAU * f) / sr, dd: (TAU * f * 0.1) / (T * sr * sr), att: 1, ka: Math.exp(-1 / (0.0004 * sr)), dec: start, kd: Math.exp(-1 / (T * sr)), left: Math.round(7 * T * sr) });
+          }
+        } else {
+          left = W;
+          burstAmp = start;
+          for (const b of body) b.g = rnd(); // otro trozo del objeto que cede
+        }
       }
+      let e = 0;
+      if (left > 0) {
+        e = p.ev === 'grain' ? (rnd() * 2 - 1) * burstAmp : burstAmp * Math.sin((Math.PI * (W - left)) / W);
+        left--;
+      }
+      let y = e * p.direct;
+      for (const b of body) y += b.g * b.bq.run(e);
+      for (let j = bubbles.length - 1; j >= 0; j--) { // burbujas
+        const b = bubbles[j];
+        y += (1 - b.att) * b.dec * Math.sin(b.ph);
+        b.ph += b.d;
+        b.d += b.dd;
+        b.att *= b.ka;
+        b.dec *= b.kd;
+        if (--b.left <= 0) bubbles.splice(j, 1);
+      }
+      ev[i] = y;
     }
-  },
-  // TELA (roce): ruido por un paso banda ancho con una aspereza (`rough`: el volumen tiembla con
-  // un ruido lento, el tejido). La forma del gesto (sube despacio, cae) la pone la envolvente
-  swish(x, p, sr, rnd) {
-    const bp = new Biquad('bandpass', sr).set(p.freq, p.q), lp = new Biquad('lowpass', sr).set(120, 0);
-    for (let i = 0; i < x.length; i++) {
-      const m = Math.exp(p.rough * 4 * lp.run(rnd() * 2 - 1)); // (sin llegar a 0: sin esquinas)
-      x[i] = bp.run(rnd() * 2 - 1) * m;
+    // ROCE: más brillante cuanto más fuerte
+    const bp = new Biquad('bandpass', sr).set(p.ff, p.fq);
+    for (let i = 0; i < n; i++) {
+      if ((i & 31) === 0) bp.set(p.ff * (0.6 + 0.8 * A[i]), p.fq);
+      fr[i] = bp.run(rnd() * 2 - 1) * Math.pow(A[i], 1.3);
     }
+    // las dos capas, cada una llevada a pico 1 y mezclada en su proporción
+    const pk = (b) => { let m = 0; for (const v of b) m = Math.max(m, Math.abs(v)); return m > 0 ? 1 / m : 0; };
+    const ke = pk(ev) * (1 - p.fric), kf = pk(fr) * p.fric;
+    const hp = new Biquad('highpass', sr).set(40, 0); // sin continua
+    for (let i = 0; i < n; i++) x[i] = hp.run(ev[i] * ke + fr[i] * kf);
   },
 };
+
+// ACTIVIDAD de un gesto de foley: A(t) 0..1 hecha de empujones { t0, rise, hold, fall, lvl }.
+// Sube con una curva suave (crescendo), se aguanta y cae (constante fall/3). Si el gesto no
+// cabe en el sonido, se comprime en el tiempo (nunca se corta a medias). Los gestos de golpe
+// (soltar, rebotar) devuelven también `hits`: los golpes que disparan un evento sí o sí: [muestra, fuerza]
+function activity(g, n, sr, rnd) {
+  const T = n / sr;
+  const pushes = [], hits = [];
+  if (g.act === 'rebote') { // golpes cada vez más seguidos y más flojos
+    let t = 0, iv = g.iv * (0.8 + 0.4 * rnd()), a = 1;
+    while (a > 0.05 && t < T) {
+      pushes.push({ t0: t, rise: 0.001, hold: 0, fall: Math.min(0.03, iv * 0.5), lvl: a, hit: true });
+      t += iv;
+      iv *= g.r * (0.9 + 0.2 * rnd());
+      a *= g.r * (0.85 + 0.3 * rnd());
+    }
+  } else if (g.act === 'soltar') {
+    pushes.push({ t0: 0, rise: 0.002, hold: 0, fall: g.fall * (0.7 + 0.6 * rnd()), lvl: 1, hit: true });
+  } else { // estrujar, frotar, derramar: empujones que suben, se aguantan y caen
+    const k = g.n0 + Math.floor(rnd() * (g.n1 - g.n0 + 1));
+    let t = 0;
+    for (let i = 0; i < k; i++) {
+      const rise = g.rise * (0.5 + rnd()), hold = g.hold * rnd(), fall = g.fall * (0.5 + rnd());
+      pushes.push({ t0: t, rise, hold, fall, lvl: i === 0 ? 0.6 + 0.4 * rnd() : 0.35 + 0.65 * rnd() });
+      t += rise + hold + fall * g.overlap + g.gap * rnd();
+    }
+  }
+  // que quepa: el último empujón tiene que llegar a −40 dB (≈ 1,5·fall) antes del final
+  let end = 0;
+  for (const q of pushes) end = Math.max(end, q.t0 + q.rise + q.hold + 1.5 * q.fall);
+  const s = end > T * 0.97 ? (T * 0.97) / end : 1;
+  const A = new Float32Array(n);
+  for (const q of pushes) {
+    const t0 = q.t0 * s, r = Math.max(q.rise * s, 0.0005), h = q.hold * s, f = Math.max(q.fall * s, 0.002);
+    if (q.hit) hits.push([Math.round(t0 * sr), q.lvl]);
+    for (let i = Math.max(0, Math.floor(t0 * sr)); i < n; i++) {
+      const tt = i / sr - t0;
+      const v = tt < r ? (tt / r) * (tt / r) * (3 - 2 * (tt / r)) : tt < r + h ? 1 : Math.exp(-(tt - r - h) / (f / 3));
+      if (v < 1e-4 && tt > r + h) break;
+      A[i] = Math.max(A[i], q.lvl * v);
+    }
+  }
+  return { A, hits };
+}
 export const ENGINE_NAMES = Object.keys(ENGINES);
 // ¿la variante cambia algo? (los motores sin ruido salen iguales: basta una grabación)
-const NOISY = new Set(['metal', 'noise', 'fmhat', 'hiss', 'cymbal', 'grains', 'ks', 'glitch', 'crackle', 'jingle', 'drop', 'swish']);
+const NOISY = new Set(['metal', 'noise', 'fmhat', 'hiss', 'cymbal', 'grains', 'ks', 'glitch', 'foley']);
 export const isRandom = (p) => NOISY.has(p.engine) || !!p.click?.amt || !!p.jitter;
 
 // golpe flojo (velTone): más oscuro y más corto · jitter: cada variante algo distinta
@@ -441,7 +494,6 @@ function shape(p, rnd, soft) {
   if (q.engine === 'bell') q.bp *= dark;
   if (q.engine === 'modal') q.hard *= dark;
   if (q.engine === 'ks') q.bright *= dark;
-  if (q.engine === 'crackle' || q.engine === 'swish' || q.engine === 'jingle') q.freq *= Math.sqrt(dark);
   q.tau *= len;
   return q;
 }
@@ -521,7 +573,7 @@ export function render(p0, sr, seed = 1, soft = false) {
 // El metal (6 cuadradas, lo más caro) es igual en todas las variantes: se calcula una vez
 export function renderSet(p, sr, seed, variants) {
   const layers = p.velTone > 0 ? 2 : 1;
-  const n = isRandom(p) ? variants : 1;
+  const n = isRandom(p) ? p.vars || variants : 1; // `vars`: la receta pide menos (sonidos largos)
   const out = [];
   memoed = null;
   for (let l = 0; l < layers; l++) {

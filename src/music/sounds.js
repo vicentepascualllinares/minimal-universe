@@ -154,38 +154,68 @@ function percNew(P, so, freq) {
 }
 
 // ───────────────────────── FOLEY (un carril = un objeto)
-// Los objetos no siguen la escala: son ruidos de la habitación, no notas. Sus números fijos salen
-// de la semilla del objeto (`ob.timbre`); el color (e.foley) los hace más brillantes u oscuros
-// (`bright`) y más largos o secos (`decayMul`). Cada uno a su nivel, sin pasar de 0,9 de pico.
-export const FOLEY_KINDS = ['papel', 'llaves', 'gota', 'tela', 'taza', 'boca'];
+// Un objeto = un MATERIAL que alguien manipula con una ACCIÓN (ver el motor 'foley' en
+// drumsynth.js). Cada universo crea los suyos: el material sale del carril (`ob.mat`) y todo lo
+// demás (la acción, el cuerpo, cuánto roza, cómo es el gesto) de su semilla (`ob.timbre`), con
+// números continuos: no hay dos papeles ni dos rebotes iguales entre universos. No siguen la
+// escala: son ruidos, no notas. El color (e.foley) los hace más brillantes u oscuros (`bright`)
+// y más largos o secos (`decayMul`, a medias: un gesto no se estira tanto como una cola).
+//
+// Por material (rangos sacados de lo medido en los artículos, ver README → "Instrumentos"):
+//   ev     tipo de microevento: 'ring' chasquido, 'grain' grano, 'bubble' burbuja
+//   lo, hi cuerpo: dónde están sus resonadores (Hz) · nb cuántos · T su caída (s)
+//   rate   microeventos por segundo con la actividad a tope · alpha exponente de la ley de
+//          potencia (más alto = más diferencia entre los pocos fuertes y los muchos flojos)
+//   fric   cuánto es roce (0..1) · ff, fq su banda
+//   acts   qué acciones tienen sentido con ese material, con su peso
+export const FOLEY_MATERIALS = {
+  papel: { ev: 'ring', lo: [600, 1200], hi: [3000, 6000], nb: 5, T: [0.0008, 0.002], direct: [0.3, 0.6], rate: [300, 900], alpha: [1.3, 1.6], fric: [0.15, 0.35], ff: [2500, 5000], fq: 0.7, acts: { estrujar: 3, frotar: 1.5, soltar: 1 } },
+  plastico: { ev: 'ring', lo: [1500, 3000], hi: [6000, 10000], nb: 5, T: [0.002, 0.006], direct: [0.2, 0.4], rate: [200, 600], alpha: [1.2, 1.5], fric: [0.1, 0.25], ff: [4000, 8000], fq: 0.8, acts: { estrujar: 3, frotar: 1 } },
+  aluminio: { ev: 'ring', lo: [2500, 4500], hi: [9000, 14000], nb: 6, T: [0.006, 0.02], direct: [0.1, 0.3], rate: [150, 500], alpha: [1.2, 1.5], fric: [0.08, 0.15], ff: [6000, 9000], fq: 0.8, acts: { estrujar: 3, frotar: 1 } },
+  tela: { ev: 'grain', lo: [200, 500], hi: [1500, 3000], nb: 3, T: [0.0005, 0.0015], direct: [0, 0.1], rate: [100, 400], alpha: [1.6, 2], fric: [0.7, 0.9], ff: [800, 2500], fq: 0.7, acts: { frotar: 3, estrujar: 2 } },
+  madera: { ev: 'ring', lo: [300, 700], hi: [1500, 3500], nb: 4, T: [0.01, 0.04], direct: [0.15, 0.3], rate: [20, 80], alpha: [1.5, 2], fric: [0.2, 0.4], ff: [1500, 3000], fq: 0.8, acts: { rebote: 2, soltar: 1.5, frotar: 1.5 } },
+  metal: { ev: 'ring', lo: [800, 2000], hi: [5000, 9000], nb: 6, T: [0.06, 0.25], direct: [0.05, 0.15], rate: [20, 60], alpha: [1.5, 2], fric: [0.15, 0.3], ff: [3000, 6000], fq: 1, acts: { rebote: 2, soltar: 1.5, frotar: 1 } },
+  vidrio: { ev: 'ring', lo: [1500, 3500], hi: [6000, 12000], nb: 4, T: [0.08, 0.3], direct: [0.1, 0.2], rate: [10, 40], alpha: [1.6, 2], fric: [0.03, 0.08], ff: [4000, 8000], fq: 1, acts: { rebote: 2, soltar: 2 } },
+  arena: { ev: 'grain', lo: [1500, 3000], hi: [6000, 10000], nb: 3, T: [0.0003, 0.001], direct: [0.4, 0.6], rate: [1500, 5000], alpha: [1.8, 2.5], fric: [0.3, 0.5], ff: [3000, 6000], fq: 0.6, acts: { derramar: 3, frotar: 1.5 } },
+  agua: { ev: 'bubble', lo: [400, 900], hi: [1200, 3000], nb: 0, T: [0.006, 0.03], direct: [0, 0], rate: [30, 200], alpha: [1.5, 2], fric: [0.05, 0.15], ff: [1200, 2500], fq: 0.6, acts: { derramar: 2, soltar: 2 } },
+};
+export const FOLEY_KINDS = Object.keys(FOLEY_MATERIALS);
+
+// ACCIONES: la forma del gesto (ver activity en drumsynth.js). `dur` = cuánto dura el sonido
+//   estrujar  2–4 empujones: se arruga, se suelta, se vuelve a arrugar (crescendos)
+//   frotar    1–3 pasadas casi seguidas, de ida y vuelta
+//   soltar    un golpe y lo que queda (la forma de siempre)
+//   rebote    golpes cada vez más seguidos y más flojos
+//   derramar  una subida lenta, un tramo que se aguanta y una caída
+const ACTIONS = {
+  estrujar: (r) => ({ n0: 2, n1: 4, rise: r.float(0.04, 0.18), hold: r.float(0, 0.08), fall: r.float(0.03, 0.15), gap: r.float(0, 0.12), overlap: 0.6, dur: r.float(0.5, 1.3) }),
+  frotar: (r) => ({ n0: 1, n1: 3, rise: r.float(0.05, 0.15), hold: r.float(0.02, 0.15), fall: r.float(0.06, 0.2), gap: r.float(0, 0.05), overlap: 0.4, dur: r.float(0.3, 0.9) }),
+  soltar: (r) => { const fall = r.float(0.04, 0.3); return { fall, dur: fall * 1.8 + 0.04 }; },
+  rebote: (r) => ({ iv: r.float(0.06, 0.2), r: r.float(0.55, 0.8), dur: r.float(0.35, 1) }),
+  derramar: (r) => ({ n0: 1, n1: 2, rise: r.float(0.08, 0.3), hold: r.float(0.1, 0.5), fall: r.float(0.1, 0.3), gap: r.float(0, 0.1), overlap: 0.7, dur: r.float(0.6, 1.4) }),
+};
+
 export function foleySound(e, ob) {
   const F = e.foley, r = new Rng(ob.timbre);
-  const br = F.bright, dm = F.decayMul;
-  const p = foleyRecipe(ob.kind, r, br, dm);
-  return recipe({ ...p, drive: F.drive }, { gain: 0.9, pan: ob.pan });
+  const M = FOLEY_MATERIALS[ob.mat];
+  const act = r.weighted(Object.keys(M.acts), Object.values(M.acts));
+  const g = { act, ...ACTIONS[act](r) };
+  const lm = Math.sqrt(F.decayMul); // el color estira o encoge el gesto, a medias
+  g.dur = Math.min(1.6, g.dur * lm);
+  for (const k of ['rise', 'hold', 'fall', 'iv']) if (g[k]) g[k] *= lm;
+  const br = F.bright;
+  const p = {
+    engine: 'foley', g, plate: r.int(1, 2 ** 30), ev: M.ev, nb: M.nb,
+    lo: r.float(...M.lo) * br, hi: r.float(...M.hi) * br, T: r.float(...M.T),
+    direct: r.float(...M.direct), rate: r.float(...M.rate), alpha: r.float(...M.alpha), dyn: r.float(2, 3),
+    w: r.float(0.00005, 0.0003), fric: r.float(...M.fric), ff: r.float(...M.ff) * br, fq: M.fq,
+    atk: 0.0002, tau: 100, len: g.dur, lvl: 0.2, drive: F.drive,
+    vars: 3, // tres realizaciones del gesto (son largos: menos memoria)
+  };
+  return recipe(p, { gain: 0.9, pan: ob.pan });
 }
-function foleyRecipe(kind, r, br, dm) {
-  if (kind === 'papel') {
-    const shake = r.float(0.025, 0.08) * dm;
-    return { engine: 'crackle', rate: r.float(800, 3000), skew: r.float(2, 4), swell: r.float(0, 0.012), shake, hp: r.float(600, 1500) * br, freq: r.float(2000, 5000) * br, q: r.float(0.6, 1.5), atk: 0.0003, tau: shake * 1.5, len: shake * 5 + 0.03, lvl: 0.22 };
-  }
-  if (kind === 'llaves') {
-    const shake = r.float(0.025, 0.07) * dm, ring = r.float(0.015, 0.05) * dm;
-    return { engine: 'jingle', plate: r.int(1, 2 ** 30), n: r.int(4, 6), freq: r.float(2000, 3500) * br, ring, rate: r.float(150, 600), shake, hp: 1200, atk: 0.0003, tau: shake * 2, len: Math.min(1, shake * 5 + ring * 4 + 0.02), lvl: 0.22, velTone: 0.4 };
-  }
-  if (kind === 'gota') {
-    const ring = r.float(0.008, 0.03) * dm, spread = r.float(0.03, 0.12);
-    return { engine: 'drop', freq: r.float(500, 1400) * Math.sqrt(br), rise: r.float(0.3, 1.2), ring, extra: r.float(0, 0.8), spread, atk: 0.0003, tau: 1, len: spread + ring * 8 + 0.04, lvl: 0.35 };
-  }
-  if (kind === 'tela') {
-    const atk = r.float(0.008, 0.025), tau = r.float(0.025, 0.07) * dm;
-    return { engine: 'swish', freq: r.float(800, 3000) * br, q: r.float(0.5, 1.5), rough: r.float(0.3, 0.9), atk, tau, len: atk + tau * 5 + 0.02, lvl: 0.18, velTone: 0.4 };
-  }
-  if (kind === 'taza') { // cerámica o vidrio: modos agudos y afilados, con su golpecito
-    const ring = r.float(0.03, 0.11) * dm;
-    return { engine: 'modal', freq: r.float(1100, 2600) * Math.sqrt(br), ratios: [1, 2.32, 4.25, 6.63], gains: [1, r.float(0.4, 0.8), r.float(0.3, 0.6), r.float(0.2, 0.45)], decays: [1, 0.6, 0.4, 0.3], ring, hard: r.float(0.5, 0.9), click: { amt: r.float(0.2, 0.5), hp: 5000 }, atk: 0.0002, tau: ring * 2, len: Math.min(1.2, ring * 5 + 0.02), lvl: 0.3, velTone: 0.5 };
-  }
-  // boca: clic de lengua (un impulso a dos formantes, cortísimo)
-  const ring = r.float(0.002, 0.006);
-  return { engine: 'reso', freq: r.float(700, 2200) * Math.sqrt(br), ratios: [1, r.float(1.5, 2.2)], gains: [1, r.float(0.4, 0.8)], decays: [1, 0.7], ring, excW: r.float(0.0002, 0.0006), click: { amt: r.float(0.1, 0.3), hp: 3000 }, atk: 0.0001, tau: ring * 3, len: ring * 8 + 0.01, lvl: 0.3 };
-}
+// nombre para enseñarlo (muestrario, pruebas): material · acción
+export const foleyName = (ob) => {
+  const M = FOLEY_MATERIALS[ob.mat], r = new Rng(ob.timbre);
+  return `${ob.mat} · ${r.weighted(Object.keys(M.acts), Object.values(M.acts))}`;
+};

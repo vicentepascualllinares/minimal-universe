@@ -122,9 +122,9 @@ const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc:
 // sonando a tope (presencia 1) y 6 compases cada uno; `PEAK` = el pico más alto de cada canal
 // entre los 8 (en dBFS). La ganancia nueva lo lleva a 0 dBFS. Según el color del universo el
 // pico real queda entre 0 y unos −5 dB (el pad, que sigue a la emoción, hasta −5). El FOLEY
-// (2026-11-10) igual, medido aparte: DJ con sus 5 objetos, CANT alta, 6 universos.
+// (2026-11-10) igual, medido aparte: DJ con sus 5 objetos, CANT alta, 8 universos (con los gestos).
 const OLD = { kick: 0.59, bass: 0.4, clap: 0.6, hat: 0.44, ohat: 0.34, perc: 0.3, foley: 0.3, chord: 0.28, pad: 0.26 };
-export const PEAK = { kick: -3.7, bass: -9.3, clap: -10.7, hat: -12.7, ohat: -14.4, perc: -11.6, foley: -15.1, chord: -12.9, pad: -14.9 };
+export const PEAK = { kick: -3.7, bass: -9.3, clap: -10.7, hat: -12.7, ohat: -14.4, perc: -11.6, foley: -13.7, chord: -12.9, pad: -14.9 };
 export const LEVEL = Object.fromEntries(Object.entries(OLD).map(([k, g]) => [k, g / Math.pow(10, PEAK[k] / 20)]));
 
 // LIMPIEZA: high-pass fijo para que solo kick y bass vivan en los graves (club = mono abajo)

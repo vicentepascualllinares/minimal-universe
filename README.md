@@ -227,10 +227,12 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
 
 KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **FOLEY** · **CHORD** · **PAD**.
 
-- **FOLEY** (2026-11-10) — los ruidos de la habitación: **papel** que se arruga, **llaves**,
-  una **gota**, **tela** que roza, una **taza** y un **clic de boca**. No son golpes como una
-  perc, son **gestos**: muchos microeventos con su propio tiempo dentro del sonido (grabados en
-  él; el golpe sigue cayendo en su paso). Sintetizados en el taller (ver "Taller de
+- **FOLEY** (2026-11-10) — objetos que alguien **manipula**: un **material** (papel, plástico,
+  aluminio, tela, madera, metal, vidrio, arena, agua) con una **acción** (estrujar, frotar,
+  soltar, rebotar, derramar). Cada universo crea los suyos, distintos cada vez. No son golpes
+  como una perc, son **gestos** de medio segundo a más de un segundo que suben, se sueltan y
+  vuelven a subir (como un papel que se arruga, se suelta y se vuelve a arrugar), con su
+  propio tiempo dentro del sonido (grabado en él; el golpe sigue cayendo en su paso). Sintetizados en el taller (ver "Taller de
   percusión") y por el banco, como hats y percs; preparados para que los samples entren
   después por el mismo canal. Canal propio en el MIXER (estéreo: cada objeto en su sitio del
   panorama), en la complejidad de PERCS y con sus perillas CANT · VAR. Seco, a propósito.
@@ -291,17 +293,36 @@ el motor.
   - **Medido** (150 universos, todas las variantes y capas): los sonidos de antes, idénticos
     muestra a muestra; 0 NaN, 0 clics con el detector de RENDIMIENTO.md §7 (los granos y el
     glitch están hechos de clics a propósito); largos parecidos a los del metal de cada tipo.
-- **Objetos de FOLEY** (2026-11-10): **papel** (crepitar: chasquidos de ruido de 0,1–0,9 ms
-  muy desiguales, con la densidad de un gesto), **llaves** (choques al azar contra 4–6
-  resonadores metálicos agudos de un mismo llavero), **gota** (el modelo de Perry Cook: un seno
-  que sube de altura mientras se apaga; a veces una o dos gotas más pequeñas detrás), **tela**
-  (ruido de banda ancha que tiembla, sube despacio y cae), **taza** (modal: modos de cerámica o
-  vidrio con su golpecito) y **clic de boca** (impulso a dos formantes). No siguen la escala:
-  son ruidos, no notas. El color los hace más brillantes u oscuros y más largos o secos.
-  Medido (120 colores y semillas por objeto): 0 NaN, 0 clics con el detector (salvo el inicio
-  de una segunda gota dentro del gesto, −53 dB: es su ataque); papel y llaves están hechos de
-  clics a propósito. Largos: de ~25 ms (boca) a ~250 ms (papel, tela, taza). El canal se
-  calibró como los demás: pico medido −15,1 dB con la ganancia de partida, a 0 dBFS.
+- **FOLEY: el motor de gestos** (2026-11-10, motor `foley`). Tres capas, como en los modelos
+  físicos de foley:
+  - **Actividad**: la curva del gesto. Estrujar = 2–4 empujones que suben (crescendo), se
+    aguantan y caen, con el objeto casi suelto entre uno y otro; frotar = 1–3 pasadas casi
+    seguidas; rebotar = golpes cada vez más seguidos y más flojos; derramar = subida lenta,
+    tramo que se aguanta y caída; soltar = un golpe y lo que queda.
+  - **Microeventos**: salen al azar, más cuanta más actividad. Su energía sigue una **ley de
+    potencia** (muchos flojos, pocos fuertes), como el sonido medido del papel arrugado. Cada
+    uno golpea el **cuerpo** del objeto (sus resonadores) por un sitio distinto: chasquidos
+    (papel, plástico, aluminio, madera, metal, vidrio), granos (tela, arena) o burbujas que
+    suben de altura (agua).
+  - **Roce**: ruido continuo que sigue a la actividad, más brillante cuanto más fuerte.
+  - Todo con números continuos sacados de la semilla de cada objeto: dos papeles de dos
+    universos no suenan igual. Tres realizaciones por objeto (cada golpe, otra). El color los
+    hace más brillantes u oscuros y estira o encoge el gesto.
+  - **De dónde sale** (investigación 2026-11-10): Houle y Sethna, *Acoustic emission from
+    crumpling paper* (pulsos con energía en ley de potencia, exponente 1,3–1,6; cada uno una
+    oscilación de ~1 kHz que se apaga en ~1 ms; ruido de roce entre pulsos); Kramer y Lobkovsky
+    (la ley de potencia es universal entre materiales); Cirio et al., *Crumpling sound
+    synthesis* (SIGGRAPH Asia 2016: eventos según la actividad del arrugado, energías por
+    muestreo inverso de la ley de potencia, cada uno excita los modos del objeto); An, James y
+    Marschner (tela = roce + arrugado); Gaver (rebotar, romper, frotar como patrones de golpes
+    simples en el tiempo); van den Doel (burbujas: seno cuya altura sube ~10 % mientras cae).
+  - **Medido** (60 colores y semillas por material, todas sus acciones): 0 NaN; los gestos de
+    varios empujones vuelven a subir tras caer en el 60–100 % de las realizaciones; largos de
+    ~0,4 s (soltar) a 1,6 s (estrujar, derramar); grabar cada uno, 25–60 ms de mediana en el
+    Worker (hasta ~150 ms); ~300–750 KB por objeto. En la app (DJ, FOLEY al máximo en los dos,
+    8 universos nuevos): 0 golpes perdidos, 0 CORTES, 0 TARDE; el canal, recalibrado a 0 dBFS
+    (pico medido −13,7 dB con la ganancia de partida). ⚠ La memoria del banco llega a su tope
+    (47 de 48 MB) y se recorta sola; en móvil (16 MB) está sin medir.
 - **Prioridad del banco**: lo que va a sonar y aún no existe (una ranura nueva, un carril que
   cambió de sonido, el universo que viene) pasa delante de los retoques de color.
 - **Memoria**: 48 MB en ordenador y 16 MB en móvil; por encima, se olvida lo que hace más que
@@ -364,12 +385,12 @@ un solo hat que suena mucho, muchos hats y pocas percs, etc.
   ciclo y sus golpes base en corcheas, para que nunca salga casi muda. CANT = cuántos golpes da cada carril: en el centro, su patrón
   euclídeo de siempre; al subir, entran los huecos más alejados de lo que ya suena; al bajar,
   se van en orden inverso. Subir y bajar es reversible.
-- **FOLEY**: VAR = cuántos objetos (1 a 5 de los 6, todos distintos, cada uno en su carril).
+- **FOLEY**: VAR = cuántos objetos (1 a 5, cada uno de un material distinto y en su carril).
   Los carriles son largos (de 7 a 32 pasos, hasta dos compases) y con pocos golpes: cada
   objeto aparece de vez en cuando, no lleva el pulso. CANT = cuántos golpes, como en PERC.
-  Con CANT y VAR en el centro, unos 4 golpes por compás con la parte a tope. Convive con la
+  Con CANT y VAR en el centro, unos 3–4 gestos por compás con la parte a tope. Convive con la
   percusión: donde ya suena una perc, el foley calla salvo en sus golpes más fuertes. Al mutar,
-  un carril puede cambiar de objeto (al que no esté en ningún otro).
+  un carril puede cambiar a un objeto nuevo (de un material que no esté en ningún otro).
 - El que está entrando con VAR lo hace poco a poco: primero sus golpes más fuertes.
 - La densidad de la parte (estructura) sigue mandando por encima: con una parte floja
   ("hats lejanos") suenan menos golpes, y en un viaje los carriles entran poco a poco.

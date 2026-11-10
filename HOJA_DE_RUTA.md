@@ -51,11 +51,14 @@ tope de voces, AudioWorklet).
      Veredicto del usuario: le gustan, sobre todo los hats. Las percs se juzgarán en contexto:
      en estos géneros mucha "percusión" es foley, atmósferas o ritmos sacados con efectos.
    - **FOLEY (empezado 2026-11-10)**: canal propio en el MIXER, en la complejidad de PERCS, con
-     sus perillas CANT · VAR. Seis objetos sintetizados (papel, llaves, gota, tela, taza, clic
-     de boca), carriles largos y escasos, seco. Ver README → "Instrumentos". Pendiente: probarlo
-     de oído; más objetos (cremallera, arena, cajón, vinilo, relés...); samples por el mismo
-     canal (sesión 6); los ritmos sacados con efectos (sesiones 5 y 6). Las **atmósferas** son
-     otro elemento (camas continuas): van con las texturas (sesión 1).
+     sus perillas CANT · VAR, carriles largos y escasos, seco. Segunda versión el mismo día, a
+     petición del usuario ("falta el toque que lo hace foley de verdad"): **gestos** que suben,
+     se sueltan y vuelven a subir, más largos, y **objetos nuevos en cada universo** (material ×
+     acción con números continuos), sacado de la investigación (README → "Taller de
+     percusión"). Pendiente: probarlo de oído; más materiales y acciones (cremallera, cajón,
+     vinilo, relés, romper, rodar...); que la actividad pueda seguir a la parte o al compás;
+     samples por el mismo canal (sesión 6); los ritmos sacados con efectos (sesiones 5 y 6).
+     Las **atmósferas** son otro elemento (camas continuas): van con las texturas (sesión 1).
    - **Fase 3**: tabla de estilos (rominimal, house, microhouse, experimental) con qué motores
      y qué rangos sortea cada uno, lista para la sesión 15 (universos según intención).
    - **Lo que dijo la investigación** (2026-11-10), para las fases 2 y 3:

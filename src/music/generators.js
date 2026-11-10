@@ -299,19 +299,21 @@ export class PercGen {
 }
 
 // ───────────────────────── FOLEY
-// Objetos (papel, llaves, gota, tela, taza, clic de boca: ver foleySound en sounds.js) en
+// Objetos (un MATERIAL que alguien manipula con una ACCIÓN, nuevos en cada universo: ver
+// foleySound en sounds.js) en
 // carriles ESCASOS de longitudes distintas, como la percusión polimétrica pero con pocos golpes:
 // aparecen de vez en cuando, no llevan el pulso. VARIEDAD = cuántos objetos (uno por carril,
-// todos distintos); CANTIDAD = cuántos golpes da cada uno (ver kit.js). Convive con la
+// cada uno de un material distinto); CANTIDAD = cuántos golpes da cada uno (ver kit.js). Convive con la
 // percusión: donde ya suena una perc, el foley calla salvo en sus golpes más fuertes
-function foleyObject(r, kind) {
-  return { kind, timbre: r.int(1, 2 ** 30), pan: r.float(-0.8, 0.8) };
+function foleyObject(r, mat) {
+  return { mat, timbre: r.int(1, 2 ** 30), pan: r.float(-0.8, 0.8) };
 }
 function makeFoleyLane(r, kind) {
   // largos (hasta dos compases): cada objeto aparece de vez en cuando, no en cada compás
   const len = r.weighted([32, 24, 20, 16, 12, 10, 7], [1.5, 1.5, 1, 3, 2, 1, 0.8]);
   return {
-    len, k: r.int(1, Math.ceil(len / 6)), rot: r.int(0, len - 1), rank: null,
+    // pocos golpes: cada gesto dura de medio a un compás entero y se solaparían
+    len, k: r.int(1, Math.ceil(len / 8)), rot: r.int(0, len - 1), rank: null,
     acc: Array.from({ length: len }, () => r.float(0.45, 1)),
     prob: r.float(0.7, 1),
     sound: foleyObject(r, kind),
@@ -331,9 +333,9 @@ export class FoleyGen {
     const op = r.weighted(['rot', 'k', 'sound'], [4, 3, strength]);
     if (op === 'rot') l.rot = (((l.rot + r.pick([1, -1, 2, 3])) % l.len) + l.len) % l.len;
     else if (op === 'k') l.k = clamp(l.k + r.pick([1, -1]), 1, Math.ceil(l.len / 4));
-    else { // otro objeto, el que no está en ningún carril (hay 6 y 5 carriles)
-      const used = new Set(this.lanes.map((x) => x.sound.kind));
-      l.sound = foleyObject(r, FOLEY_KINDS.find((k) => !used.has(k)));
+    else { // otro objeto, de un material que no esté en ningún carril
+      const used = new Set(this.lanes.map((x) => x.sound.mat));
+      l.sound = foleyObject(r, r.pick(FOLEY_KINDS.filter((k) => !used.has(k))));
     }
     laneRank(l);
   }

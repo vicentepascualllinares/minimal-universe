@@ -33,7 +33,7 @@ export function fixChannels(node, n) {
 const SAT_RANGE = 48;
 const SAT_POINTS = 16385; // con 16 385 puntos el error de la curva queda por debajo de −110 dB
 let satCurve = null;
-function satCurveShared() {
+export function satCurveShared() {
   if (!satCurve) {
     satCurve = new Float32Array(SAT_POINTS);
     for (let i = 0; i < SAT_POINTS; i++) satCurve[i] = Math.tanh(SAT_RANGE * ((i / (SAT_POINTS - 1)) * 2 - 1));

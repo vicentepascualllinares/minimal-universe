@@ -23,6 +23,9 @@
 //   pad    −16   −1,1 dB: es el fondo, se siente más que se oye
 //   FX     −7    −3 dB: en minimal las transiciones se insinúan (riser y plato suaves); sin
 //                retocar, los golpes de llegada sonaban casi como el kick
+//   DELAY · REVERB  0  (2026-11-10) los RETORNOS del espacio del universo (music/space.js). A 0 dB
+//                suenan como el universo los generó: cuánto manda cada instrumento ya viene en
+//                sus envíos. El fader solo los sube o los baja todos a la vez
 // El nivel total (sin FX) queda como antes, así la saturación del universo, el glue y el
 // limitador trabajan igual que siempre.
 
@@ -30,12 +33,12 @@ export const MIX_PRESETS = {
   minimal: {
     label: 'MINIMAL',
     desc: 'minimal, deep house y rominimal: kick y bajo mandan, la percusión delante, armonía y pad de fondo',
-    db: { kick: -4, bass: -9, hat: -13, perc: -10, clap: -12, ohat: -15, foley: -12, chord: -14, pad: -16, fx: -7 },
+    db: { kick: -4, bass: -9, hat: -13, perc: -10, clap: -12, ohat: -15, foley: -12, chord: -14, pad: -16, dly: 0, rev: 0, fx: -7 },
   },
   plano: {
     label: 'PLANO',
     desc: 'todo a 0 dB: cada instrumento con su pico máximo en 0 dBFS',
-    db: { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, foley: 0, chord: 0, pad: 0, fx: 0 },
+    db: { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, foley: 0, chord: 0, pad: 0, dly: 0, rev: 0, fx: 0 },
   },
 };
 

@@ -27,7 +27,7 @@
 
 import { Rng, clamp, lerp } from '../core/rng.js';
 import { mapEmotion } from './emotion.js';
-import { INSTRUMENTS } from './arrangement.js';
+import { INSTRUMENTS, RETURNS } from './arrangement.js';
 
 // sin estilo: todas las tiradas, las de siempre
 export const NORMAL = Object.freeze({ t: 0, k: Object.freeze({}), name: null, mutes: [], mix: null, color: null });
@@ -274,6 +274,34 @@ export const ROMINIMAL = {
     'fx.vRiser': { noise: 3, tone: 0.6, both: 1, tonal: 1.2 },
     'fx.vRoll': { snare: 0.6, clap: 0.6, rim: 2.5, tom: 1.2, self: 2 },
     'fx.vPattern': { acelera: 1.2, recto: 1.5, tresillo: 1.5, fantasma: 4 },
+
+    // ESPACIO (space.js): los efectos creativos. En minimal el delay es PARTE DEL RITMO, no un
+    // adorno [MusicRadar]: ecos dub de corchea en stabs y percusión, ping-pong [Attack]; la reverb,
+    // «corta y deliberada»: salas, nada de colas lavadas [RMC], «carefully tuned reverbs» [MD]
+    'space.amt': [0.6, 1],
+    'dly.on': 0.95,
+    // corchea y corchea con puntillo (el eco dub que rueda); negra con puntillo a veces
+    'dly.div': { '8': 2.5, '8.': 4, '4': 0.5, '4.': 1.5, '8T': 0.4 },
+    'dly.pingpong': 0.7,
+    // repeticiones largas que se oscurecen y adelgazan: cada eco más lejos («dubby», [EB])
+    'dly.fb': [0.35, 0.6], 'dly.tone': [1100, 3200], 'dly.hp': [300, 750],
+    // cinta: algo de saturación y de vaivén («a bit of movement here and there» [Caia])
+    'dly.drive': [0.15, 0.45], 'dly.wow': [0.0004, 0.0018], 'dly.wowHz': [0.2, 0.6],
+    'dly.rev': [0.12, 0.35],
+    // a quién: los stabs (dub) y la percusión (rims que rebotan); hats casi secos (nítidos)
+    'dly.focus': { chord: 4, perc: 3.5, clap: 1, hat: 0.4, foley: 1.2 },
+    'dly.focusSend': [0.25, 0.45],
+    'dly.hat': [0, 0.03], 'dly.ohat': [0, 0.04], 'dly.perc': [0.02, 0.14], 'dly.clap': [0, 0.12],
+    'dly.foley': [0.02, 0.14], 'dly.chord': [0.05, 0.22], 'dly.pad': [0, 0.06],
+    // THROWS: al final de frase, mejor un eco que un riser (ROMINIMAL.md §7)
+    'dly.throw': [0.3, 0.65], 'dly.throwAmt': [0.55, 0.9], 'dly.throwEvery': { 8: 2, 16: 1.2 },
+    // la SALA: corta, cálida, con carácter de habitación (reflexiones tempranas)
+    'rev.decay': [0.3, 0.9], 'rev.pre': [0.004, 0.02], 'rev.damp': [2200, 5500], 'rev.early': [0.4, 0.8],
+    'rev.width': [0.7, 1], 'rev.hp': [250, 450],
+    // a quién: la percusión, el clap y el foley en la misma habitación («faint room ambiences,
+    // foley» [MD]); hats secos; armonía y pad algo; las transiciones, poco (sobrias)
+    'rev.hat': [0, 0.06], 'rev.perc': [0.1, 0.26], 'rev.clap': [0.14, 0.3], 'rev.ohat': [0, 0.1],
+    'rev.foley': [0.14, 0.34], 'rev.chord': [0.06, 0.2], 'rev.pad': [0.12, 0.3], 'rev.fx': [0.1, 0.25],
   },
   // el «salto» del kick (fantasma en la 1ª mitad) y el golpe «en medio de un loop de 4 compases»
   // [XLR8R]: probabilidad por compás de cada universo
@@ -282,7 +310,8 @@ export const ROMINIMAL = {
 
   // MEZCLA con la que nace (dB del fader, como los presets de mix.js): la percusión delante, los hats
   // presentes sin morder, el kick «sin dominar» [RMC], armonía y pad al fondo, transiciones apenas
-  mix: { kick: -4.5, bass: -9.5, hat: -14, perc: -9, clap: -14.5, ohat: -17, foley: -10.5, chord: -15, pad: -17, fx: -11 },
+  // (DELAY y REVERB a 0 dB: cuánto efecto lleva ya está en sus envíos)
+  mix: { kick: -4.5, bass: -9.5, hat: -14, perc: -9, clap: -14.5, ohat: -17, foley: -10.5, chord: -15, pad: -17, dly: 0, rev: 0, fx: -11 },
 
   // ARQUETIPOS: `w` = probabilidad · `mute` = probabilidad de nacer en MUTE (× t; kick y bajo nunca) ·
   // `mix` = dB sobre la mezcla del estilo · `k` = sustituye datos de arriba · `mul` = multiplica pesos ·
@@ -297,7 +326,7 @@ export const ROMINIMAL = {
         'kit.perc.amt': [0.55, 0.85], 'kit.perc.vary': [0.6, 1], 'kit.hat.amt': [0.4, 0.65], 'kit.hat.vary': [0.45, 0.85],
         'kit.foley.amt': [0.4, 0.65], 'kit.foley.vary': [0.3, 0.7], 'cx.perc': [0.55, 0.9], 'cx.bass': [0.4, 0.75],
       },
-      mul: { 'perc.type': { reso: 1.3, tone: 1.2, modal: 1.1 } },
+      mul: { 'perc.type': { reso: 1.3, tone: 1.2, modal: 1.1 }, 'dly.focus': { perc: 2, chord: 0.6 } },
       bassModes: { pluck: 3, round: 3, sub: 1, acid: 1 },
     },
     esqueleto: {
@@ -308,7 +337,10 @@ export const ROMINIMAL = {
       k: {
         'kit.perc.amt': [0.35, 0.6], 'kit.perc.vary': [0, 0.35], 'kit.hat.amt': [0.5, 0.75], 'kit.hat.vary': [0.5, 0.9],
         'kit.foley.amt': [0.3, 0.55], 'kit.foley.vary': [0.15, 0.5], 'cx.perc': [0.3, 0.6], 'cx.bass': [0.25, 0.6], 'cx.inst': [0.05, 0.3],
+        // casi seco: lo mínimo también en el espacio
+        'space.amt': [0.35, 0.65], 'rev.decay': [0.25, 0.6],
       },
+      mul: { 'dly.focus': { perc: 1.5, chord: 0.4 } },
       bassModes: { sub: 3, pluck: 2, round: 1.5, acid: 0.5 },
       kickSkip: [0.05, 0.2],
     },
@@ -320,8 +352,11 @@ export const ROMINIMAL = {
       k: {
         'kit.foley.amt': [0.6, 0.9], 'kit.foley.vary': [0.7, 1], 'kit.hat.amt': [0.3, 0.5], 'kit.hat.vary': [0.25, 0.6],
         'kit.perc.amt': [0.3, 0.5], 'kit.perc.vary': [0.1, 0.4], 'cx.perc': [0.35, 0.7], 'cx.inst': [0.1, 0.4],
+        // el foley dentro de su habitación (algo más grande) y rebotando
+        'rev.foley': [0.25, 0.45], 'rev.decay': [0.5, 1.1],
       },
       mul: {
+        'dly.focus': { foley: 4, chord: 0.5 },
         'perc.type': { grains: 1.4, ks: 1.3, modal: 1.2 },
         'foley.mat': { madera: 1.4, agua: 1.7, arena: 1.4, vidrio: 1.3, tela: 1.2, plastico: 0.7, aluminio: 0.7 },
       },
@@ -332,8 +367,12 @@ export const ROMINIMAL = {
       desc: 'acordes dub y bajo redondo, más hondo y más grave (Sublee, Priku, los «dubby basslines»)',
       mute: { clap: 0.35, ohat: 0.5, pad: 0.4, foley: 0.3, perc: 0.1 },
       mix: { chord: 2.5, bass: 0.5, perc: -1 },
-      k: { 'cx.bass': [0.2, 0.55], 'cx.inst': [0.25, 0.55], 'cx.perc': [0.4, 0.75], 'kit.perc.vary': [0.35, 0.7] },
-      mul: { 'perc.type': { fm: 1.2, tone: 1.2, noise: 1.3 } },
+      k: {
+        'cx.bass': [0.2, 0.55], 'cx.inst': [0.25, 0.55], 'cx.perc': [0.4, 0.75], 'kit.perc.vary': [0.35, 0.7],
+        // el eco manda: stabs que se repiten mucho y se oscurecen, y más throws
+        'dly.fb': [0.5, 0.66], 'dly.tone': [900, 2400], 'dly.focusSend': [0.32, 0.5], 'dly.throw': [0.5, 0.85],
+      },
+      mul: { 'perc.type': { fm: 1.2, tone: 1.2, noise: 1.3 }, 'dly.focus': { chord: 2.5 } },
       bassModes: { sub: 3, round: 3, pluck: 1, acid: 0.3 },
       chordModes: { dub: 6, keys: 1, organ: 0.5 },
     },
@@ -345,8 +384,11 @@ export const ROMINIMAL = {
       k: {
         'cx.inst': [0.25, 0.6], 'cx.perc': [0.45, 0.8], 'kit.foley.amt': [0.55, 0.85], 'kit.foley.vary': [0.55, 0.95],
         'kit.hat.amt': [0.35, 0.6],
+        // la sala algo más grande, con el pad y las teclas dentro
+        'rev.decay': [0.6, 1.3], 'rev.pad': [0.2, 0.38], 'rev.chord': [0.12, 0.28],
       },
       mul: {
+        'dly.focus': { chord: 1.3, foley: 1.5 },
         'perc.type': { modal: 1.6, ks: 1.4, reso: 1.2, glitch: 0.5, fm: 0.6 },
         'hatEng.fino': { grains: 1.5 },
         'foley.mat': { madera: 1.3, agua: 1.3, tela: 1.4, plastico: 0.5, aluminio: 0.6 },
@@ -362,8 +404,11 @@ export const ROMINIMAL = {
       k: {
         'cx.perc': [0.6, 0.95], 'cx.kick': [0.1, 0.55], 'kit.hat.amt': [0.5, 0.8], 'kit.hat.vary': [0.6, 1],
         'kit.perc.amt': [0.55, 0.85], 'kit.perc.vary': [0.6, 1],
+        // ecos cortos de clics (corchea, tresillo) y una sala mínima
+        'dly.div': { '8': 3, '8.': 2.5, '4': 0.3, '4.': 0.5, '8T': 1.5 }, 'dly.fb': [0.25, 0.5], 'rev.decay': [0.2, 0.55],
       },
       mul: {
+        'dly.focus': { perc: 2, hat: 3 },
         'perc.type': { glitch: 2.2, grains: 1.6, ks: 1.3, tone: 0.7, modal: 0.7 },
         'hatEng.tick': { hiss: 1.6, fm: 1.3 },
         'hatEng.fino': { hiss: 1.4, grains: 1.2 },
@@ -406,6 +451,8 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
   const BM = P.bassModes[bassMode].mix || {}, CM = P.chordModes[chordMode].mix || {};
   const mix = {};
   for (const k of [...INSTRUMENTS, 'fx']) mix[k] = Math.min(0, P.mix[k] + (A.mix?.[k] ?? 0) + (BM[k] ?? 0) + (CM[k] ?? 0) + r.float(-1, 1));
+  // los RETORNOS (DELAY, REVERB) sin tirada: cuánto efecto lleva ya está en sus envíos (space.js)
+  for (const k of RETURNS) mix[k] = Math.min(0, (P.mix[k] ?? 0) + (A.mix?.[k] ?? 0));
   // GENERACIÓN: lo del estilo, lo que sustituye el arquetipo, los modos y lo que multiplica
   const k = { ...P.k, ...(A.k || {}), ...P.bassModes[bassMode].k, ...P.chordModes[chordMode].k };
   for (const [key, m] of Object.entries(A.mul || {})) {

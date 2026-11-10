@@ -9,7 +9,7 @@
 // (Guardar la mezcla de cada persona vendrá con las cuentas.)
 
 import { VSlider } from './slider.js';
-import { INSTRUMENTS } from '../music/arrangement.js';
+import { INSTRUMENTS, MIX_CHANNELS } from '../music/arrangement.js';
 import { toDb, fmtDb as fmt, paintMaster } from './meters.js';
 import { FADER_ZERO as DEF, faderDb, dbFader, dbGain } from '../core/fader.js';
 import { MIX_PRESETS } from '../audio/mix.js';
@@ -41,9 +41,17 @@ export function setFxFader(engine, i, v) {
   engine.setFxGain(i, dbGain(faderDb(v)));
 }
 
-// las columnas del MIXER: los instrumentos y, aparte, los EFECTOS DE TRANSICIÓN de cada universo
-const COLS = [...INSTRUMENTS, 'fx'];
+// las columnas del MIXER: los instrumentos, los RETORNOS del espacio de cada universo (DELAY y
+// REVERB: van como un instrumento más, también vinculados) y, aparte, los EFECTOS DE TRANSICIÓN
+const COLS = [...MIX_CHANNELS, 'fx'];
 LABEL.fx = 'FX';
+LABEL.dly = 'DELAY';
+LABEL.rev = 'REVERB';
+const TIP = {
+  fx: 'EFECTOS DE TRANSICIÓN de cada universo: riser, redoble, golpes, platos, reverse, caída · nunca vinculados · también en la columna TRANSICIÓN de cada universo',
+  dly: 'DELAY: los ecos del universo (cada universo nace con los suyos: división, repeticiones, a quién) · 0 dB = como los generó',
+  rev: 'REVERB: la sala del universo (cada universo nace con la suya: largo, color, a quién) · 0 dB = como la generó',
+};
 
 export function instMixer(root, engine, onClose) {
   let linked = true;
@@ -52,7 +60,7 @@ export function instMixer(root, engine, onClose) {
   const val = [{}, {}]; // posición de cada fader (se lee del motor al dibujar y al cambiar de preset)
   const load = () => {
     for (const i of [0, 1]) {
-      for (const k of INSTRUMENTS) val[i][k] = posOf(engine.inst[i][k]);
+      for (const k of MIX_CHANNELS) val[i][k] = posOf(engine.inst[i][k]);
       val[i].fx = engine.fxPos[i];
     }
   };
@@ -91,7 +99,7 @@ export function instMixer(root, engine, onClose) {
         ${dj ? `<button class="im-link${linked ? ' on' : ''}" title="vinculados: mover un instrumento en un universo lo mueve igual en el otro">VINCULADOS</button>` : ''}
       </div>
       <div class="im-row">${COLS.map((k) => `
-        <div class="im-ch${k === 'fx' ? ' im-fx' : ''}" data-k="${k}"${k === 'fx' ? ' title="EFECTOS DE TRANSICIÓN de cada universo: riser, redoble, golpes, platos, reverse, caída · nunca vinculados · también en la columna TRANSICIÓN de cada universo"' : ''}>
+        <div class="im-ch${k === 'fx' ? ' im-fx' : k === 'dly' ? ' im-ret' : ''}" data-k="${k}"${TIP[k] ? ` title="${TIP[k]}"` : ''}>
           <div class="im-dbs">${decks.map((i) => `<span class="im-db" data-i="${i}">0.0</span>`).join('')}</div>
           <div class="im-pair">${decks.map((i) => fader(i, dj)).join('')}</div>
           <span class="im-name">${LABEL[k]}</span>

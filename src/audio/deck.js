@@ -1,6 +1,6 @@
 // UNIVERSO — un mundo musical completo: sus instrumentos, su emoción, su
-// estructura y su loop. Sin reverb ni delay: todo seco. El reloj, el BPM y la tonalidad
-// los pone el Engine (globales), así dos universos siempre encajan.
+// estructura, su loop y su ESPACIO (delay y reverb propios, ver music/space.js). El reloj, el BPM
+// y la tonalidad los pone el Engine (globales), así dos universos siempre encajan.
 
 import * as V from './voices.js';
 import { DrumSlots } from './drumSlots.js';
@@ -10,11 +10,13 @@ import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS, mixOf } from '../music/arrangement.js';
 import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
+import { SpaceFx } from './spaceFx.js';
 import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
 import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
 import { NORMAL, rollStyle, styleColor } from '../music/styles.js';
+import { makeSpace, SENDS } from '../music/space.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
@@ -86,7 +88,19 @@ export class Deck {
     this.drift = makeDrift(new Rng(this.seed ^ 0x5bd1e995));
     this.e = mapEmotion(v, a);
     this.newFxPalette(this.seed);
+    this.newSpace(this.seed);
+    this.pendingSpace = null;
   }
+
+  // ESPACIO (music/space.js): el delay y la reverb del universo, de su semilla y su estilo. Los
+  // THROWS tiran de su propio dado (no tocan ninguno de los de siempre)
+  newSpace(seed, space = makeSpace(seed, this.sty)) {
+    this.space = space;
+    this.spaceRng = new Rng((seed ^ 0x510e527f) >>> 0);
+  }
+
+  // un canal del MIXER: un instrumento o un retorno (DELAY, REVERB)
+  mixChannel(k) { return this.ch?.[k] ?? this.spaceFx?.ret[k]; }
 
   // TRANSICIONES: la paleta (qué riser, redoble, golpes...) sale de la semilla (y del estilo)
   newFxPalette(seed) {
@@ -149,6 +163,14 @@ export class Deck {
       this.ch[k].user.gain.value = this.engine.instGain(this, k); // MIXER (fader, MUTE y SOLO)
     }
 
+    // ESPACIO: delay y reverb, con un envío de cada instrumento que los usa (tras su fader) y de
+    // los efectos de transición (solo a la reverb). Los retornos, en el MIXER como un canal más
+    this.spaceFx = new SpaceFx(ctx, this.sum, Q);
+    for (const k of SENDS) this.spaceFx.wire(k, this.ch[k].out);
+    this.spaceFx.wire('fx', this.fx.bus);
+    for (const k in this.spaceFx.ret) this.spaceFx.ret[k].user.gain.value = this.engine.instGain(this, k);
+    this.spaceFx.set(this.space, ctx.currentTime, this.engine.stepDur, true);
+
     // hats y percs: ranuras nuevas sobre los canales nuevos (las grabaciones siguen en el banco)
     this.drums.init(ctx);
     this.refreshSounds();
@@ -199,6 +221,8 @@ export class Deck {
     this.pendingSeed = newSeed();
     this.pendingSty = rollStyle(this.pendingSeed, this.styleNext);
     this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
+    this.pendingSpace = makeSpace(this.pendingSeed, this.pendingSty);
+    this.spaceFx?.prepare(this.pendingSpace.rev); // su sala se calcula ya (fuera del reloj)
     if (this.ctx) this.refreshSounds(this.pendingGen, true);
   }
 
@@ -493,6 +517,7 @@ export class Deck {
       }
     }
     this.updateSound(now);
+    this.spaceFx?.tempo(this.engine.stepDur, now); // el delay sigue al BPM
   }
 
   updateSound(now) {
@@ -547,6 +572,9 @@ export class Deck {
       this.pendingGen = null;
       this.newCharacter(this.seed);
       this.newFxPalette(this.seed);
+      this.newSpace(this.seed, this.pendingSpace ?? undefined); // y su ESPACIO, desde el 1 de este compás
+      this.pendingSpace = null;
+      this.spaceFx?.set(this.space, t0, this.engine.stepDur);
       // con estilo, nace también con su MEZCLA (faders y MUTE), en el 1 de este compás. En NORMAL el
       // MIXER no se toca, como siempre, salvo para devolver la mezcla de antes si el universo que se
       // va la traía de un estilo (ver Engine.styleMix)
@@ -611,9 +639,26 @@ export class Deck {
     };
     if (cx.avoid) this.takeTurns(this.bars, prog);
     this.kickDrop(b);
+    this.dubThrow(b, t0);
     this.refreshSounds(); // un carril que mutó (u otro universo) pide ya su sonido nuevo
     this.history.push({ b, bars: this.bars });
     if (this.history.length > 16) this.history.shift();
+  }
+
+  // THROW (el gesto dub del ESPACIO): en el último compás de algunas frases, el envío al delay del
+  // PROTAGONISTA del eco se abre para su último golpe del compás (desde el 2º tiempo) y los ecos
+  // caen sobre el 1 de la frase siguiente. No en LOOP (se repite lo que sonó)
+  dubThrow(b, t0) {
+    const D = this.space.dly;
+    if (!D.throwP || !this.spaceFx || b % D.throwEvery !== D.throwEvery - 1) return;
+    if (!this.spaceRng.chance(D.throwP)) return;
+    const steps = this.bars[D.focus];
+    let s = 15;
+    while (s >= 4 && !steps?.[s]) s--;
+    if (s < 4) return;
+    const sd = this.engine.stepDur;
+    const t = t0 + s * sd + (s % 2 === 1 ? (this.e.groove.swing - 0.5) * 2 * sd : 0);
+    this.spaceFx.throwHit(D.focus, t, Math.min(0.2, sd * 1.5));
   }
 
   // OSCILADOR: genera los pasos de un grupo con la complejidad de cada pulso y los cose.
@@ -787,7 +832,7 @@ export class Deck {
   // MIXER: nivel de pico de un instrumento ahora (lo que sale de su canal). El medidor se crea
   // la primera vez que se pide: sin el MIXER abierto no cuesta nada
   instLevel(k) {
-    const ch = this.ch?.[k];
+    const ch = this.mixChannel(k);
     if (!ch) return 0;
     if (!ch.meter) {
       ch.meter = this.ctx.createAnalyser();

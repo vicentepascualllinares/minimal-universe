@@ -179,6 +179,7 @@ fader, los mismos y alguno más).
 | **CANT · VAR** | Las del arquetipo (ver §5). |
 | **Mutación** | Percs y foley: girar y quitar/poner golpes; casi nunca otro sonido. Armonía: casi solo ritmo. |
 | **MIXER** | Nace con su mezcla (faders de sus instrumentos y de FX) y sus MUTE, en el 1 del compás en que entra. La mezcla de antes se guarda: un universo **NORMAL** después la recupera (no hereda los MUTE). Elegir un preset del MIXER la olvida (la mezcla vuelve a ser tuya). |
+| **Espacio** (2026-11-10) | Delay **parte del ritmo** [MusicRadar, Attack]: corchea o corchea con puntillo (a veces negra con puntillo), ping-pong 70 %, realimentación 0,35–0,6 que se oscurece (paso bajo 1,1–3,2 kHz) y adelgaza (paso alto 300–750 Hz), cinta (saturación y vaivén: «a bit of movement» [Caia]); protagonista del eco: los stabs o la percusión; hats casi secos; **throws** al final de frase más probables (30–65 %): mejor un eco que un riser. Reverb **corta y deliberada** [RMC, MD]: salas de 0,3–0,9 s, cálidas (agudos que se apagan a 2,2–5,5 kHz), con reflexiones tempranas (carácter de habitación); percusión, clap y foley «en la misma habitación» («faint room ambiences, foley» [MD]); transiciones poco. Por arquetipo: DUB (el eco manda: más repetición, más oscuro, más throws), ESQUELETO (casi seco), BOSQUE (el foley en su sala), ORGÁNICO (sala algo mayor con pad y teclas), CLICS (ecos cortos de clics, sala mínima), RODANTE (eco en la percusión). |
 | **Transiciones** | Paleta sobria: intensidad 0,25–0,55, riser de ruido más que de tono, silencio antes del drop 12 % (antes 46 %), platos más cortos, filtros de tensión más suaves; redobles de rim y «fantasma» más que «acelera»; FX −11 dB. |
 | **Estructura** | No se toca: es del intérprete (ver §9). |
 | **Globales** | BPM, tónica y modo no se tocan (son de los dos universos). |
@@ -189,10 +190,8 @@ Para que no se pierda. Cada punto dice qué pide el género y en qué sesión de
 [HOJA_DE_RUTA](HOJA_DE_RUTA.md) entra.
 
 - **Efectos creativos (sesión 5)**:
-  - **Delay como ritmo**: en minimal el delay es parte del ritmo, no un adorno [MusicRadar]; dub:
-    ecos de corchea con realimentación en stabs y percusión, ping-pong [Attack].
-  - **Reverb corta y deliberada**: salas cortas, nada de colas lavadas [RMC]; «carefully tuned
-    reverbs» [MD].
+  - ~~**Delay como ritmo**~~ y ~~**reverb corta y deliberada**~~: **hechos (2026-11-10)**, ver §6
+    («Espacio»). Falta escucharlos.
   - **Filtros lentos y LFO al corte**: «slow filter modulation» [MD]; un LFO rápido al corte y
     distorsión foldback como ingredientes (un productor en un foro [GS]); el bajo que evoluciona
     «por articulación y filtro» [MD].

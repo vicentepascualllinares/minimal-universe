@@ -28,8 +28,21 @@ tope de voces, AudioWorklet).
      no ve el glue ni el techo (`ceiling` en dsp.js), y con varias etapas habrá que decidir
      qué se enseña: la suma, cada etapa o la del último limitador.
    - Hoy A, B y los canales no tienen limitador: solo medidor de nivel.
-5. **Efectos creativos**: reverb, delay y compañía. Hoy todo es seco a propósito: se quitaron
-   hasta esta sesión. Los risers y los platos de las transiciones son los que más lo piden.
+5. **Efectos creativos**: reverb, delay y compañía. Los risers y los platos de las transiciones
+   son los que más lo piden.
+   - **EMPEZADA (2026-11-10)**: **ESPACIO** de cada universo (README → "Espacio: delay y
+     reverb"): un **delay** dub en la rejilla (división, ping-pong, realimentación que se oscurece,
+     cinta, protagonista del eco, **throws** al final de frase) y una **reverb** de sala sintetizada
+     por universo, con envíos por instrumento (kick y bajo secos) y desde las transiciones;
+     retornos DELAY y REVERB en el MIXER. Primero en NORMAL y luego el perfil ROMINIMAL (`dly.*`,
+     `rev.*` en styles.js, por arquetipo). **Falta escucharlo.**
+   - Lo que queda de la lista de ROMINIMAL (abajo): filtros lentos y LFO al corte, grano (bits /
+     muestreo en buses o máster), paneo con LFO aleatorio, realimentación, blur, stutter, cinta
+     (tape stop), y en las transiciones de un universo rominimal, **reverb throw** y delay al final
+     de frase **en vez de** risers (hoy los throws del delay van aparte de las transiciones).
+   - Ideas que salieron al montarlo: que el espacio cambie con la PARTE (más sala en BREAK y DRIFT;
+     sesión 10), cortar la cola de la sala antes del drop (auto-arreglo), throws de reverb, que la
+     COMPLEJIDAD de INSTR. mueva cuánto eco hay, el retorno del delay con sidechain del kick.
    - **ROMINIMAL lo pide** (ROMINIMAL.md §7): el **delay como parte del ritmo** (ecos dub de corchea
      en stabs y percusión, ping-pong), reverbs **cortas y deliberadas** (salas, nada de colas
      lavadas), **filtros lentos** y LFO al corte, **grano** (reducción de bits o de muestreo en buses
@@ -280,7 +293,8 @@ su interruptor en OPCIONES. Se van añadiendo poco a poco.
   primeros solo en drops DE GOLPE, que son los que se saben por adelantado. Pendiente: probar de
   oído las cantidades y decidir si hacen falta en los viajes INSTANTÁNEOS (habría que retrasar
   la entrada para que diera tiempo) o en los ESCALONADOS (el kick entra el último).
-- Ideas para después: cortar las colas (pad, acordes) antes del drop, el primer kick tras la
+- Ideas para después (con el ESPACIO ya montado, 2026-11-10, los throws de delay al final de frase
+  ya existen como parte del universo): cortar las colas (pad, acordes) antes del drop, el primer kick tras la
   entrada más fuerte, el último kick con cola en un kick-out, la última nota del bajo que cae al
   irse, acordes y pad sin graves cuando hay bajo (EQ por contexto), hats y ancho estéreo según
   la escena, remate de frase cada 8 o 16 compases, un compás de descanso de un instrumento de vez

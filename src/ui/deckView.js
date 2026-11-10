@@ -11,6 +11,7 @@ import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 import { Knob } from './knob.js';
 import { KIT_GROUPS, varietyShown } from '../music/kit.js';
 import { STYLES, DEFAULT_STYLE, styleName } from '../music/styles.js';
+import { describeSpace } from '../music/space.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
 // las dos perillas del KIT (bajo HAT, PERC y FOLEY)
@@ -629,12 +630,12 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       [...loopTicks.children].forEach((t, i) => t.classList.toggle('now', i === cur));
       seedBtn.classList.toggle('pending', deck.pendingSeed !== null);
       // ESTILO: la marca y el cartel siguen al universo que suena (y al que viene, si espera el compás)
-      const sk = `${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.pendingSty?.t ?? -1}`;
+      const sk = `${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
       if (sk !== stySeen) {
         stySeen = sk;
         styNow.style.left = `${deck.sty.t * 100}%`;
         styNow.hidden = !(deck.sty.t > 0);
-        const now = deck.sty.t > 0 ? `${styleName(deck.sty)}: ${deck.sty.archDesc}` : 'NORMAL (lo de siempre)';
+        const now = (deck.sty.t > 0 ? `${styleName(deck.sty)}: ${deck.sty.archDesc}` : 'NORMAL (lo de siempre)') + `\nespacio: ${describeSpace(deck.space)}`;
         const next = Math.round(deck.styleNext * 100);
         const tip = `ESTILO del próximo NUEVO UNIVERSO: NORMAL ← → ${styLabel} (${next ? `${next} %` : 'NORMAL'}) · solo cuenta al generar · doble clic = NORMAL`;
         styEl.title = `${tip}\nel que suena (la marca): ${now}`;

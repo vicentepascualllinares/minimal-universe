@@ -179,7 +179,8 @@ el bajo rodando. DRIFT viene del ambient y de los directos modulares: algo que f
 ## Transiciones
 
 Al viajar a una escena (con FX), el universo compone solo la transición: sabe de dónde sale, a
-dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay).
+dónde va y cuántos compases dura. Todo sintetizado. Desde 2026-11-10 los platos, golpes y risers
+suenan dentro de la **sala** del universo (ver "Espacio: delay y reverb").
 
 | Viaje | Qué pasa |
 |---|---|
@@ -237,7 +238,8 @@ KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **FOLEY** · **CHOR
   percusión") y por el banco, como hats y percs; preparados para que los samples entren
   después por el mismo canal. Canal propio en el MIXER (estéreo: cada objeto en su sitio del
   panorama), en la complejidad de PERCS y con sus perillas CANT · VAR. Seco, a propósito.
-  Sin humanizar: el swing es el de todo el universo, sin desplazamientos al azar.
+  Sin humanizar: el swing es el de todo el universo, sin desplazamientos al azar. (Desde
+  2026-11-10 ya no va seco del todo: manda algo a la sala y al delay del universo, ver "Espacio".)
 - **CHORD** — acordes dub: stabs cortos con filtro que se cierra. Ritmo en
   contratiempo que nunca pisa al kick. A tope en DRIFT y en DROP, un poco en el BREAK.
 - **PAD** — la atmósfera: un acorde largo con filtro que respira y un poco de aire (ruido
@@ -454,6 +456,51 @@ cierra con ✕ o Esc.
   El primer universo al abrir sale con todos apagados. Todavía no se guardan.
 - Pad pequeño (móvil): sin flechas junto al gesto; clic en la palabra = el siguiente.
 
+## Espacio: delay y reverb
+
+(2026-11-10) Los primeros **efectos creativos**. Cada universo **nace con su espacio**, como nace
+con su color: de su semilla y de su ESTILO. El intérprete no toca parámetros de sonido; lo suyo es
+el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Generación en
+`src/music/space.js`, audio en `src/audio/spaceFx.js`.
+
+- **DELAY, parte del ritmo**: ecos en la rejilla, a lo dub. Cada universo decide la **división**
+  (corchea, corchea con puntillo, negra, negra con puntillo o tresillo de corchea), si va en
+  **PING-PONG** (un eco a cada lado) o centrado, **cuánto se repite**, cómo se **oscurece y
+  adelgaza** cada repetición (filtros en la realimentación, como un eco de cinta: el primer eco
+  sale entero), un poco de **cinta** (saturación que redondea sin subir el nivel, y un vaivén lento
+  del tiempo) y cuánto de los ecos pasa a la sala. Sigue al BPM (deslizándose, como una cinta).
+- **A quién**: un instrumento **PROTAGONISTA** del eco (los stabs de CHORD, la PERC, el CLAP, los
+  HATS o el FOLEY) y los demás con poco o nada. **Kick y bajo, siempre secos** (los graves del
+  club, limpios). Algunos universos (~15 % en NORMAL) nacen sin delay.
+- **THROWS**, el gesto dub: en el último compás de algunas frases (cada 8 o 16 compases, con una
+  probabilidad de cada universo), el envío del protagonista se abre para su último golpe y los
+  ecos caen sobre el 1 de la frase siguiente. No en LOOP.
+- **REVERB, la sala**: una sala **sintetizada para cada universo** (largo de la cola, predelay,
+  cuánto se apagan los agudos al final, reflexiones tempranas, anchura y un paso alto en el
+  retorno). Cuánto manda cada instrumento (hats casi secos; percusión, clap, foley, acordes y pad
+  más) y también los **efectos de transición** (platos, golpes, risers).
+- **Los envíos salen tras el fader** de cada instrumento (y tras su MUTE y su presencia en la
+  estructura): un instrumento que se va deja sus ecos y su cola sonando, como en una mesa de
+  verdad. Los retornos entran en el universo **antes** de su saturación y de los filtros de tensión
+  de las transiciones (un build también filtra los ecos; el hueco antes del kick también los calla).
+- **Al cambiar de universo**, su espacio entra en el 1 del compás: la sala nueva recibe desde ahí y
+  la vieja se apaga con su propia cola (dos salas que se relevan, sin cortes). Los ecos que ya
+  sonaban se deslizan al tiempo nuevo, como una cinta.
+- **MIXER**: dos columnas nuevas, **DELAY** y **REVERB**, como un instrumento más (A y B,
+  vinculados, medidor, MUTE, SOLO). A 0 dB suenan como el universo los generó; los presets los
+  dejan a 0 dB. El estilo no toca su MUTE.
+- **ROMINIMAL** (ver [ROMINIMAL.md](ROMINIMAL.md) §6): delay de corchea o corchea con puntillo,
+  más ping-pong, repeticiones largas, oscuras y finas, protagonistas los stabs y la percusión,
+  hats casi secos, más throws; salas **cortas** (0,3–0,9 s), cálidas y con carácter de habitación,
+  con la percusión, el clap y el foley dentro. Cada arquetipo lo mueve (DUB: el eco manda;
+  ESQUELETO: casi seco; BOSQUE: el foley en su habitación; ORGÁNICO: sala algo mayor con pad y
+  teclas; CLICS: ecos cortos de clics y sala mínima; RODANTE: el eco en la percusión).
+- Al pasar el ratón por el fader de ESTILO se ve el espacio del universo que suena
+  («espacio: DELAY 1/8 con puntillo, ping-pong, 45 % de repetición, protagonista CHORD · REVERB 0,6 s»).
+- **Coste** (render offline, dos universos): sala ~4,5–7 %, delay ~3 % (ver RENDIMIENTO.md §5).
+  En CALIDAD LIGERA las salas duran como mucho 1,2 s.
+- **Falta escucharlo** (el oído decide los rangos y el nivel de los retornos).
+
 ## Color de cada universo
 
 Ya no hay pad de EMOCIÓN. Cada universo sale con su propio color de sonido (más oscuro o
@@ -654,6 +701,7 @@ universo, el pico real queda entre +0,6 y unos −4 dB (comprobado en 3 universo
 | Foley | −12 | 0 | (nuevo) detalle de la habitación, a la altura del clap y por detrás de la percusión |
 | Chord | −14 | 0 | los acordes de deep/minimal acompañan, no tapan el groove |
 | Pad | −16 | 0 | el fondo: se siente más que se oye |
+| Delay · Reverb | 0 | 0 | (2026-11-10) los retornos del espacio: a 0 dB, como el universo los generó (cuánto manda cada instrumento ya va en sus envíos) |
 | FX | −7 | 0 | las transiciones se insinúan; sin retocar, los golpes de llegada sonaban casi como el kick |
 
 - **MINIMAL** parte de la mezcla de antes (que ya seguía esas reglas: en estos dB era kick −3,7,
@@ -705,7 +753,9 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 
 - `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (ganancia → glue + limitador → techo; medidor L/R y lo que quita el limitador).
 - `src/ui/meters.js` — escala de los medidores y el máster (se lee una vez por fotograma; lo pintan la mesa DJ y el MIXER).
-- `src/audio/deck.js` — un universo: 8 canales, loop, secuenciador. Sin reverb ni delay: todo seco.
+- `src/audio/deck.js` — un universo: sus canales, loop, secuenciador y su ESPACIO (envíos, retornos y throws).
+- `src/audio/spaceFx.js` — el delay (eco de cinta, ping-pong) y la reverb (sala sintetizada, dos convolvers que se relevan) de un universo.
+- `src/music/space.js` — el ESPACIO de cada universo (de su semilla y su estilo): división, repeticiones, protagonista del eco, throws, sala y envíos.
 - `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ; curvas de EASY EQ), filtro DJ, fader, medidor.
 - `src/audio/lowRoles.js` — EASY EQ · GRAVES: reparte los papeles KICK y BAJO entre los dos universos (dueño según el giro, cambio en el tiempo, sidechain cruzado; con la EQ normal, cruzado cuando un bajo suena sin kick propio).
 - `src/audio/dsp.js` — canal de instrumento (drive → HP → LP → fade → duck), saturación.

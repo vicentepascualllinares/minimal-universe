@@ -8,7 +8,7 @@ import { Deck } from './deck.js';
 import { Strip, easyGains, easyX, bandGain, bandValue, faderGain } from './strip.js';
 import { LowRoles } from './lowRoles.js';
 import { SCALES } from '../music/emotion.js';
-import { INSTRUMENTS } from '../music/arrangement.js';
+import { INSTRUMENTS, MIX_CHANNELS } from '../music/arrangement.js';
 import { glide, ceiling } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 import { QUALITY_MODES } from './quality.js';
@@ -107,7 +107,7 @@ export class Engine {
     // MIXER: ganancia por instrumento de cada universo (1 = 0 dB = el pico máximo del
     // instrumento en 0 dBFS). Arranca con el preset por defecto (ver mix.js y applyMix).
     // En DJ van vinculados por defecto (lo decide la vista: ver instMixer)
-    this.inst = [0, 1].map(() => Object.fromEntries(INSTRUMENTS.map((k) => [k, 1])));
+    this.inst = [0, 1].map(() => Object.fromEntries(MIX_CHANNELS.map((k) => [k, 1]))); // (y los retornos DELAY y REVERB)
     // estado de la mesa (lo que muestran los controles)
     this.mix = [
       { fader: 1, hi: 0.5, mid: 0.5, lo: 0.5, filter: 0.5 },
@@ -141,7 +141,7 @@ export class Engine {
     this.mixPreset = name;
     this.styleSaved = [null, null]; // la mezcla vuelve a ser tuya: un universo NORMAL ya no la restaura (ver styleMix)
     for (const i of [0, 1]) {
-      for (const k of INSTRUMENTS) this.setInst(i, k, dbGain(P.db[k]));
+      for (const k of MIX_CHANNELS) this.setInst(i, k, dbGain(P.db[k]));
       this.fxPos[i] = dbFader(P.db.fx);
       this.setFxGain(i, dbGain(P.db.fx));
     }
@@ -170,7 +170,7 @@ export class Engine {
       if (!S) return; // NORMAL tras NORMAL: el MIXER no se toca, como siempre
       saved[i] = null;
       for (const k of INSTRUMENTS) this.mute[i][S.mute.includes(k) ? 'add' : 'delete'](k);
-      for (const k of INSTRUMENTS) this.setInst(i, k, S.inst[k], at);
+      for (const k of MIX_CHANNELS) this.setInst(i, k, S.inst[k], at);
       this.fxPos[i] = S.fxPos;
       this.setFxGain(i, S.fxGain, at);
       this.mixVersion = (this.mixVersion || 0) + 1;
@@ -180,7 +180,7 @@ export class Engine {
     const P = MIX_PRESETS[this.mixPreset].db;
     const lerpDb = (k) => P[k] + (sty.mix[k] - P[k]) * sty.t;
     for (const k of INSTRUMENTS) this.mute[i][sty.mutes.includes(k) ? 'add' : 'delete'](k);
-    for (const k of INSTRUMENTS) this.setInst(i, k, dbGain(lerpDb(k)), at);
+    for (const k of MIX_CHANNELS) this.setInst(i, k, dbGain(lerpDb(k)), at);
     this.fxPos[i] = dbFader(lerpDb('fx'));
     this.setFxGain(i, dbGain(lerpDb('fx')), at);
     this.mixVersion = (this.mixVersion || 0) + 1; // las vistas del MIXER y el fader de FX lo siguen
@@ -204,7 +204,7 @@ export class Engine {
   }
   applyHeard() {
     for (const i of [0, 1]) {
-      for (const k of INSTRUMENTS) this.setInst(i, k, this.inst[i][k]);
+      for (const k of MIX_CHANNELS) this.setInst(i, k, this.inst[i][k]);
       this.setFxGain(i, this.fxGain[i]);
     }
     this.mixVersion = (this.mixVersion || 0) + 1; // las vistas del MIXER se redibujan
@@ -439,6 +439,7 @@ export class Engine {
     this.active.forEach((d, i) => {
       const id = 'AB'[i];
       for (const k of Object.keys(d.ch)) pts.push([`${id} ${k}`, d.ch[k].out]);
+      for (const k of Object.keys(d.spaceFx.ret)) pts.push([`${id} retorno ${k}`, d.spaceFx.ret[k].out]);
       pts.push([`${id} saturación`, d.sat.output], [`${id} transición`, d.fx.f.gap], [`${id} mesa`, this.strips[i].fader]);
     });
     pts.push(['máster suma', this.sum], ['glue', this.glue], ['limitador', this.limiter]);
@@ -582,12 +583,13 @@ export class Engine {
     return merge;
   }
 
-  // MIXER: volumen de un instrumento en el universo i (0 = A, 1 = B). `at` = desde cuándo (por
-  // defecto, ya; un universo que nace con estilo lo pone en el 1 de su compás)
+  // MIXER: volumen de un instrumento (o de un retorno: DELAY, REVERB) en el universo i (0 = A,
+  // 1 = B). `at` = desde cuándo (por defecto, ya; un universo que nace con estilo lo pone en el 1 de
+  // su compás)
   setInst(i, k, gain, at) {
     this.inst[i][k] = gain;
-    const d = this.decks[i];
-    if (this.ready && d.ch) glide(d.ch[k].user.gain, gain * this.heard(i, k), Math.max(at ?? 0, this.ctx.currentTime), 0.02);
+    const c = this.decks[i].mixChannel(k);
+    if (this.ready && c) glide(c.user.gain, gain * this.heard(i, k), Math.max(at ?? 0, this.ctx.currentTime), 0.02);
   }
   // lo que deja pasar el MIXER en un canal: el fader por el MUTE / SOLO
   instGain(deck, k) {

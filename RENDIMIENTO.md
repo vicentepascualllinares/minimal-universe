@@ -273,6 +273,15 @@ En directo con NORMAL, DJ en TODO y COMPLEJIDAD a tope: **0 CORTES en ~40 s con 
 ~53 ms y también con el BAJO (~11 ms)**, que antes daba 11–17 cada 30 s. Los cortes y
 chasquidos eran sobre todo el motor sin margen, no el búfer.
 
+**ESPACIO (delay y reverb, 2026-11-10).** Render offline del espacio solo, dos universos, con
+señal entrando por todos los envíos (10 s, la mejor de 3): **sala ~4,5 % (0,6 s) a ~6,8 % (2,2 s),
+delay ~2,9 %, todo ~8–10 %** sobre los ~32 % del motor en NORMAL. El convolver que descansa
+(sin entrada) casi no gasta. En directo (DJ, los dos sonando, 14 universos nuevos seguidos y
+cambios de BPM): 0 CORTES, 0 TARDE, sin incidencias. Ojo: en un contexto en directo Chrome lleva
+la cola larga de la convolución a otro hilo, así que el render offline seguramente exagera. Si
+hiciera falta bajar: salas más cortas o en mono→estéreo con IR más corta en LIGERA (ya: tope de
+1,2 s), la cinta del delay sin sobremuestreo, o una sala compartida por los dos universos.
+
 (Resuelto: el README decía que el perfil móvil creaba "la mitad de nodos por segundo"; contar
 nodos engaña, porque no todos cuestan lo mismo. La medida buena es el coste de render de arriba:
 LIGERA gasta ~55 % menos que ALTA.)

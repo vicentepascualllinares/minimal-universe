@@ -141,12 +141,14 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .im-title { color: var(--fg); letter-spacing: 0.5em; }
 .im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
-.im-row { display: flex; gap: clamp(12px, 3vw, 40px); height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
+.im-row { display: flex; gap: clamp(8px, 1.1vw, 40px); height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
+/* si aun así no cabe (móvil en vertical), se desplaza en horizontal en vez de salirse */
+.im-row { max-width: calc(100vw - 16px); overflow-x: auto; overflow-y: hidden; }
 .im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 60px; }
 /* DJ: cada instrumento en su caja (A y B juntos), con aire entre cajas y el nombre más marcado */
-.instmix.dj .im-row { gap: clamp(6px, 1.6vw, 26px); }
-/* 11 columnas (9 instrumentos, FX y máster): se estrechan para caber en la pantalla, hasta 100 px */
-.instmix.dj .im-ch { width: clamp(64px, calc((100vw - 140px) / 11 - 8px), 100px); padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
+.instmix.dj .im-row { gap: clamp(6px, 1vw, 26px); }
+/* 13 columnas (9 instrumentos, DELAY, REVERB, FX y máster): se estrechan para caber en la pantalla, hasta 100 px */
+.instmix.dj .im-ch { width: clamp(64px, calc((100vw - 180px) / 13 - 8px), 100px); padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
 .instmix.dj .im-name { font-size: 10px; letter-spacing: 0.26em; margin-right: -0.26em; }
 .im-dbs { display: flex; gap: 10px; }
 .im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
@@ -175,7 +177,18 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-fd.im-off .im-fdrow { opacity: 0.35; }
 /* MÁSTER del MIXER: aparte de los instrumentos; L y R, el fader y lo que quita el limitador
    (baja desde arriba) */
-.im-master, .im-fx { margin-left: 18px; }
+.im-master, .im-fx, .im-ret { margin-left: clamp(8px, 1.2vw, 18px); }
+/* pantallas medianas (900–1199 px) en DJ: faders algo más estrechos para que quepan las 13 columnas */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .instmix.dj .im-ch { width: 60px; }
+  .instmix.dj .im-pair { gap: 6px; }
+  .instmix.dj .im-fdrow .fader .t-track { width: 18px; }
+  .instmix.dj .im-fdrow .fader .t-handle { width: 16px; }
+  .instmix.dj .im-meter { width: 4px; }
+  .instmix.dj .im-name { letter-spacing: 0.12em; margin-right: -0.12em; }
+  .instmix.dj .im-ms { gap: 1px; }
+  .instmix.dj .im-ms button { width: 12px; }
+}
 .instmix:not(.dj) .im-master { border-left: 1px solid var(--line); padding-left: 22px; width: 84px; }
 .instmix.dj .im-master { border-color: #3a3a40; }
 .im-master .im-fdrow { gap: 3px; }
@@ -702,13 +715,13 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   .instmix.dj .im-fdrow { gap: 1px; }
   .instmix.dj .im-fdrow .fader .t-track { width: 13px; }
   .instmix.dj .im-fdrow .fader .t-handle { width: 12px; }
-  /* con FX y MÁSTER son 10 columnas: se estrechan para caber en 375 px sin desplazar */
+  /* 13 columnas con DELAY, REVERB, FX y MÁSTER: se estrechan; en 375 px ya no caben y se desplazan */
   .im-row, .instmix.dj .im-row { gap: 3px; }
   .im-ch, .instmix.dj .im-ch { width: 33px; }
   .instmix.dj .im-pair { gap: 3px; }
   .instmix.dj .im-fdrow .fader .t-track, .im-master .fader .t-track { width: 10px; }
   .instmix.dj .im-fdrow .fader .t-handle, .im-master .fader .t-handle { width: 9px; }
-  .im-master, .im-fx { margin-left: 4px; }
+  .im-master, .im-fx, .im-ret { margin-left: 4px; }
   /* el VOLUMEN DE FX no cabe en la columna TRANSICIÓN del móvil: ahí se toca en el MIXER */
   .t-vol { display: none; }
   .instmix:not(.dj) .im-master { width: 40px; padding-left: 4px; }

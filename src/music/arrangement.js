@@ -30,6 +30,10 @@
 import { clamp } from '../core/rng.js';
 
 export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'foley', 'chord', 'pad'];
+// RETORNOS de los efectos del universo (ver music/space.js): no son partes de la estructura, pero
+// en el MIXER van como un canal más (fader, MUTE, SOLO, presets y mezcla del estilo)
+export const RETURNS = ['dly', 'rev'];
+export const MIX_CHANNELS = [...INSTRUMENTS, ...RETURNS];
 
 const ALL_DRUMS = { kick: 1, hat: 1, perc: 1, clap: 1, ohat: 1 };
 const NO_DRUMS = { kick: 0, hat: 0, perc: 0, clap: 0, ohat: 0 };

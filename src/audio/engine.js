@@ -13,7 +13,6 @@ import { glide, ceiling } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 import { QUALITY_MODES } from './quality.js';
 import { Recorder } from './recorder.js';
-import { LineIn } from './lineIn.js';
 import { MIX_PRESETS, DEFAULT_MIX } from './mix.js';
 import { FADER_ZERO, dbFader, dbGain } from '../core/fader.js';
 
@@ -69,7 +68,6 @@ export class Engine {
     this.glitches = 0;  // CORTES: el audio se quedó sin datos (DSP demasiado pesado)
     this.late = 0;      // TARDE: pasos programados tarde (hilo principal atascado)
     this.rec = new Recorder(); // GRABAR (ver recorder.js)
-    this.lineIn = new LineIn(); // ENTRADA de audio de fuera (ver lineIn.js)
     this.generated = false;    // ¿se ha pulsado GENERAR alguna vez? (hasta entonces no suena nada)
     // OPCIONES → AUTO-ARREGLOS: trucos de producción que el programa hace solo, en vivo.
     // kickGap = HUECO ANTES DEL KICK (ver Deck.kickGap); kickDrop = CAÍDA DEL KICK AL FINAL DE
@@ -530,7 +528,6 @@ export class Engine {
     monoLow.connect(glue).connect(limiter).connect(ceil.input);
     ceil.output.connect(this.analyser).connect(ctx.destination);
     this.rec.attach(ctx, ceil.output); // GRABAR escucha justo lo que sale
-    this.lineIn.attach(ctx, this.sum); // ENTRADA: en general, a la suma del máster
     // MEDIDOR DEL MÁSTER: L y R por separado (un analizador solo mezclaría los dos a mono)
     const split = ctx.createChannelSplitter(2);
     ceil.output.connect(split);

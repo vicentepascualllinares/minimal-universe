@@ -18,10 +18,8 @@ const lanUrls = () =>
     .map((i) => `http://${i.address}:${port}`);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
-// En Windows se abre en Chrome si está (si no, el navegador predeterminado): la ENTRADA DE AUDIO
-// solo puede coger pestañas del mismo navegador, y el YouTube de la sesión va en Chrome
 function openBrowser() {
-  const cmd = process.platform === 'win32' ? `start "" chrome "${url}" || start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`;
+  const cmd = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`;
   exec(cmd);
 }
 

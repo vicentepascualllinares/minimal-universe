@@ -779,6 +779,3 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   .enter-modes { flex-direction: row; }
   .enter-keys { display: none; }
 }
-/* ENTRADA DE AUDIO (OPCIONES) */
-.op-in-gain { width: 100%; accent-color: var(--fg); }
-.op-lab b { color: var(--fg); font-weight: inherit; }

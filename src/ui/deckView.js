@@ -3,7 +3,10 @@
 
 import { VSlider, HSlider } from './slider.js';
 import { INSTRUMENTS, SCENES, GRID, likeness } from '../music/arrangement.js';
-import { GROUPS, GROUP_LABEL, shapeComplexity } from '../music/complexity.js';
+import {
+  GROUPS, GROUP_LABEL, OSC_PATTERNS, OSC_UNITS, OSC_UNIT_ORDER, GESTURES, RATE_ORDER, ZONES, ZONE_ORDER,
+  layerCells, layerSlot, oscActive, oscShape,
+} from '../music/complexity.js';
 import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
@@ -55,13 +58,43 @@ function template(label) {
   </div>
   <div class="row">
     <section class="pad p-cx">
-      <div class="pad-title">COMPLEJIDAD</div>
+      <div class="pad-title">COMPLEJIDAD<button class="osc-mute" title="OSCILADORES de este universo: encendidos / en silencio. En silencio suenan los faders y puedes preparar los osciladores por debajo">OSC</button></div>
       <div class="pad-box cx-box">${GROUPS.map((g) => `
         <div class="cxf" data-g="${g}">
           <span class="cxf-val"></span>
-          <div class="fader"><div class="t-track"><div class="t-line"></div><i class="cxf-eff"></i><div class="t-handle"></div></div></div>
-          <span class="cxf-name">${GROUP_LABEL[g]}</span>
+          <div class="fader"><div class="t-track"><div class="t-line"></div><i class="cxf-range"></i><i class="cxf-eff"></i><div class="t-handle"></div></div>
+            <div class="cxf-lane" title="B: hasta dónde va el OSCILADOR (el fader es el punto de partida) · arrastrar · doble clic = quitar"><i class="cxf-b"></i></div></div>
+          <span class="cxf-name"><button class="osc-on osc-sq" title="encender / apagar el OSCILADOR de este grupo"></button>${GROUP_LABEL[g]}</span>
+          <div class="osc">
+            <span class="osc-hint" hidden></span>
+            <div class="osc-gest">
+              <button class="osc-prev" title="gesto anterior">‹</button>
+              <button class="osc-word" title="GESTO: qué hace este grupo en la frase · clic = el siguiente"></button>
+              <button class="osc-next" title="gesto siguiente">›</button>
+            </div>
+            <div class="osc-line" title="LA FRASE (8 compases): dónde se abre hacia B y por dónde va&#10;arrastrar arriba / abajo = más rápido / más lento&#10;arrastrar de lado = en qué tramo (toda la frase, 2ª mitad, final)&#10;rueda = velocidad · doble clic = como el gesto · mantener = editor de casillas">${'<i><b></b></i>'.repeat(32)}</div>
+          </div>
         </div>`).join('')}
+        <div class="osc-ed" hidden>
+          <div class="ed-head"><span class="ed-title"></span><button class="ed-close" title="cerrar (Esc)">✕</button></div>
+          <div class="ed-layers">${[0, 1].map((li) => `
+            <div class="osc-layer" data-l="${li}">
+              <span class="ed-lab">${li ? 'NIVEL 2 · TRAMO' : 'NIVEL 1 · FORMA'}</span>
+              <div class="osc-pat">
+                <button class="osc-prev" title="patrón anterior (borra lo pintado)">‹</button>
+                <span class="osc-cells">${'<i><b></b></i>'.repeat(4)}</span>
+                <button class="osc-next" title="patrón siguiente (borra lo pintado)">›</button>
+              </div>
+              <div class="osc-foot">
+                <button class="osc-lon osc-sq" title="${li ? 'NIVEL 2: encender / apagar. Multiplica al 1: decide cuánto del 1 suena en cada casilla' : 'NIVEL 1: encender / apagar'}"></button>
+                <button class="osc-unit" title="cada casilla dura: un pulso, medio compás, un compás o dos compases"></button>
+                <button class="osc-reset" title="borrar lo pintado: vuelve al patrón">↺</button>
+              </div>
+            </div>`).join('')}
+          </div>
+          <button class="ed-reset" title="borrar los retoques: vuelve al gesto con su guía de tiempos">↺ VOLVER AL GESTO</button>
+          <div class="ed-help">el 2 multiplica al 1: decide cuánto del 1 suena<br>clic = llenar / vaciar · de lado = pintar<br>arriba / abajo o rueda = nivel intermedio</div>
+        </div>
       </div>
     </section>
     <section class="col loopcol">
@@ -106,6 +139,232 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     cxF[g] = { s, el, val: el.querySelector('.cxf-val'), eff: el.querySelector('.cxf-eff') };
   }
   let cxSeen = deck.cxVersion;
+  // OSCILADORES: la marca B junto a cada fader, el GESTO y la línea de la frase (GUÍA DE TIEMPOS)
+  const oscV = {};
+  const NG = GESTURES.length;
+  const timeLabel = (o) => `${OSC_UNITS[o.rate].label} · ${ZONES[o.zone].label}`;
+  const gestName = (o) => GESTURES[o.gest].name + (o.edited ? '*' : '');
+  // EDITOR de casillas (mantener la línea): los dos niveles del grupo, a mano.
+  // PINTAR (0 = A, 1 = B): clic = llena / vacía · de lado = pinta lleno o vacío (lo contrario
+  // de la primera casilla) · arriba / abajo = NIVEL intermedio (las casillas crecen para verlo;
+  // sin soltar, de lado = ese nivel en las casillas por las que pasas) · rueda = nivel a pasos
+  const ed = { el: q('.osc-ed'), g: null, seen: '' };
+  const LVL_PX = 50; // recorrido de vacía a llena
+  const setupLayer = (li, el) => {
+    const L = () => deck.osc[ed.g].layers[li];
+    const box = el.querySelector('.osc-cells');
+    const cellEls = [...box.children];
+    const set = (i, v) => { if (layerCells(L())[i] !== v) deck.paintOsc(ed.g, li, i, v); };
+    const cellAt = (ev) => cellEls.indexOf(document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.osc-cells i'));
+    let paint = null;
+    box.addEventListener('pointerdown', (ev) => {
+      const i = cellAt(ev);
+      if (paint || i < 0 || !ed.g) return;
+      paint = { pid: ev.pointerId, i0: i, v0: layerCells(L())[i], y0: ev.clientY, mode: null, v: 0, cells: new Set([i]) };
+      try { box.setPointerCapture(ev.pointerId); } catch {}
+    });
+    box.addEventListener('pointermove', (ev) => {
+      const P = paint;
+      if (!P || ev.pointerId !== P.pid) return;
+      const i = cellAt(ev);
+      if (!P.mode) {
+        if (Math.abs(ev.clientY - P.y0) > 4) { P.mode = 'lvl'; box.classList.add('lvl'); }
+        else if (i >= 0 && i !== P.i0) { P.mode = 'bin'; P.v = P.v0 >= 0.5 ? 0 : 1; set(P.i0, P.v); }
+        else return;
+      }
+      if (P.mode === 'lvl') {
+        if (i >= 0) P.cells.add(i);
+        P.v = Math.round(Math.min(1, Math.max(0, P.v0 + (P.y0 - ev.clientY) / LVL_PX)) * 20) / 20;
+        for (const c of P.cells) set(c, P.v);
+      } else if (i >= 0) set(i, P.v);
+    });
+    const upP = (ev) => {
+      const P = paint;
+      if (!P || ev.pointerId !== P.pid) return;
+      if (!P.mode && ev.type === 'pointerup') set(P.i0, P.v0 >= 0.5 ? 0 : 1); // clic
+      box.classList.remove('lvl');
+      paint = null;
+    };
+    box.addEventListener('pointerup', upP);
+    box.addEventListener('pointercancel', upP);
+    box.addEventListener('wheel', (ev) => {
+      const i = cellAt(ev);
+      if (i < 0 || !ed.g) return;
+      ev.preventDefault();
+      const v = layerCells(L())[i] - Math.sign(ev.deltaY) * 0.1;
+      set(i, Math.round(Math.min(1, Math.max(0, v)) * 20) / 20);
+    }, { passive: false });
+    const N = OSC_PATTERNS.length;
+    const on = (sel, f) => el.querySelector(sel).addEventListener('pointerdown', () => ed.g && f());
+    on('.osc-prev', () => deck.setOscPattern(ed.g, li, (L().pat + N - 1) % N));
+    on('.osc-next', () => deck.setOscPattern(ed.g, li, (L().pat + 1) % N));
+    on('.osc-unit', () => {
+      const U = OSC_UNIT_ORDER;
+      deck.setOscUnit(ed.g, li, U[(U.indexOf(L().unit) + 1) % U.length]);
+    });
+    on('.osc-reset', () => deck.resetOsc(ed.g, li));
+    on('.osc-lon', () => deck.setLayerOn(ed.g, li, !L().on));
+    const V = {
+      el, box, cells: cellEls, fills: cellEls.map((c) => c.firstElementChild),
+      unit: el.querySelector('.osc-unit'), reset: el.querySelector('.osc-reset'), onBtn: el.querySelector('.osc-lon'),
+    };
+    V.show = (step, live) => {
+      const Ly = L();
+      const cells = layerCells(Ly);
+      const slot = step === null || !live || !Ly.on ? -1 : layerSlot(Ly, step);
+      cells.forEach((v, i) => {
+        V.fills[i].style.height = `${v * 100}%`;
+        V.cells[i].classList.toggle('now', i === slot);
+      });
+      V.el.classList.toggle('idle', !Ly.on);
+      V.onBtn.classList.toggle('on', Ly.on);
+      V.box.title = Ly.custom ? '(pintado)' : OSC_PATTERNS[Ly.pat].name;
+      V.unit.textContent = OSC_UNITS[Ly.unit].label;
+      V.reset.classList.toggle('on', !!Ly.custom);
+    };
+    return V;
+  };
+  ed.layers = [...ed.el.querySelectorAll('.osc-layer')].map((x, li) => setupLayer(li, x));
+  ed.title = ed.el.querySelector('.ed-title');
+  const openEd = (g) => { ed.g = g; ed.seen = ''; ed.el.hidden = false; };
+  const closeEd = () => { ed.g = null; ed.el.hidden = true; };
+  ed.el.querySelector('.ed-close').addEventListener('pointerdown', closeEd);
+  ed.el.querySelector('.ed-reset').addEventListener('pointerdown', () => ed.g && deck.resetGesture(ed.g));
+  window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && ed.g) closeEd(); });
+  ed.show = (step) => {
+    if (!ed.g) return;
+    const o = deck.osc[ed.g];
+    const live = oscActive(o);
+    const key = `${ed.g}|${o.gest}|${o.edited}|${o.rate}|${o.zone}|${JSON.stringify(o.layers)}|${step === null ? -1 : step >> 2}|${live}`;
+    if (key === ed.seen) return;
+    ed.seen = key;
+    ed.title.textContent = `${GROUP_LABEL[ed.g]} · ${gestName(o)}`;
+    for (const Lv of ed.layers) Lv.show(step, live);
+  };
+
+  for (const g of GROUPS) {
+    const el = cxF[g].el;
+    const lane = el.querySelector('.cxf-lane');
+    // marca B: se arrastra como un fader; doble clic, fuera (la B vuelve a seguir al fader)
+    let pid = null;
+    const setB = (ev) => {
+      const r = lane.getBoundingClientRect();
+      deck.setOscB(g, Math.min(1, Math.max(0, 1 - (ev.clientY - r.top) / r.height)));
+    };
+    lane.addEventListener('pointerdown', (ev) => {
+      if (pid !== null) return;
+      pid = ev.pointerId;
+      try { lane.setPointerCapture(pid); } catch {}
+      lane.classList.add('active');
+      setB(ev);
+    });
+    lane.addEventListener('pointermove', (ev) => ev.pointerId === pid && setB(ev));
+    const upB = (ev) => { if (ev.pointerId === pid) { pid = null; lane.classList.remove('active'); } };
+    lane.addEventListener('pointerup', upB);
+    lane.addEventListener('pointercancel', upB);
+    lane.addEventListener('dblclick', () => deck.setOscB(g, null));
+    el.querySelector('.osc-on').addEventListener('pointerdown', () => deck.setOscOn(g, !deck.osc[g].on));
+    // GESTO: flechas o clic en la palabra (la guía de tiempos vuelve a la variante del gesto)
+    const pick = (d) => deck.setGesture(g, (deck.osc[g].gest + d + NG) % NG);
+    el.querySelector('.osc-gest .osc-prev').addEventListener('pointerdown', () => pick(-1));
+    el.querySelector('.osc-gest .osc-next').addEventListener('pointerdown', () => pick(1));
+    el.querySelector('.osc-word').addEventListener('pointerdown', () => pick(1));
+    const V = {
+      osc: el.querySelector('.osc'), lane, b: lane.firstElementChild, range: el.querySelector('.cxf-range'),
+      onBtn: el.querySelector('.osc-on'), word: el.querySelector('.osc-word'), hint: el.querySelector('.osc-hint'),
+      line: el.querySelector('.osc-line'), seen: '', shapeSeen: '', pulse: -2, hintText: null,
+    };
+    V.segs = [...V.line.children];
+    V.fills = V.segs.map((x) => x.firstElementChild);
+    oscV[g] = V;
+    // GUÍA DE TIEMPOS sobre la línea de la frase: arriba / abajo = velocidad, de lado = tramo.
+    // Se mueve a saltos (cada ~14 px) y el cartel dice dónde estás. Mantener sin mover = editor
+    const STEP_PX = 14;
+    const ix = (v, n) => Math.min(n - 1, Math.max(0, v));
+    let drag = null;
+    const line = V.line;
+    const endDrag = () => {
+      if (drag) clearTimeout(drag.t);
+      drag = null;
+      V.hintText = null;
+    };
+    line.addEventListener('pointerdown', (ev) => {
+      if (drag) return;
+      const o = deck.osc[g];
+      drag = {
+        pid: ev.pointerId, x0: ev.clientX, y0: ev.clientY, moved: false,
+        r0: RATE_ORDER.indexOf(o.rate), z0: ZONE_ORDER.indexOf(o.zone),
+        t: setTimeout(() => { if (drag && !drag.moved) { endDrag(); openEd(g); } }, 450),
+      };
+      try { line.setPointerCapture(ev.pointerId); } catch {}
+    });
+    line.addEventListener('pointermove', (ev) => {
+      if (!drag || ev.pointerId !== drag.pid) return;
+      const dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+      if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+      drag.moved = true;
+      clearTimeout(drag.t);
+      const o = deck.osc[g];
+      if (GESTURES[o.gest].shape === null) return; // '—': nada que guiar
+      const r = ix(drag.r0 + Math.round(-dy / STEP_PX), RATE_ORDER.length);
+      const z = ix(drag.z0 + Math.round(dx / STEP_PX), ZONE_ORDER.length);
+      if (RATE_ORDER[r] !== o.rate || ZONE_ORDER[z] !== o.zone) deck.setOscTime(g, RATE_ORDER[r], ZONE_ORDER[z]);
+      V.hintText = timeLabel(deck.osc[g]);
+    });
+    const upL = (ev) => { if (drag && ev.pointerId === drag.pid) endDrag(); };
+    line.addEventListener('pointerup', upL);
+    line.addEventListener('pointercancel', upL);
+    line.addEventListener('dblclick', () => deck.resetOscTime(g));
+    line.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const o = deck.osc[g];
+      if (GESTURES[o.gest].shape === null) return;
+      const r = ix(RATE_ORDER.indexOf(o.rate) - Math.sign(ev.deltaY), RATE_ORDER.length);
+      deck.setOscTime(g, RATE_ORDER[r], o.zone);
+      V.hintText = timeLabel(deck.osc[g]);
+      clearTimeout(V.wheelT);
+      V.wheelT = setTimeout(() => (V.hintText = null), 700);
+    }, { passive: false });
+  }
+  // silenciar todos los osciladores del universo (se siguen viendo y tocando: preparar por debajo)
+  const muteBtn = q('.osc-mute');
+  const cxBox = q('.cx-box');
+  muteBtn.addEventListener('pointerdown', () => deck.setOscMuted(!deck.oscMuted));
+  // pinta un oscilador solo si algo cambió (se llama en cada fotograma)
+  const showOsc = (g, step) => {
+    const o = deck.osc[g], a = deck.cx[g], V = oscV[g];
+    const live = oscActive(o);
+    const key = `${o.on}|${a}|${o.b}|${o.gest}|${o.edited}|${live}|${V.hintText}`;
+    if (key !== V.seen) {
+      V.seen = key;
+      const noB = o.b === null;
+      V.onBtn.classList.toggle('on', o.on);
+      V.osc.classList.toggle('idle', !live);
+      V.lane.classList.toggle('idle', !live);
+      V.b.style.top = `${(1 - (noB ? a : o.b)) * 100}%`;
+      V.range.style.display = live ? '' : 'none';
+      if (live) {
+        V.range.style.bottom = `${Math.min(a, o.b) * 100}%`;
+        V.range.style.height = `${Math.abs(o.b - a) * 100}%`;
+      }
+      V.word.textContent = gestName(o);
+      V.hint.hidden = !V.hintText;
+      if (V.hintText) V.hint.textContent = V.hintText;
+    }
+    // la línea: 32 pulsos (8 compases), alto = cuánto se acerca a B
+    const sk = JSON.stringify(o.layers);
+    if (sk !== V.shapeSeen) {
+      V.shapeSeen = sk;
+      V.fills.forEach((f, p) => (f.style.height = `${oscShape(o, p * 4) * 100}%`));
+      V.line.title = V.line.title.replace(/^[^\n]*/, `LA FRASE (8 compases) · ${timeLabel(o)}`);
+    }
+    const pulse = step === null || !live ? -1 : (step >> 2) % 32;
+    if (pulse !== V.pulse) {
+      if (V.pulse >= 0) V.segs[V.pulse].classList.remove('now');
+      if (pulse >= 0) V.segs[pulse].classList.add('now');
+      V.pulse = pulse;
+    }
+  };
 
   const options = (sel, onPick) => {
     const box = q(sel);
@@ -235,12 +494,20 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         cxSeen = deck.cxVersion;
         for (const g of GROUPS) cxF[g].s.set(deck.cx[g]);
       }
-      const eff = shapeComplexity(deck.cx).eff;
+      // lo que suena ahora (con su oscilador × global): número y línea fina
+      const p = deck.loop ? null : deck.pos();
+      const step = p === null ? null : Math.max(0, Math.floor(p));
       for (const g of GROUPS) {
-        const t = String(Math.round(eff[g] * 100));
+        const v = step === null ? deck.cx[g] : deck.cxNow(g, step);
+        const eff = Math.min(1, Math.max(0, v * deck.cx.global));
+        const t = String(Math.round(eff * 100));
         if (cxF[g].val.textContent !== t) cxF[g].val.textContent = t;
-        cxF[g].eff.style.height = `${eff[g] * 100}%`;
+        cxF[g].eff.style.height = `${eff * 100}%`;
+        showOsc(g, step);
       }
+      ed.show(step);
+      muteBtn.classList.toggle('on', !deck.oscMuted);
+      cxBox.classList.toggle('osc-muted', deck.oscMuted);
 
       const AR = deck.arr;
       const T = AR.travel;

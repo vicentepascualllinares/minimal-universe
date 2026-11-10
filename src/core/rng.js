@@ -1,20 +1,20 @@
 // Aleatoriedad con semilla: el mismo "universo" suena igual con la misma semilla.
 
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function () {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
+// mulberry32, con el estado a la vista para poder guardarlo y repetir la misma tirada
 export class Rng {
   constructor(seed = Date.now()) {
     this.seed = seed >>> 0;
-    this.next = mulberry32(this.seed);
+    this.a = this.seed;
   }
+  next() {
+    this.a = (this.a + 0x6d2b79f5) | 0;
+    let t = Math.imul(this.a ^ (this.a >>> 15), 1 | this.a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  // guardar y volver a un punto: el mismo "dado" para las versiones de un compás (OSCILADOR)
+  save() { return this.a; }
+  restore(a) { this.a = a; }
   float(a = 0, b = 1) { return a + (b - a) * this.next(); }
   int(a, b) { return Math.floor(this.float(a, b + 1)); }
   chance(p) { return this.next() < p; }

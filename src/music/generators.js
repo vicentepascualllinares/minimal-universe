@@ -12,6 +12,18 @@ const isOff8 = (s) => s % 4 === 2;
 // complejidad baja: las semicorcheas pesan más (entran tarde o nunca)
 const fastPenalty = (s, f, amt) => (s % 2 === 1 ? amt * f : 0);
 
+// recortar duraciones para que una nota no se solape con la siguiente (bajo, acordes).
+// Copia los eventos que recorta: pueden venir de otra versión del compás (OSCILADOR)
+export function trimLens(st) {
+  let prev = null;
+  for (let s = 0; s < st.length; s++) {
+    if (!st[s]) continue;
+    if (prev !== null && st[prev].len > s - prev) st[prev] = { ...st[prev], len: s - prev };
+    prev = s;
+  }
+  return st;
+}
+
 // ───────────────────────── KICK
 export class KickGen {
   constructor(rng) { this.rng = rng; }
@@ -245,14 +257,7 @@ export class BassGen {
       st[s] = { deg: simplifyDeg(n.deg, cx.bassPitches), len: n.len, vel: n.vel };
       last = s;
     }
-    // recortar duraciones para que no se solapen (bajo monofónico)
-    let prev = null;
-    for (let s = 0; s < 16; s++) {
-      if (!st[s]) continue;
-      if (prev !== null) st[prev].len = Math.min(st[prev].len, s - prev);
-      prev = s;
-    }
-    return st;
+    return trimLens(st); // bajo monofónico: sin solapes
   }
 }
 
@@ -334,13 +339,7 @@ export class HarmonyGen {
       for (let s = 0; s < 16; s++) if (w(s) < w(best)) best = s;
       st[best] = { notes: ch.notes, len: this.len[best], vel: 0.8 };
     }
-    let prev = null;
-    for (let s = 0; s < 16; s++) {
-      if (!st[s]) continue;
-      if (prev !== null) st[prev].len = Math.min(st[prev].len, s - prev);
-      prev = s;
-    }
-    return st;
+    return trimLens(st);
   }
 
   // pad: un evento por compás con el acorde y cuántos compases dura hasta su

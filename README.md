@@ -62,6 +62,8 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
 | **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
 | **COMPLEJIDAD** (4 faders) | KICK · PERCS · BASS · INSTR.: cuánta información dice cada grupo (ver abajo). Se aplica en el siguiente compás. Doble clic = 0,5. |
+| **OSCILADOR** (uno por fader) | La complejidad del grupo va y viene entre el fader (A) y la **marca** ◂ de su derecha (B): arrastrar = ponerla, doble clic = quitarla. El **cuadradito** junto al nombre del grupo = encenderlo / apagarlo. Debajo, el **GESTO** (‹ › o clic en la palabra) y la **línea de la frase**: arrastrar arriba / abajo = más rápido / más lento, de lado = en qué tramo de la frase; doble clic = como el gesto; mantener = editor de casillas. Ver "Osciladores". |
+| **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
 | **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. |
 
@@ -251,6 +253,64 @@ Con el GLOBAL, dos reglas para que no compita todo a la vez:
   pad no ceden.
 - **Turnos** (GLOBAL por debajo de 0,6): los acordes esquivan al bajo (se mueven una
   corchea, como respuesta) y la percusión deja libres los golpes de acordes y clap.
+
+### Osciladores
+
+Cada grupo puede ir y venir entre su fader (**A**, el punto de partida) y una marca (**B**,
+el punto final), por encima o por debajo: con B por encima el gesto abre, con B por debajo
+cierra (el "al revés"). Sin marca, no oscila. No se programa: se elige un **gesto** y se
+**guía** en el tiempo.
+
+**Gestos** (qué hace el grupo en la frase de 8 compases):
+
+| Gesto | Qué hace |
+|---|---|
+| **—** | quieto |
+| **REMATE** | se abre al final |
+| **RESPIRA** | lento: un rato cerrado, un rato abierto |
+| **PREGUNTA** | va y viene: cerrado, abierto, cerrado, abierto |
+| **BAILA** | se mueve por pulsos, solo en un tramo de la frase |
+| **CRECE** | sube poco a poco y vuelve |
+| **OLA** | sube y baja |
+
+Cada gesto tiene 2 o 3 **variantes** (más lenta, más rápida, en otro tramo) y cada universo
+elige cuál toca en cada grupo: al elegir un gesto, sale su variante de este universo.
+
+**Guía de tiempos**, sobre la línea de la frase (32 pulsos; el alto de cada uno = cuánto se
+acerca a B, y el que suena se ilumina). Dos ejes, a saltos, con un cartel que dice dónde estás:
+
+- **Arriba / abajo = velocidad**: cada cuánto se mueve. 2 COMP. · COMPÁS · ½ COMP. · PULSO.
+- **De lado = tramo**: en qué parte de la frase actúa. TODA LA FRASE · 2ª MITAD · FINAL (los
+  dos últimos compases).
+- Rueda = velocidad. Doble clic = vuelve a la variante del gesto.
+
+Así se combinan tiempos sin dibujar: PREGUNTA a PULSO en el FINAL = seis compases quietos y en
+los dos últimos el grupo va y viene por pulsos.
+
+**Editor de casillas** (mantener la línea sin mover): para afinar a mano. Por dentro, gesto y
+guía son dos niveles de 4 casillas que se multiplican: el 1 es la forma a esa velocidad y el 2
+el tramo (decide cuánto del 1 suena). Cada nivel tiene sus flechas de patrón, su encendido, su
+unidad y ↺. Pintar: **clic** llena o vacía, **de lado** pinta, **arriba / abajo** da un nivel
+intermedio (las casillas crecen para verlo) y la **rueda** también. Lo retocado se marca con un
+asterisco (BAILA\*); **↺ VOLVER AL GESTO** lo borra, y mover la guía o el gesto también. Se
+cierra con ✕ o Esc.
+
+- Encendido: el cuadradito junto al nombre del grupo (apagado, se ve atenuado y no suena), y
+  **OSC** en la cabecera para silenciar todos los del universo. En silencio, la franja del fader
+  y el pulso de la línea se ven en discontinuo: se prepara por debajo.
+- La franja del fader marca el recorrido A–B; la línea fina y el número, lo que suena en cada
+  momento (× GLOBAL).
+- Con velocidad de pulso o medio compás, el compás se genera en varias versiones con el mismo
+  "dado" y se cose pulso a pulso: un golpe fantasma o un redoble que sale en una versión sale en
+  la otra, y lo que cambia es cuánto suena. El bajo y los acordes recortan sus notas para no
+  pisarse al cambiar de pulso.
+- No oscilan: la **mutación** de los motivos (sigue al fader), la progresión de acordes y el
+  **pad** (una nota larga por compás). Los acordes sí oscilan en ritmo y en número de notas.
+- NUEVO UNIVERSO sortea también los osciladores: cuáles se encienden (el kick menos a menudo),
+  hacia dónde va B (arriba o abajo del fader nuevo), el gesto y la variante de cada gesto. Solo
+  se queda como estaba OSC: si el universo tenía los osciladores en silencio, el nuevo también.
+  El primer universo al abrir sale con todos apagados. Todavía no se guardan.
+- Pad pequeño (móvil): sin flechas junto al gesto; clic en la palabra = el siguiente.
 
 ## Color de cada universo
 
@@ -469,5 +529,5 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/music/emotion.js` — el color de cada universo → timbre, golpe, duraciones y swing; las escalas.
 - `src/music/generators.js` — motivos estables con mutación lenta, percusión polimétrica, bajo y armonía en grados de escala.
 - `src/music/arrangement.js` — las 8 escenas (presencia por instrumento), umbrales, viajes.
-- `src/music/complexity.js` — la complejidad por grupos y el global: reglas por instrumento, presupuesto de protagonismo.
+- `src/music/complexity.js` — la complejidad por grupos y el global: reglas por instrumento, presupuesto de protagonismo y los OSCILADORES (patrones, unidades, valor en cada paso).
 - `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).

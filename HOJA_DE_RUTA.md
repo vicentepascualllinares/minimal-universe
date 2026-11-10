@@ -79,6 +79,19 @@ tope de voces, AudioWorklet).
    BUILD 2 → DROP 1), y en las partes que evolucionan solas (sesión 10). Pendiente también:
    probar si hace falta el fader continuo entre las dos versiones (se probó primero como botón),
    un atajo de teclado y el MIDI (toggleNow / toggleNext, como las partes).
+12. **MUTACIÓN como mando propio** (apuntado 2026-11-10, para más adelante): hoy la mutación
+   (cada cuánto el motivo de cada instrumento cambia un poco: hats, bajo, percs, clap, armonía)
+   va atada a la COMPLEJIDAD de su grupo (`complexity.js`, `gen.mutation`). La idea es separarla
+   y darle su propio valor, por grupo y quizá global, aunque luego se combine con la complejidad:
+   - **Mutación alta**: un universo más experimental o pasivo, que se va transformando solo y
+     se deja escuchar.
+   - **Mutación baja**: un universo "decidido desde la generación", que se queda en lo que salió
+     y repite con intención.
+   Regla ya decidida: los OSCILADORES de complejidad no mueven la mutación. La mutación sigue el
+   valor de partida del fader, no el que marca el oscilador en cada momento; si no, los motivos
+   envejecerían más rápido en los tramos altos. Por decidir: qué cosas muta exactamente cada
+   grupo, a qué ritmo, y si la mutación también puede oscilar o evolucionar con la parte
+   (sesión 10).
 
 ## Auto-arreglos (OPCIONES → AUTO-ARREGLOS)
 

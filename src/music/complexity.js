@@ -79,6 +79,118 @@ export function shareDensity(densIn, prog, budget) {
   return out;
 }
 
+// ───────────────────────── OSCILADORES
+// Cada grupo puede ir y venir entre su fader (A, el punto de partida) y una marca (B, el
+// punto final; por encima o por debajo: el "al revés" lo da la marca). Solo cambia qué se
+// toca, nunca la mutación ni la armonía.
+//
+// Se GUÍA, no se programa:
+//  · un GESTO con nombre (REMATE, RESPIRA, PREGUNTA, BAILA, CRECE, OLA) = la forma
+//  · la GUÍA DE TIEMPOS, dos ejes: VELOCIDAD (cada cuánto se mueve: 2 compases … pulso) y
+//    TRAMO (en qué parte de la frase de 8 compases: toda, la 2ª mitad o el final)
+// Cada gesto tiene variantes = puntos de partida de la guía; NUEVO UNIVERSO elige cuál.
+//
+// Por dentro todo se traduce a DOS NIVELES de 4 casillas que se multiplican (el 2º decide
+// cuánto del 1º suena): nivel 1 = la forma a esa velocidad, nivel 2 = el tramo. Esas casillas
+// se pueden retocar a mano en el editor (pulsación larga en la línea de la frase).
+export const OSC_UNITS = {
+  beat: { steps: 4, label: 'PULSO' },       // el ciclo dura 1 compás
+  half: { steps: 8, label: '½ COMP.' },     // 2 compases
+  bar: { steps: 16, label: 'COMPÁS' },      // 4 compases
+  bar2: { steps: 32, label: '2 COMP.' },    // 8 compases: una frase
+};
+export const OSC_UNIT_ORDER = ['beat', 'half', 'bar', 'bar2'];
+export const OSC_PATTERNS = [
+  { name: 'A B A B', v: [0, 1, 0, 1] },
+  { name: 'A A B B', v: [0, 0, 1, 1] },
+  { name: 'A A A B', v: [0, 0, 0, 1] },
+  { name: 'A B B B', v: [0, 1, 1, 1] },
+  { name: 'RAMPA A → B', v: [0, 1 / 3, 2 / 3, 1] },
+  { name: 'RAMPA B → A', v: [1, 2 / 3, 1 / 3, 0] },
+  { name: 'TRIÁNGULO', v: [0, 0.5, 1, 0.5] },
+];
+// GUÍA DE TIEMPOS: velocidad (de lento a rápido) y tramo (de repartido a concentrado al final)
+export const RATE_ORDER = ['bar2', 'bar', 'half', 'beat'];
+export const ZONES = {
+  all: { label: 'TODA LA FRASE', layer: null },
+  half2: { label: '2ª MITAD', layer: { unit: 'bar2', pat: 1 } }, // A A B B cada 2 compases
+  end: { label: 'FINAL', layer: { unit: 'bar2', pat: 2 } },       // A A A B: los 2 últimos
+};
+export const ZONE_ORDER = ['all', 'half2', 'end'];
+// GESTOS: forma (patrón del nivel 1) y variantes [velocidad, tramo]
+export const GESTURES = [
+  { name: '—', shape: null, vars: [['bar2', 'all']] },
+  { name: 'REMATE', shape: 2, vars: [['bar2', 'all'], ['bar', 'all'], ['beat', 'end']] },
+  { name: 'RESPIRA', shape: 1, vars: [['bar2', 'all'], ['bar', 'all'], ['half', 'all']] },
+  { name: 'PREGUNTA', shape: 0, vars: [['bar', 'all'], ['half', 'all']] },
+  { name: 'BAILA', shape: 0, vars: [['beat', 'half2'], ['beat', 'end'], ['half', 'half2']] },
+  { name: 'CRECE', shape: 4, vars: [['bar2', 'all'], ['bar', 'all']] },
+  { name: 'OLA', shape: 6, vars: [['bar', 'all'], ['bar2', 'all'], ['beat', 'all']] },
+];
+// on = encendido (cada oscilador tiene su botón; el universo además puede silenciarlos todos).
+// b = null: sin marca, la B sigue al fader y no oscila nada.
+// gest = gesto · vars = qué variante toca de cada gesto en este universo · rate / zone = guía
+// layers = los dos niveles que suenan: { on, unit, pat, custom } (custom = casillas pintadas a
+// mano encima del patrón) · edited = retocado en el editor (se ve con un asterisco)
+export function newOsc() {
+  const o = { on: false, b: null, gest: 1, vars: GESTURES.map(() => 0), rate: 'bar2', zone: 'all', edited: false, layers: [] };
+  return applyGesture(o, 1);
+}
+// traduce gesto + guía a los dos niveles (y borra lo retocado a mano)
+export function compileOsc(o) {
+  const G = GESTURES[o.gest];
+  const Z = ZONES[o.zone].layer;
+  o.layers = [
+    { on: G.shape !== null, unit: o.rate, pat: G.shape ?? 0, custom: null },
+    { on: G.shape !== null && !!Z, unit: Z ? Z.unit : 'bar2', pat: Z ? Z.pat : 2, custom: null },
+  ];
+  o.edited = false;
+  return o;
+}
+// elegir gesto: la guía vuelve a la variante de este universo
+export function applyGesture(o, i) {
+  o.gest = i;
+  const V = GESTURES[i].vars;
+  [o.rate, o.zone] = V[o.vars[i] % V.length];
+  return compileOsc(o);
+}
+export const layerCells = (L) => L.custom ?? OSC_PATTERNS[L.pat].v;
+export const layerSlot = (L, step) => Math.floor(step / OSC_UNITS[L.unit].steps) % 4;
+export const oscActive = (o) => o.on && o.b !== null && o.layers.some((L) => L.on);
+// dónde está entre A (0) y B (1) en el paso absoluto `step`, aunque esté apagado
+export function oscShape(o, step) {
+  let w = 1, any = false;
+  for (const L of o.layers) if (L.on) { w *= layerCells(L)[layerSlot(L, step)]; any = true; }
+  return any ? w : 0;
+}
+// valor del fader del grupo en el paso absoluto `step` (a = el fader)
+export function oscAt(o, a, step) {
+  if (!oscActive(o)) return a;
+  return a + (o.b - a) * oscShape(o, step);
+}
+
+// NUEVO UNIVERSO: cada grupo sale también con su oscilador: encendido o no, hacia dónde va B
+// (arriba o abajo del fader nuevo), qué gesto y qué variante de cada gesto.
+const GEST_IDX = GESTURES.map((_, i) => i);
+const GEST_W = [0, 3, 2.5, 2, 2, 1.2, 1.2];
+const ON_P = { kick: 0.3, perc: 0.55, bass: 0.45, inst: 0.45 };
+export function randomOsc(rng, cx) {
+  const out = {};
+  for (const g of GROUPS) {
+    const a = cx[g];
+    const up = a < 0.3 ? true : a > 0.75 ? false : rng.chance(0.6);
+    const o = {
+      on: rng.chance(ON_P[g]),
+      b: clamp(a + (up ? 1 : -1) * rng.float(0.2, 0.55)),
+      vars: GESTURES.map((G) => rng.int(0, G.vars.length - 1)),
+      edited: false,
+      layers: [],
+    };
+    out[g] = applyGesture(o, rng.weighted(GEST_IDX, GEST_W));
+  }
+  return out;
+}
+
 // NUEVO UNIVERSO: cada grupo sale con su propio carácter
 export function randomComplexity(rng) {
   return {

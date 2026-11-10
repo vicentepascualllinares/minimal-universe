@@ -4,13 +4,13 @@
 
 import * as V from './voices.js';
 import { Channel, Saturator, glide, fixChannels } from './dsp.js';
-import { makeGenerators } from '../music/generators.js';
+import { makeGenerators, trimLens } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS, mixOf } from '../music/arrangement.js';
 import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
 import { blockRate } from './quality.js';
-import { shapeComplexity, shareDensity, randomComplexity, GROUPS } from '../music/complexity.js';
+import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
@@ -47,6 +47,10 @@ export class Deck {
     // Se aplica compás a compás. NUEVO UNIVERSO los cambia (luego se tocan a mano).
     this.cx = { kick: 0.3, perc: 0.6, bass: 0.5, inst: 0.5, global: 0.8 };
     this.cxVersion = 0; // la vista sabe cuándo los cambió el universo y no el usuario
+    // OSCILADORES de complejidad, uno por grupo (ver complexity.js). NUEVO UNIVERSO los sortea;
+    // oscMuted = todos en silencio (se preparan por debajo): eso sí lo recuerda el universo
+    this.osc = Object.fromEntries(GROUPS.map((g) => [g, newOsc()]));
+    this.oscMuted = false;
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement(scene);
     this.events = [];
@@ -162,9 +166,38 @@ export class Deck {
     const r = new Rng(seed ^ 0x9e3779b9);
     this.emotion.setTarget(r.float(-0.8, 0.8), r.float(-0.7, 0.7));
     Object.assign(this.cx, randomComplexity(r));
+    this.osc = randomOsc(r, this.cx);
     this.cxVersion++;
   }
   setComplexity(group, v) { this.cx[group] = v; }
+  // OSCILADOR: encendido, marca B (null = sin oscilar), GESTO y GUÍA DE TIEMPOS (velocidad y
+  // tramo de la frase); volver a la variante del gesto; volver al gesto (borra lo retocado)
+  setOscOn(group, on) { this.osc[group].on = on; }
+  setOscMuted(m) { this.oscMuted = m; }
+  setOscB(group, v) { this.osc[group].b = v; }
+  setGesture(group, i) { applyGesture(this.osc[group], i); }
+  setOscTime(group, rate, zone) { Object.assign(this.osc[group], { rate, zone }); compileOsc(this.osc[group]); }
+  resetOscTime(group) { applyGesture(this.osc[group], this.osc[group].gest); }
+  resetGesture(group) { compileOsc(this.osc[group]); }
+  // EDITOR (retoque a mano de los dos niveles, `li` = 0 o 1): encendido, unidad, patrón
+  // (borra lo pintado), pintar una casilla, volver al patrón. Marca el gesto como retocado
+  editLayer(group, li, f) {
+    f(this.osc[group].layers[li]);
+    this.osc[group].edited = true;
+  }
+  setLayerOn(group, li, on) { this.editLayer(group, li, (L) => (L.on = on)); }
+  setOscUnit(group, li, unit) { this.editLayer(group, li, (L) => (L.unit = unit)); }
+  setOscPattern(group, li, i) { this.editLayer(group, li, (L) => Object.assign(L, { pat: i, custom: null })); }
+  paintOsc(group, li, i, v) {
+    this.editLayer(group, li, (L) => {
+      L.custom = [...layerCells(L)];
+      L.custom[i] = v;
+    });
+  }
+  resetOsc(group, li) { this.editLayer(group, li, (L) => (L.custom = null)); }
+  // lo que marca ahora cada grupo con su oscilador (0..1, antes del GLOBAL)
+  // (con los osciladores en silencio, el fader)
+  cxNow(group, step) { return this.oscMuted ? this.cx[group] : oscAt(this.osc[group], this.cx[group], step); }
 
   // paso de la rejilla que suena ahora (fraccionario); null en pausa
   pos(now = this.ctx?.currentTime) {
@@ -467,9 +500,11 @@ export class Deck {
       }
     }
     const G = this.gen;
+    // la complejidad de los faders (A): manda en la mutación, la armonía y el protagonismo.
+    // Lo que se toca sale de los OSCILADORES (ver byPulse, abajo)
     const cx = shapeComplexity(this.cx);
     // cada generador ve el carácter del universo (this.e) con la complejidad de su grupo
-    const eK = { ...this.e, gen: cx.kick.gen, cx: cx.kick.cx };
+    // (estas, las del fader: para mutar y para el pad)
     const eP = { ...this.e, gen: cx.perc.gen, cx: cx.perc.cx };
     const eB = { ...this.e, gen: cx.bass.gen, cx: cx.bass.cx };
     const eI = { ...this.e, gen: cx.inst.gen, cx: cx.inst.cx };
@@ -496,19 +531,51 @@ export class Deck {
     }
     const shared = shareDensity(dens, prog, cx.budget);
     const d = (k) => shared[k];
+    const withCx = (sh) => ({ ...this.e, gen: sh.gen, cx: sh.cx });
+    // los acordes oscilan en ritmo y número de notas, pero la progresión es la del fader
+    const chordCx = (sh) => ({ ...sh, cx: { ...sh.cx, progression: cx.inst.cx.progression } });
     this.bars = {
-      kick: G.kick.bar(b, d('kick'), eK),
-      clap: G.clap.bar(b, d('clap'), eP),
-      hat: G.hat.bar(b, d('hat'), eP),
-      ohat: G.ohat.bar(b, d('ohat'), eP),
-      perc: G.perc.bar(b, d('perc'), eP, absStep),
-      bass: G.bass.bar(b, d('bass'), eB),
-      chord: G.harmony.chordBar(b, d('chord'), eI),
-      pad: G.harmony.padBar(b, d('pad'), eI),
+      ...this.byPulse('kick', absStep, cx, [G.kick], (sh) => ({ kick: G.kick.bar(b, d('kick'), withCx(sh)) })),
+      ...this.byPulse('perc', absStep, cx, [G.clap, G.hat, G.ohat, G.perc], (sh) => {
+        const e = withCx(sh);
+        return {
+          clap: G.clap.bar(b, d('clap'), e),
+          hat: G.hat.bar(b, d('hat'), e),
+          ohat: G.ohat.bar(b, d('ohat'), e),
+          perc: G.perc.bar(b, d('perc'), e, absStep),
+        };
+      }),
+      ...this.byPulse('bass', absStep, cx, [G.bass], (sh) => ({ bass: G.bass.bar(b, d('bass'), withCx(sh)) })),
+      ...this.byPulse('inst', absStep, cx, [G.harmony], (sh) => ({ chord: G.harmony.chordBar(b, d('chord'), withCx(chordCx(sh))) })),
+      pad: G.harmony.padBar(b, d('pad'), eI), // una nota larga por compás: sigue al fader
     };
     if (cx.avoid) this.takeTurns(this.bars, prog);
     this.history.push({ b, bars: this.bars });
     if (this.history.length > 16) this.history.shift();
+  }
+
+  // OSCILADOR: genera los pasos de un grupo con la complejidad de cada pulso y los cose.
+  // Cada versión tira el mismo "dado" (se repite el estado aleatorio de sus generadores):
+  // un golpe fantasma o un redoble que sale en una versión sale en la otra, y lo que cambia
+  // es cuánto suena. Sin oscilar (o con unidad de compás o más) es un solo compás, como antes.
+  // `make(shape)` = { instrumento: pasos } con la forma de complejidad de ese grupo.
+  byPulse(g, absStep, base, gens, make) {
+    const vals = [0, 4, 8, 12].map((s) => this.cxNow(g, absStep + s));
+    const shapeOf = (v) => (v === this.cx[g] ? base : shapeComplexity({ ...this.cx, [g]: v }))[g];
+    const uniq = [...new Set(vals)];
+    if (uniq.length === 1) return make(shapeOf(uniq[0]));
+    const saved = gens.map((x) => x.rng.save());
+    const out = new Map();
+    for (const v of uniq) {
+      gens.forEach((x, i) => x.rng.restore(saved[i]));
+      out.set(v, make(shapeOf(v)));
+    }
+    const res = {};
+    for (const k in out.get(uniq[0])) {
+      res[k] = Array.from({ length: 16 }, (_, s) => out.get(vals[s >> 2])[k][s]);
+      if (k === 'bass' || k === 'chord') trimLens(res[k]); // una nota de un pulso no pisa la del siguiente
+    }
+    return res;
   }
 
   // TURNOS (complejidad baja): los acordes esquivan al bajo y la percusión deja
@@ -525,12 +592,7 @@ export class Deck {
           s = t;
         }
       }
-      let prev = null; // recalcular duraciones
-      for (let s = 0; s < 16; s++) {
-        if (!B.chord[s]) continue;
-        if (prev !== null) B.chord[prev] = { ...B.chord[prev], len: Math.min(B.chord[prev].len, s - prev) };
-        prev = s;
-      }
+      trimLens(B.chord); // recalcular duraciones
     }
     if (prog.perc > 0) {
       for (let s = 0; s < 16; s++) {

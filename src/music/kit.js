@@ -1,4 +1,4 @@
-// KIT — CANTIDAD y VARIEDAD de HATS y PERCS, dos perillas por grupo bajo su nombre (abajo
+// KIT — CANTIDAD y VARIEDAD de HATS, PERCS y FOLEY, dos perillas por grupo bajo su nombre (abajo
 // del universo). Independientes de la COMPLEJIDAD: ella decide CÓMO se toca (semicorcheas o
 // corcheas, redobles, cuánto mutan los motivos, el clap); el kit decide CUÁNTO y CON QUÉ.
 //
@@ -8,17 +8,18 @@
 //             poco a poco (primero sus golpes más fuertes), así girarla nunca da saltos.
 //             HATS: el hat del universo (cerrado + su abierto) y luego FINO, OSCURO, TICK y
 //             MEDIO, en un orden que sale de la semilla. PERCS: los carriles de percusión
-//             polimétrica (cada uno con su sonido y su longitud).
+//             polimétrica (cada uno con su sonido y su longitud). FOLEY: los objetos (papel,
+//             llaves, gota, tela, taza, clic de boca), cada uno en su carril escaso.
 //
 // Las dos son 0..1 con el centro arriba (0,5 = lo normal). NUEVO UNIVERSO las sortea alrededor
 // del centro, como los faders de complejidad.
 
 import { clamp, lerp } from '../core/rng.js';
 
-export const KIT_GROUPS = ['hat', 'perc'];
+export const KIT_GROUPS = ['hat', 'perc', 'foley'];
 export const MAX_VARIETY = 5;
 
-export const newKit = () => ({ hat: { amt: 0.5, vary: 0.5 }, perc: { amt: 0.5, vary: 0.5 } });
+export const newKit = () => ({ hat: { amt: 0.5, vary: 0.5 }, perc: { amt: 0.5, vary: 0.5 }, foley: { amt: 0.5, vary: 0.5 } });
 
 // CANTIDAD → multiplicador de densidad (centro = ×1)
 export const amountMul = (a) => (a <= 0.5 ? lerp(0.15, 1, a / 0.5) : lerp(1, 1.9, (a - 0.5) / 0.5));
@@ -33,6 +34,7 @@ export function randomKit(r) {
   return {
     hat: { amt: r.float(0.3, 0.7), vary: r.float(0.1, 0.75) },
     perc: { amt: r.float(0.3, 0.7), vary: r.float(0.25, 0.85) },
+    foley: { amt: r.float(0.3, 0.7), vary: r.float(0.15, 0.75) }, // (al final: lo demás sale igual)
   };
 }
 

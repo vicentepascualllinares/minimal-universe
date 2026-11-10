@@ -13,7 +13,7 @@ import { TransitionFx } from './transitionFx.js';
 import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
-import { hatMain, hatKind, percSound } from '../music/sounds.js';
+import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
 import { Rng, makeDrift } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
@@ -168,6 +168,7 @@ export class Deck {
       const semis = degreeToSemis(so.deg, scale) + 12 * so.oct;
       put(`p${n}`, 'perc', percSound(e, so, root * Math.pow(2, semis / 12) * e.perc.pitchMul), [so, root, scale]);
     });
+    gen.foley.lanes.forEach((l, n) => put(`f${n}`, 'foley', foleySound(e, l.sound), [l.sound]));
   }
 
   // móvil: no reenviar a un parámetro el valor que ya tiene
@@ -198,7 +199,7 @@ export class Deck {
     this.cxVersion++;
   }
   setComplexity(group, v) { this.cx[group] = v; }
-  // KIT: `group` = 'hat' | 'perc', `key` = 'amt' (CANTIDAD) | 'vary' (VARIEDAD). En el siguiente compás
+  // KIT: `group` = 'hat' | 'perc' | 'foley', `key` = 'amt' (CANTIDAD) | 'vary' (VARIEDAD). En el siguiente compás
   setKit(group, key, v) { this.kit[group][key] = v; }
   // OSCILADOR: encendido, marca B (null = sin oscilar), GESTO y GUÍA DE TIEMPOS (velocidad y
   // tramo de la frase); volver a la variante del gesto; volver al gesto (borra lo retocado)
@@ -490,6 +491,7 @@ export class Deck {
     C.hat.setDrive(e.hat.drive);
     C.ohat.setDrive(e.hat.drive);
     C.perc.setDrive(e.perc.drive);
+    C.foley.setDrive(e.foley.drive);
     C.bass.setDrive(e.bass.drive);
     C.chord.setDrive(e.chord.drive);
     C.pad.setDrive(e.pad.drive);
@@ -539,6 +541,7 @@ export class Deck {
     if (b > 0 && b % 4 === 0) {
       if (r.chance(muP)) G.perc.mutate(1);
       if (r.chance(muP * 0.5)) G.hat.mutate();
+      if (r.chance(muP * 0.6)) G.foley.mutate(1);
     }
     if (b > 0 && b % 8 === 0) {
       if (r.chance(eB.gen.mutation * 0.7)) G.bass.mutate();
@@ -562,9 +565,9 @@ export class Deck {
     const chordCx = (sh) => ({ ...sh, cx: { ...sh.cx, progression: cx.inst.cx.progression } });
     this.bars = {
       ...this.byPulse('kick', absStep, cx, [G.kick], (sh) => ({ kick: G.kick.bar(b, d('kick'), withCx(sh)) })),
-      ...this.byPulse('perc', absStep, cx, [G.clap, G.hat, G.ohat, G.perc], (sh) => {
+      ...this.byPulse('perc', absStep, cx, [G.clap, G.hat, G.ohat, G.perc, G.foley], (sh) => {
         const e = withCx(sh);
-        // hats y percs con su CANTIDAD y VARIEDAD (las perillas bajo su nombre)
+        // hats, percs y foley con su CANTIDAD y VARIEDAD (las perillas bajo su nombre)
         const eH = { ...e, kit: this.kit.hat };
         const out = {
           clap: G.clap.bar(b, d('clap'), e),
@@ -572,6 +575,8 @@ export class Deck {
           ohat: G.ohat.bar(b, d('ohat'), eH),
           perc: G.perc.bar(b, d('perc'), { ...e, kit: this.kit.perc }, absStep),
         };
+        // el foley no pisa a la percusión (solo si suena: si no, tiene todos los pasos)
+        out.foley = G.foley.bar(b, d('foley'), { ...e, kit: this.kit.foley }, absStep, prog.perc > 0 ? out.perc : null);
         G.hat.kindsBar({ hat: d('hat'), ohat: d('ohat') }, eH, out);
         return out;
       }),
@@ -719,6 +724,11 @@ export class Deck {
         const tp = Math.max(t + hum(), ctx.currentTime);
         if (this.drums.hit(`p${h.n}`, tp, h.vel)) emit('perc', tp, h.vel);
       }
+    }
+    // FOLEY: en su paso, sin humanizar (el gesto ya lleva su tiempo dentro del sonido)
+    if ((ev = B.foley[s]) && A.audible('foley', t)) {
+      const tf = Math.max(t, ctx.currentTime);
+      for (const h of ev) if (this.drums.hit(`f${h.n}`, tf, h.vel)) emit('foley', tf, h.vel);
     }
     if ((ev = B.bass[s]) && A.audible('bass', t)) {
       const semis = degreeToSemis(ev.deg, scale) + 12;

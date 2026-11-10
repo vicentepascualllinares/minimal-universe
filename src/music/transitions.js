@@ -27,7 +27,7 @@ import { INSTRUMENTS } from './arrangement.js';
 // CÓMO ENTRA Y SALE CADA INSTRUMENTO en un viaje progresivo: 1 = con filtro (HP en kick y
 // bajo, LP con resonancia en el resto), 0 = con volumen. Todos, además, con densidad (de pocas
 // notas a todas). La paleta de cada universo lo mueve un poco.
-const HOW = { kick: 0.85, bass: 0.9, hat: 0.25, perc: 0.35, clap: 0.3, ohat: 0.4, chord: 1, pad: 0.2 };
+const HOW = { kick: 0.85, bass: 0.9, hat: 0.25, perc: 0.35, clap: 0.3, ohat: 0.4, foley: 0.3, chord: 1, pad: 0.2 };
 
 // frase en la que aterriza un viaje de `bars` compases (en compases)
 export const PHRASE = (bars) => (bars <= 2 ? 4 : 8);

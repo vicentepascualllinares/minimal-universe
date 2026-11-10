@@ -141,11 +141,12 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .im-title { color: var(--fg); letter-spacing: 0.5em; }
 .im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
-.im-row { display: flex; gap: 40px; height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
+.im-row { display: flex; gap: clamp(12px, 3vw, 40px); height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
 .im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 60px; }
 /* DJ: cada instrumento en su caja (A y B juntos), con aire entre cajas y el nombre más marcado */
-.instmix.dj .im-row { gap: 26px; }
-.instmix.dj .im-ch { width: 100px; padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
+.instmix.dj .im-row { gap: clamp(6px, 1.6vw, 26px); }
+/* 11 columnas (9 instrumentos, FX y máster): se estrechan para caber en la pantalla, hasta 100 px */
+.instmix.dj .im-ch { width: clamp(64px, calc((100vw - 140px) / 11 - 8px), 100px); padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
 .instmix.dj .im-name { font-size: 10px; letter-spacing: 0.26em; margin-right: -0.26em; }
 .im-dbs { display: flex; gap: 10px; }
 .im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
@@ -482,13 +483,17 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 @keyframes blink { 50% { opacity: 0.25; } }
 
 /* ───────── instrumentos */
-.strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
+.strip { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
 .inst { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .inst .irow { display: flex; align-items: center; gap: 6px; }
 .inst .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--fg); opacity: 0.08; flex: none; }
 .inst .name { color: var(--dim); font-size: 9px; letter-spacing: 0.16em; transition: color 0.4s; overflow: hidden; text-overflow: clip; white-space: nowrap; }
 .inst.on .name { color: var(--fg); }
 .inst.pend .name { animation: blink 0.8s steps(2) infinite; }
+/* DJ: nueve instrumentos en media pantalla: menos hueco y menos espaciado para que quepan los nombres */
+body.mode-dj .strip { gap: 4px; }
+body.mode-dj .inst .irow { gap: 3px; }
+body.mode-dj .inst .name { letter-spacing: 0.04em; }
 .inst .bar { position: relative; height: 1px; background: var(--line); }
 .inst .bar i {
   position: absolute; left: 0; top: 0; height: 1px; width: 100%;

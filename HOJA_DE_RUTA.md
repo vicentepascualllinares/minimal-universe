@@ -32,6 +32,8 @@ tope de voces, AudioWorklet).
    - para crear **texturas** con efectos encima: choppeos, granular, efectos varios
    - como **samples** directos: loops, kicks, snares...
    - como **capas** dentro de los instrumentos
+   - como **objetos de FOLEY**: el canal ya existe (2026-11-10) y pasa por el banco de sonidos;
+     un objeto podrá ser una receta del taller o una grabación, sin cambiar nada más
 7. **Sonidos nuevos**: que no suene todo igual.
    **En marcha (2026-11-10), hats y percs**, en tres fases:
    - **Fase 1 (hecha)**: la base. Recetas (`sounds.js`), taller en JS puro (`drumsynth.js`),
@@ -46,6 +48,14 @@ tope de voces, AudioWorklet).
      → "Taller de percusión". Pendiente: **probarlo de oído** (hay un muestrario WAV de cada
      motor) y quitar del sorteo o retocar lo que no convenza; medir en móvil.
      Fuera a propósito (otra sesión): humanización, groove, swing, notas fantasma.
+     Veredicto del usuario: le gustan, sobre todo los hats. Las percs se juzgarán en contexto:
+     en estos géneros mucha "percusión" es foley, atmósferas o ritmos sacados con efectos.
+   - **FOLEY (empezado 2026-11-10)**: canal propio en el MIXER, en la complejidad de PERCS, con
+     sus perillas CANT · VAR. Seis objetos sintetizados (papel, llaves, gota, tela, taza, clic
+     de boca), carriles largos y escasos, seco. Ver README → "Instrumentos". Pendiente: probarlo
+     de oído; más objetos (cremallera, arena, cajón, vinilo, relés...); samples por el mismo
+     canal (sesión 6); los ritmos sacados con efectos (sesiones 5 y 6). Las **atmósferas** son
+     otro elemento (camas continuas): van con las texturas (sesión 1).
    - **Fase 3**: tabla de estilos (rominimal, house, microhouse, experimental) con qué motores
      y qué rangos sortea cada uno, lista para la sesión 15 (universos según intención).
    - **Lo que dijo la investigación** (2026-11-10), para las fases 2 y 3:
@@ -172,7 +182,12 @@ tope de voces, AudioWorklet).
    - **Armonía**: cuánta disonancia, qué modos, voicings, cuánto se mueve la progresión.
    - **Ritmo de cada elemento**: rapidez de las notas, kicks (rectos, rotos), claps (estilos,
      dónde caen), dónde vive cada hat, longitudes de la polimetría.
-   - Y los rangos de partida de COMPLEJIDAD, CANTIDAD y VARIEDAD.
+   - Y los rangos de partida de COMPLEJIDAD, CANTIDAD y VARIEDAD (también los de FOLEY, que
+     tiene sus propias perillas: un rominimal quizá con más CANT y VAR de foley que de percs).
+   - **Mutear elementos es parte de la intención** (apuntado 2026-11-10, a petición del
+     usuario; de momento no se hace): cada estilo puede nacer con ciertos canales callados. Por
+     ejemplo, un rominimal con las percusiones muteadas y foley en su lugar; un minimal más
+     igualado entre percs y foley; un house quizá solo con percusiones.
    - Por decidir: si la intención es una lista cerrada de estilos, unos ejes continuos
      (experimental ↔ funcional, oscuro ↔ luminoso...) o las dos cosas; cómo se mezcla con el
      color (emoción) del universo; y cómo encaja con el ADN de los sonidos (sesión 3) y con

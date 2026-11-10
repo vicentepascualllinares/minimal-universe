@@ -1,15 +1,18 @@
-// RANURAS de hats y percs de un universo: cada sonido que puede sonar tiene la suya, con su
+// RANURAS de hats, percs y foley de un universo: cada sonido que puede sonar tiene la suya, con su
 // receta (src/music/sounds.js), su grabación en el banco (soundBank.js) y sus COLAS.
 //
 //   hat · ohat          el hat del universo, cerrado y abierto
 //   k0 … k3             los otros tipos de hat (VARIEDAD), cada uno por el canal que le toca
 //   p0 … p4             los carriles de percusión, cada uno con su panoramizador fijo
+//   f0 … f4             los objetos de foley, igual
 //
 // Un golpe = BufferSource + ganancia hacia la salida de la ranura (2 nodos). Mientras se graba
 // la versión nueva de un sonido (cambió el color, mutó el carril...), suena la anterior: nunca
 // hay hueco. COLAS: `self` = el siguiente golpe corta la cola del anterior; `chokes` = corta
 // las colas de otras ranuras. TOPE DE VOCES: si una ranura acumula demasiadas colas, la más
 // vieja se apaga (7 ms, sin clic).
+
+import { STEREO_IN } from './dsp.js';
 
 const MAX_VOICES = 8;
 const CUT_TC = 0.007; // constante de tiempo al cortar una cola (≈ 20 ms hasta el silencio)
@@ -43,7 +46,7 @@ export class DrumSlots {
     if (!s || s.ch !== ch) {
       const input = this.deck.ch[ch].input;
       let out = input, panner = null;
-      if (ch === 'perc') { // panorama fijo por sonido (antes, uno nuevo en cada golpe: mismo sonido)
+      if (STEREO_IN.has(ch)) { // percs y foley: panorama fijo por sonido (antes, uno nuevo en cada golpe)
         panner = this.ctx.createStereoPanner();
         panner.pan.value = rec.pan;
         panner.connect(input);

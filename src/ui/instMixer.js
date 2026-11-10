@@ -14,7 +14,7 @@ import { toDb, fmtDb as fmt, paintMaster } from './meters.js';
 import { FADER_ZERO as DEF, faderDb, dbFader, dbGain } from '../core/fader.js';
 import { MIX_PRESETS } from '../audio/mix.js';
 
-const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
+const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
 const MASTER_TOP = 12; // el MÁSTER sube hasta +12 dB (para empujar contra el limitador)
 // posición del fader de un instrumento según su ganancia en el motor
 const posOf = (g) => (g <= 0 ? 0 : dbFader(20 * Math.log10(g)));

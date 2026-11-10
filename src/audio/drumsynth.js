@@ -15,7 +15,9 @@
 //              filtro de banda). Fase 2 (cada uno explicado sobre su función): hats 'fmhat',
 //              'hiss' (909/707), 'cymbal' (resonadores), 'grains' (shaker); percs 'reso' (rim,
 //              clave, conga), 'bell' (cowbell), 'modal' (madera, barra, tubo), 'ks'
-//              (Karplus-Strong), 'glitch' (clics y ráfagas) y 'grains'
+//              (Karplus-Strong), 'glitch' (clics y ráfagas) y 'grains'. FOLEY: 'crackle'
+//              (papel), 'jingle' (llaves), 'drop' (gota), 'swish' (tela); la taza y el clic de
+//              boca usan 'modal' y 'reso'
 //   p.len      duración (s) · p.atk ataque lineal (s) · p.tau constante de la caída (s)
 //   p.lvl      NIVEL (solo motores nuevos): RMS del tramo de 10 ms más fuerte (ver level)
 //   Etapas comunes (en neutro no hacen nada; ver COMMON):
@@ -339,10 +341,83 @@ const ENGINES = {
     const hp = new Biquad('highpass', sr).set(30, 0);
     for (let i = 0; i < n; i++) x[i] = hp.run(x[i]);
   },
+
+  // ─────────── FOLEY: objetos. Un golpe de foley es un GESTO: muchos microeventos con su propio
+  // tiempo dentro del sonido (grabados en él; el golpe sigue cayendo en su paso). Cada variante,
+  // otro gesto del mismo objeto
+
+  // PAPEL (crepitar): chasquidos sueltos de ruido de 0,1–0,9 ms, de amplitud muy desigual (`skew`:
+  // muchos pequeños, pocos fuertes), con la densidad de un gesto: sube en `swell` y cae con
+  // `shake`. Por un paso alto y un paso banda ancho. Empieza siempre con un chasquido
+  crackle(x, p, sr, rnd) {
+    const hp = new Biquad('highpass', sr).set(p.hp, 0), bp = new Biquad('bandpass', sr).set(p.freq, p.q);
+    let left = Math.round(0.0005 * sr), amp = 0.8 + 0.2 * rnd();
+    for (let i = 0; i < x.length; i++) {
+      const t = i / sr;
+      const dens = p.rate * (t < p.swell ? t / p.swell : Math.exp(-(t - p.swell) / p.shake));
+      if (left <= 0 && rnd() < dens / sr) {
+        amp = Math.pow(rnd(), p.skew);
+        left = Math.round((0.0001 + rnd() * 0.0008) * sr);
+      }
+      const v = left-- > 0 ? (rnd() * 2 - 1) * amp : 0;
+      x[i] = bp.run(hp.run(v));
+    }
+  },
+  // LLAVES, MONEDAS (cascabeles de PhISEM): choques al azar, más seguidos al principio (la
+  // energía cae con `shake`), cada uno golpea con fuerza distinta a `n` resonadores metálicos
+  // agudos (el llavero: `plate` fija sus frecuencias, igual en todas las variantes)
+  jingle(x, p, sr, rnd) {
+    const pr = rngOf(p.plate);
+    const res = [];
+    for (let k = 0; k < p.n; k++) {
+      const f = p.freq * (1 + 3 * pr());
+      res.push(new Biquad('bandpass', sr).set(f, Math.max(1, Math.PI * f * p.ring * (0.6 + 0.8 * pr()))));
+    }
+    const hp = new Biquad('highpass', sr).set(p.hp, 0);
+    const ed = Math.exp(-1 / (p.shake * sr)), pr2 = p.rate / sr;
+    const g = new Float64Array(p.n);
+    let en = 1;
+    for (let i = 0; i < x.length; i++) {
+      const hit = i === 0 || rnd() < pr2 * en;
+      if (hit) { const a = i === 0 ? 1 : (0.3 + 0.7 * rnd()) * en; for (let k = 0; k < p.n; k++) g[k] = a * rnd(); }
+      en *= ed;
+      let y = 0;
+      for (let k = 0; k < p.n; k++) y += res[k].run(hit ? g[k] : 0);
+      x[i] = hp.run(y);
+    }
+  },
+  // GOTA (el modelo de Perry Cook): un seno que se apaga en `ring` mientras su altura sube
+  // (`rise`: la burbuja que se cierra). A veces, una o dos gotas más pequeñas detrás (`extra`
+  // = probabilidad, en los siguientes `spread` s). Ataque de 0,5 ms: sin clic
+  drop(x, p, sr, rnd) {
+    const n = x.length;
+    const count = 1 + (rnd() < p.extra ? 1 : 0) + (rnd() < p.extra * 0.5 ? 1 : 0);
+    for (let d = 0; d < count; d++) {
+      const st = d === 0 ? 0 : Math.floor((0.02 + rnd() * p.spread) * sr);
+      const f0 = p.freq * (d ? 0.8 + 0.6 * rnd() : 1), a = d ? 0.25 + 0.4 * rnd() : 1, T = p.ring * (d ? 0.6 : 1);
+      let ph = 0;
+      for (let i = 0; st + i < n; i++) {
+        const t = i / sr;
+        const env = (1 - Math.exp(-t / 0.0005)) * Math.exp(-t / T);
+        if (env < 1e-5 && t > T) break;
+        x[st + i] += a * env * Math.sin(ph);
+        ph += (TAU * f0 * (1 + (p.rise * t) / (3 * T))) / sr;
+      }
+    }
+  },
+  // TELA (roce): ruido por un paso banda ancho con una aspereza (`rough`: el volumen tiembla con
+  // un ruido lento, el tejido). La forma del gesto (sube despacio, cae) la pone la envolvente
+  swish(x, p, sr, rnd) {
+    const bp = new Biquad('bandpass', sr).set(p.freq, p.q), lp = new Biquad('lowpass', sr).set(120, 0);
+    for (let i = 0; i < x.length; i++) {
+      const m = Math.exp(p.rough * 4 * lp.run(rnd() * 2 - 1)); // (sin llegar a 0: sin esquinas)
+      x[i] = bp.run(rnd() * 2 - 1) * m;
+    }
+  },
 };
 export const ENGINE_NAMES = Object.keys(ENGINES);
 // ¿la variante cambia algo? (los motores sin ruido salen iguales: basta una grabación)
-const NOISY = new Set(['metal', 'noise', 'fmhat', 'hiss', 'cymbal', 'grains', 'ks', 'glitch']);
+const NOISY = new Set(['metal', 'noise', 'fmhat', 'hiss', 'cymbal', 'grains', 'ks', 'glitch', 'crackle', 'jingle', 'drop', 'swish']);
 export const isRandom = (p) => NOISY.has(p.engine) || !!p.click?.amt || !!p.jitter;
 
 // golpe flojo (velTone): más oscuro y más corto · jitter: cada variante algo distinta
@@ -366,6 +441,7 @@ function shape(p, rnd, soft) {
   if (q.engine === 'bell') q.bp *= dark;
   if (q.engine === 'modal') q.hard *= dark;
   if (q.engine === 'ks') q.bright *= dark;
+  if (q.engine === 'crackle' || q.engine === 'swish' || q.engine === 'jingle') q.freq *= Math.sqrt(dark);
   q.tau *= len;
   return q;
 }

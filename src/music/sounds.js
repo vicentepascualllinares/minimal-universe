@@ -152,3 +152,40 @@ function percNew(P, so, freq) {
   const shake = r.float(0.02, 0.05) * dm;
   return { engine: 'grains', freq: inReg(freq, pm, 900, 5000), freq2: 0, q: r.float(3, 10), rate: r.float(300, 1500), gtau: r.float(0.0005, 0.002), shake, atk: 0.002, tau: shake, len: shake * 4 + 0.02, lvl: NOISY_LVL };
 }
+
+// ───────────────────────── FOLEY (un carril = un objeto)
+// Los objetos no siguen la escala: son ruidos de la habitación, no notas. Sus números fijos salen
+// de la semilla del objeto (`ob.timbre`); el color (e.foley) los hace más brillantes u oscuros
+// (`bright`) y más largos o secos (`decayMul`). Cada uno a su nivel, sin pasar de 0,9 de pico.
+export const FOLEY_KINDS = ['papel', 'llaves', 'gota', 'tela', 'taza', 'boca'];
+export function foleySound(e, ob) {
+  const F = e.foley, r = new Rng(ob.timbre);
+  const br = F.bright, dm = F.decayMul;
+  const p = foleyRecipe(ob.kind, r, br, dm);
+  return recipe({ ...p, drive: F.drive }, { gain: 0.9, pan: ob.pan });
+}
+function foleyRecipe(kind, r, br, dm) {
+  if (kind === 'papel') {
+    const shake = r.float(0.025, 0.08) * dm;
+    return { engine: 'crackle', rate: r.float(800, 3000), skew: r.float(2, 4), swell: r.float(0, 0.012), shake, hp: r.float(600, 1500) * br, freq: r.float(2000, 5000) * br, q: r.float(0.6, 1.5), atk: 0.0003, tau: shake * 1.5, len: shake * 5 + 0.03, lvl: 0.22 };
+  }
+  if (kind === 'llaves') {
+    const shake = r.float(0.025, 0.07) * dm, ring = r.float(0.015, 0.05) * dm;
+    return { engine: 'jingle', plate: r.int(1, 2 ** 30), n: r.int(4, 6), freq: r.float(2000, 3500) * br, ring, rate: r.float(150, 600), shake, hp: 1200, atk: 0.0003, tau: shake * 2, len: Math.min(1, shake * 5 + ring * 4 + 0.02), lvl: 0.22, velTone: 0.4 };
+  }
+  if (kind === 'gota') {
+    const ring = r.float(0.008, 0.03) * dm, spread = r.float(0.03, 0.12);
+    return { engine: 'drop', freq: r.float(500, 1400) * Math.sqrt(br), rise: r.float(0.3, 1.2), ring, extra: r.float(0, 0.8), spread, atk: 0.0003, tau: 1, len: spread + ring * 8 + 0.04, lvl: 0.35 };
+  }
+  if (kind === 'tela') {
+    const atk = r.float(0.008, 0.025), tau = r.float(0.025, 0.07) * dm;
+    return { engine: 'swish', freq: r.float(800, 3000) * br, q: r.float(0.5, 1.5), rough: r.float(0.3, 0.9), atk, tau, len: atk + tau * 5 + 0.02, lvl: 0.18, velTone: 0.4 };
+  }
+  if (kind === 'taza') { // cerámica o vidrio: modos agudos y afilados, con su golpecito
+    const ring = r.float(0.03, 0.11) * dm;
+    return { engine: 'modal', freq: r.float(1100, 2600) * Math.sqrt(br), ratios: [1, 2.32, 4.25, 6.63], gains: [1, r.float(0.4, 0.8), r.float(0.3, 0.6), r.float(0.2, 0.45)], decays: [1, 0.6, 0.4, 0.3], ring, hard: r.float(0.5, 0.9), click: { amt: r.float(0.2, 0.5), hp: 5000 }, atk: 0.0002, tau: ring * 2, len: Math.min(1.2, ring * 5 + 0.02), lvl: 0.3, velTone: 0.5 };
+  }
+  // boca: clic de lengua (un impulso a dos formantes, cortísimo)
+  const ring = r.float(0.002, 0.006);
+  return { engine: 'reso', freq: r.float(700, 2200) * Math.sqrt(br), ratios: [1, r.float(1.5, 2.2)], gains: [1, r.float(0.4, 0.8)], decays: [1, 0.7], ring, excW: r.float(0.0002, 0.0006), click: { amt: r.float(0.1, 0.3), hp: 3000 }, atk: 0.0001, tau: ring * 3, len: ring * 8 + 0.01, lvl: 0.3 };
+}

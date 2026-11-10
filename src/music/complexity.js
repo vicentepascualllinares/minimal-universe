@@ -5,7 +5,7 @@
 //
 //   KICK   simple: negras rectas            máximo: kicks fantasma (dos)
 //   PERCS  simple: hat en contratiempo      máximo: semicorcheas, redobles, clap con fantasmas
-//          (cuántos golpes y cuántos sonidos de hats y percs: CANTIDAD y VARIEDAD, ver kit.js)
+//          (cuántos golpes y cuántos sonidos de hats, percs y foley: CANTIDAD y VARIEDAD, ver kit.js)
 //   BASS   simple: tónica y octava          máximo: todas las notas, variaciones
 //   INSTR. simple: un acorde de 2 notas     máximo: progresión, 4 notas, stabs seguidos
 
@@ -14,11 +14,11 @@ import { clamp } from '../core/rng.js';
 export const GROUPS = ['kick', 'perc', 'bass', 'inst'];
 export const GROUP_LABEL = { kick: 'KICK', perc: 'PERCS', bass: 'BASS', inst: 'INSTR.' };
 // qué instrumentos pertenecen a cada grupo
-export const GROUP_OF = { kick: 'kick', hat: 'perc', ohat: 'perc', clap: 'perc', perc: 'perc', bass: 'bass', chord: 'inst', pad: 'inst' };
+export const GROUP_OF = { kick: 'kick', hat: 'perc', ohat: 'perc', clap: 'perc', perc: 'perc', foley: 'perc', bass: 'bass', chord: 'inst', pad: 'inst' };
 
 // instrumentos que compiten por la atención (el kick es el suelo y el pad el fondo)
 // y cuánto ceden cuando hay demasiados a la vez (1 = cede todo lo necesario)
-const YIELD = { perc: 1, chord: 0.9, ohat: 0.8, clap: 0.45, hat: 0.4, bass: 0.25 };
+const YIELD = { perc: 1, foley: 0.9, chord: 0.9, ohat: 0.8, clap: 0.45, hat: 0.4, bass: 0.25 };
 
 const dens = (c) => clamp(0.35 + 0.65 * c);
 

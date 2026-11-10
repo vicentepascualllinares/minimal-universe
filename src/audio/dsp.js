@@ -108,26 +108,27 @@ export function ceiling(ctx) {
 }
 
 // nivel típico que llega a la saturación de cada canal (para igualar volumen)
-const DRIVE_REF = { kick: 0.9, bass: 0.7, clap: 0.6, hat: 0.35, ohat: 0.35, perc: 0.5, chord: 0.4, pad: 0.35 };
+const DRIVE_REF = { kick: 0.9, bass: 0.7, clap: 0.6, hat: 0.35, ohat: 0.35, perc: 0.5, foley: 0.45, chord: 0.4, pad: 0.35 };
 
-// canales que reciben voces estéreo (la percusión lleva paneo); los demás son mono
-const STEREO_IN = new Set(['perc']);
+// canales que reciben voces estéreo (percusión y foley llevan paneo); los demás son mono
+export const STEREO_IN = new Set(['perc', 'foley']);
 
 // cómo entra/sale cada instrumento cuando la transición es por filtro
-const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc: 'lp', chord: 'lp', pad: 'lp' };
+const SWEEP = { kick: 'hp', bass: 'hp', clap: 'lp', hat: 'lp', ohat: 'lp', perc: 'lp', foley: 'lp', chord: 'lp', pad: 'lp' };
 
 // NIVEL DE CADA INSTRUMENTO: todos salen de su canal con el PICO MÁXIMO EN 0 dBFS (antes del
 // fader del MIXER). La mezcla es solo la posición de los faders (presets: ver mix.js).
 // Cómo se sacó (2026-11-10): con la ganancia de antes (`OLD`), 8 universos al azar con todo
 // sonando a tope (presencia 1) y 6 compases cada uno; `PEAK` = el pico más alto de cada canal
 // entre los 8 (en dBFS). La ganancia nueva lo lleva a 0 dBFS. Según el color del universo el
-// pico real queda entre 0 y unos −5 dB (el pad, que sigue a la emoción, hasta −5).
-const OLD = { kick: 0.59, bass: 0.4, clap: 0.6, hat: 0.44, ohat: 0.34, perc: 0.3, chord: 0.28, pad: 0.26 };
-export const PEAK = { kick: -3.7, bass: -9.3, clap: -10.7, hat: -12.7, ohat: -14.4, perc: -11.6, chord: -12.9, pad: -14.9 };
+// pico real queda entre 0 y unos −5 dB (el pad, que sigue a la emoción, hasta −5). El FOLEY
+// (2026-11-10) igual, medido aparte: DJ con sus 5 objetos, CANT alta, 6 universos.
+const OLD = { kick: 0.59, bass: 0.4, clap: 0.6, hat: 0.44, ohat: 0.34, perc: 0.3, foley: 0.3, chord: 0.28, pad: 0.26 };
+export const PEAK = { kick: -3.7, bass: -9.3, clap: -10.7, hat: -12.7, ohat: -14.4, perc: -11.6, foley: -15.1, chord: -12.9, pad: -14.9 };
 export const LEVEL = Object.fromEntries(Object.entries(OLD).map(([k, g]) => [k, g / Math.pow(10, PEAK[k] / 20)]));
 
 // LIMPIEZA: high-pass fijo para que solo kick y bass vivan en los graves (club = mono abajo)
-const CLEAN_HP = { kick: 28, bass: 30, clap: 160, hat: 300, ohat: 300, perc: 150, chord: 150, pad: 140 };
+const CLEAN_HP = { kick: 28, bass: 30, clap: 160, hat: 300, ohat: 300, perc: 150, foley: 150, chord: 150, pad: 140 };
 // EQ de "barro" (200–600 Hz): donde se emborronan acordes y pads
 const MUD = { chord: [550, -5, 0.8], pad: [380, -3, 0.7] };
 

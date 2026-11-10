@@ -67,7 +67,7 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | **OSCILADOR** (uno por fader) | La complejidad del grupo va y viene entre el fader (A) y la **marca** ◂ de su derecha (B): arrastrar = ponerla, doble clic = quitarla. El **cuadradito** junto al nombre del grupo = encenderlo / apagarlo. Debajo, el **GESTO** (‹ › o clic en la palabra) y la **línea de la frase**: arrastrar arriba / abajo = más rápido / más lento, de lado = en qué tramo de la frase; doble clic = como el gesto; mantener = editor de casillas. Ver "Osciladores". |
 | **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
-| **CANT · VAR** (bajo HAT y bajo PERC) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
+| **CANT · VAR** (bajo HAT, PERC y FOLEY) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
 | **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. |
 
 ## Estructura: los momentos de un tema
@@ -98,6 +98,10 @@ una vez asentada la parte).
 | **DRIFT** | lo experimental / ambient: flota, bajo y armonía suspendidos | bajo, acordes y pad | lo mismo con pulso: hats lejanos y percusión |
 | **BUILD** | la subida: sin graves, arriba el ritmo; pide un drop | hats, percusión, acordes y pad (sin clap ni open hat) | + clap y open hat |
 | **KICK-OUT** | el bajo sigue rodando sin kick: tensión antes de que vuelva | bajo, hats, percusión y acordes | todo menos el kick |
+
+**FOLEY** (desde 2026-11-10) está en todas las partes, con más peso donde la batería se aclara:
+BREAK 0,5 · 0,8; DRIFT 0,5 · 0,85; INTRO y GROOVE 0,5 · 0,8; KICK-OUT 0,6 · 0,75; BUILD 0,4 ·
+0,6; y discreto en MAIN y DROP 0,3 · 0,5 (versión 1 · versión 2, presencia de 0 a 1).
 
 **AHORA** y **LUEGO** (a la derecha de las partes, cada uno con 1 · 2; en DJ, en cada universo):
 - **AHORA** = la versión de la parte que **suena**. **LUEGO** = la del **destino** del viaje; si
@@ -221,8 +225,16 @@ dónde va y cuántos compases dura. Todo sintetizado y seco (sin reverb ni delay
 
 ## Instrumentos
 
-KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **CHORD** · **PAD**.
+KICK · BASS · HAT · PERC · CLAP · OPEN (hat abierto) · **FOLEY** · **CHORD** · **PAD**.
 
+- **FOLEY** (2026-11-10) — los ruidos de la habitación: **papel** que se arruga, **llaves**,
+  una **gota**, **tela** que roza, una **taza** y un **clic de boca**. No son golpes como una
+  perc, son **gestos**: muchos microeventos con su propio tiempo dentro del sonido (grabados en
+  él; el golpe sigue cayendo en su paso). Sintetizados en el taller (ver "Taller de
+  percusión") y por el banco, como hats y percs; preparados para que los samples entren
+  después por el mismo canal. Canal propio en el MIXER (estéreo: cada objeto en su sitio del
+  panorama), en la complejidad de PERCS y con sus perillas CANT · VAR. Seco, a propósito.
+  Sin humanizar: el swing es el de todo el universo, sin desplazamientos al azar.
 - **CHORD** — acordes dub: stabs cortos con filtro que se cierra. Ritmo en
   contratiempo que nunca pisa al kick. A tope en DRIFT y en DROP, un poco en el BREAK.
 - **PAD** — la atmósfera: un acorde largo con filtro que respira y un poco de aire (ruido
@@ -279,6 +291,17 @@ el motor.
   - **Medido** (150 universos, todas las variantes y capas): los sonidos de antes, idénticos
     muestra a muestra; 0 NaN, 0 clics con el detector de RENDIMIENTO.md §7 (los granos y el
     glitch están hechos de clics a propósito); largos parecidos a los del metal de cada tipo.
+- **Objetos de FOLEY** (2026-11-10): **papel** (crepitar: chasquidos de ruido de 0,1–0,9 ms
+  muy desiguales, con la densidad de un gesto), **llaves** (choques al azar contra 4–6
+  resonadores metálicos agudos de un mismo llavero), **gota** (el modelo de Perry Cook: un seno
+  que sube de altura mientras se apaga; a veces una o dos gotas más pequeñas detrás), **tela**
+  (ruido de banda ancha que tiembla, sube despacio y cae), **taza** (modal: modos de cerámica o
+  vidrio con su golpecito) y **clic de boca** (impulso a dos formantes). No siguen la escala:
+  son ruidos, no notas. El color los hace más brillantes u oscuros y más largos o secos.
+  Medido (120 colores y semillas por objeto): 0 NaN, 0 clics con el detector (salvo el inicio
+  de una segunda gota dentro del gesto, −53 dB: es su ataque); papel y llaves están hechos de
+  clics a propósito. Largos: de ~25 ms (boca) a ~250 ms (papel, tela, taza). El canal se
+  calibró como los demás: pico medido −15,1 dB con la ganancia de partida, a 0 dBFS.
 - **Prioridad del banco**: lo que va a sonar y aún no existe (una ranura nueva, un carril que
   cambió de sonido, el universo que viene) pasa delante de los retoques de color.
 - **Memoria**: 48 MB en ordenador y 16 MB en móvil; por encima, se olvida lo que hace más que
@@ -295,7 +318,7 @@ medias, y bajar o subir todo el universo con el GLOBAL sin perder ese carácter.
 | Grupo | SIMPLE | COMPLEJO |
 |---|---|---|
 | **KICK** | negras rectas | kicks fantasma (al máximo, dos). La caída del último tiempo al final de frase ya no es complejidad: es un AUTO-ARREGLO |
-| **PERCS** (hat, open hat, clap, perc) | hats y percusión en corcheas (el hat en contratiempo), sin redobles, clap recto, motivos que casi no cambian | semicorcheas, redobles de hat, percusión y clap al final de frase (al máximo, redoble largo de semicorcheas), clap con fantasmas y desplazado, un open hat a contrapié, motivos que mutan más |
+| **PERCS** (hat, open hat, clap, perc, foley) | hats y percusión en corcheas (el hat en contratiempo), sin redobles, clap recto, motivos que casi no cambian | semicorcheas, redobles de hat, percusión y clap al final de frase (al máximo, redoble largo de semicorcheas), clap con fantasmas y desplazado, un open hat a contrapié, motivos que mutan más |
 | **BASS** | corcheas en contratiempo con tónica y octava, siempre el mismo motivo | semicorcheas, todas las notas, variación cada 4 compases |
 | **INSTR.** (acordes, pad) | un solo acorde de 2 notas, stabs muy espaciados, el pad cambia cada 4–8 compases | progresión, 4 notas, stabs seguidos, el pad cada 2–4 |
 
@@ -313,9 +336,9 @@ Con el GLOBAL, dos reglas para que no compita todo a la vez:
 - **Turnos** (GLOBAL por debajo de 0,6): los acordes esquivan al bajo (se mueven una
   corchea, como respuesta) y la percusión deja libres los golpes de acordes y clap.
 
-### Cantidad y variedad (hats y percs)
+### Cantidad y variedad (hats, percs y foley)
 
-Bajo **HAT** y bajo **PERC**, en la tira de instrumentos, dos perillas con el centro arriba.
+Bajo **HAT**, **PERC** y **FOLEY**, en la tira de instrumentos, dos perillas con el centro arriba.
 Son independientes de la complejidad: se puede tener mucha variedad de hats que suenan poco,
 un solo hat que suena mucho, muchos hats y pocas percs, etc.
 
@@ -341,6 +364,12 @@ un solo hat que suena mucho, muchos hats y pocas percs, etc.
   ciclo y sus golpes base en corcheas, para que nunca salga casi muda. CANT = cuántos golpes da cada carril: en el centro, su patrón
   euclídeo de siempre; al subir, entran los huecos más alejados de lo que ya suena; al bajar,
   se van en orden inverso. Subir y bajar es reversible.
+- **FOLEY**: VAR = cuántos objetos (1 a 5 de los 6, todos distintos, cada uno en su carril).
+  Los carriles son largos (de 7 a 32 pasos, hasta dos compases) y con pocos golpes: cada
+  objeto aparece de vez en cuando, no lleva el pulso. CANT = cuántos golpes, como en PERC.
+  Con CANT y VAR en el centro, unos 4 golpes por compás con la parte a tope. Convive con la
+  percusión: donde ya suena una perc, el foley calla salvo en sus golpes más fuertes. Al mutar,
+  un carril puede cambiar de objeto (al que no esté en ningún otro).
 - El que está entrando con VAR lo hace poco a poco: primero sus golpes más fuertes.
 - La densidad de la parte (estructura) sigue mandando por encima: con una parte floja
   ("hats lejanos") suenan menos golpes, y en un viaje los carriles entran poco a poco.
@@ -569,6 +598,7 @@ universo, el pico real queda entre +0,6 y unos −4 dB (comprobado en 3 universo
 | Clap | −12 | 0 | marca, pero detrás (no golpea como en tech house) |
 | Hat | −13 | 0 | presentes y sin morder |
 | Open | −15 | 0 | es largo: se oye más de lo que marca el pico |
+| Foley | −12 | 0 | (nuevo) detalle de la habitación, a la altura del clap y por detrás de la percusión |
 | Chord | −14 | 0 | los acordes de deep/minimal acompañan, no tapan el groove |
 | Pad | −16 | 0 | el fondo: se siente más que se oye |
 | FX | −7 | 0 | las transiciones se insinúan; sin retocar, los golpes de llegada sonaban casi como el kick |

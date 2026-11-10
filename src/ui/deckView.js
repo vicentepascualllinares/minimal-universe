@@ -11,8 +11,8 @@ import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 import { Knob } from './knob.js';
 import { KIT_GROUPS, varietyShown } from '../music/kit.js';
 
-const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', chord: 'CHORD', pad: 'PAD' };
-// las dos perillas del KIT (bajo HAT y bajo PERC)
+const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
+// las dos perillas del KIT (bajo HAT, PERC y FOLEY)
 const KIT_PARAMS = [
   ['amt', 'CANT', 'CANTIDAD: cuántos golpes da cada sonido · centro = lo normal · izquierda, casi nada; derecha, casi todos los pasos · doble clic = centro'],
   ['vary', 'VAR', 'VARIEDAD: cuántos sonidos distintos (1 a 5) · el último entra poco a poco · doble clic = centro'],
@@ -450,7 +450,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
     cells[k] = { el, dot: el.querySelector('.dot'), bar: el.querySelector('i'), mark: el.querySelector('b'), flash: 0 };
   }
 
-  // KIT: bajo HAT y PERC, CANTIDAD y VARIEDAD (ver kit.js). Centro arriba = lo normal;
+  // KIT: bajo HAT, PERC y FOLEY, CANTIDAD y VARIEDAD (ver kit.js). Centro arriba = lo normal;
   // doble clic = volver al centro. NUEVO UNIVERSO las mueve (las perillas lo siguen)
   const kitK = [];
   for (const g of KIT_GROUPS) {

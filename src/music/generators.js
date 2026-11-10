@@ -8,6 +8,7 @@
 
 import { Rng, euclid, clamp } from '../core/rng.js';
 import { HAT_KINDS, amountMul, presence, drawHatEngine } from './kit.js';
+import { FOLEY_KINDS } from './sounds.js';
 
 const isDown = (s) => s % 4 === 0;
 const isOff8 = (s) => s % 4 === 2;
@@ -297,6 +298,71 @@ export class PercGen {
   }
 }
 
+// ───────────────────────── FOLEY
+// Objetos (papel, llaves, gota, tela, taza, clic de boca: ver foleySound en sounds.js) en
+// carriles ESCASOS de longitudes distintas, como la percusión polimétrica pero con pocos golpes:
+// aparecen de vez en cuando, no llevan el pulso. VARIEDAD = cuántos objetos (uno por carril,
+// todos distintos); CANTIDAD = cuántos golpes da cada uno (ver kit.js). Convive con la
+// percusión: donde ya suena una perc, el foley calla salvo en sus golpes más fuertes
+function foleyObject(r, kind) {
+  return { kind, timbre: r.int(1, 2 ** 30), pan: r.float(-0.8, 0.8) };
+}
+function makeFoleyLane(r, kind) {
+  // largos (hasta dos compases): cada objeto aparece de vez en cuando, no en cada compás
+  const len = r.weighted([32, 24, 20, 16, 12, 10, 7], [1.5, 1.5, 1, 3, 2, 1, 0.8]);
+  return {
+    len, k: r.int(1, Math.ceil(len / 6)), rot: r.int(0, len - 1), rank: null,
+    acc: Array.from({ length: len }, () => r.float(0.45, 1)),
+    prob: r.float(0.7, 1),
+    sound: foleyObject(r, kind),
+  };
+}
+
+export class FoleyGen {
+  constructor(rng) {
+    this.rng = rng;
+    const kinds = FOLEY_KINDS.map((k) => [k, rng.next()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+    this.lanes = [0, 1, 2, 3, 4].map((n) => makeFoleyLane(rng, kinds[n]));
+    this.lanes.forEach(laneRank);
+  }
+  mutate(strength = 1) {
+    const r = this.rng;
+    const l = r.pick(this.lanes);
+    const op = r.weighted(['rot', 'k', 'sound'], [4, 3, strength]);
+    if (op === 'rot') l.rot = (((l.rot + r.pick([1, -1, 2, 3])) % l.len) + l.len) % l.len;
+    else if (op === 'k') l.k = clamp(l.k + r.pick([1, -1]), 1, Math.ceil(l.len / 4));
+    else { // otro objeto, el que no está en ningún carril (hay 6 y 5 carriles)
+      const used = new Set(this.lanes.map((x) => x.sound.kind));
+      l.sound = foleyObject(r, FOLEY_KINDS.find((k) => !used.has(k)));
+    }
+    laneRank(l);
+  }
+  // como PercGen.bar; `perc` = los pasos de la percusión de este compás (para no pisarla)
+  bar(b, d, e, abs, perc) {
+    const st = new Array(16).fill(null);
+    const mul = amountMul(e.kit.amt) * (0.35 + 0.65 * d);
+    const ks = this.lanes.map((l, n) => {
+      const x = l.k * mul * presence(e.kit.vary, n);
+      return x < 0.25 ? 0 : clamp(Math.round(x), 1, Math.ceil(l.len * 0.75));
+    });
+    const f = e.cx.fast;
+    for (let s = 0; s < 16; s++) {
+      const evs = [];
+      for (let n = 0; n < this.lanes.length; n++) {
+        const l = this.lanes[n];
+        if (!ks[n]) continue;
+        const i = (abs + s) % l.len;
+        if (l.rank[i] >= ks[n]) continue;
+        if (s % 2 === 1 && l.acc[i] < 0.4 + 0.6 * f) continue; // menos semicorcheas
+        if (perc?.[s] && l.acc[i] < 0.85) continue;           // ahí ya suena una perc
+        if (this.rng.chance(l.prob)) evs.push({ n, vel: l.acc[i] }); // n = su ranura de sonido (f0..f4)
+      }
+      if (evs.length) st[s] = evs;
+    }
+    return st;
+  }
+}
+
 // ───────────────────────── BASS
 // El motivo guarda GRADOS de escala, no notas: si la emoción cambia el modo
 // (frigio → dórico...), la misma frase se recolorea sin perder identidad.
@@ -465,5 +531,6 @@ export function makeGenerators(seed) {
     bass: new BassGen(root.fork()),
     harmony: new HarmonyGen(root.fork()),
     rng: root.fork(),
+    foley: new FoleyGen(root.fork()), // al final: los demás siguen saliendo iguales con la misma semilla
   };
 }

@@ -29,13 +29,13 @@
 
 import { clamp } from '../core/rng.js';
 
-export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'chord', 'pad'];
+export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'foley', 'chord', 'pad'];
 
 const ALL_DRUMS = { kick: 1, hat: 1, perc: 1, clap: 1, ohat: 1 };
 const NO_DRUMS = { kick: 0, hat: 0, perc: 0, clap: 0, ohat: 0 };
 const TOPS = { hat: 1, perc: 1, clap: 0.9, ohat: 0.75 };
 
-const EMPTY = { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, chord: 0, pad: 0 };
+const EMPTY = { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, foley: 0, chord: 0, pad: 0 };
 // una parte = su nombre y sus DOS VERSIONES: dos posibilidades del mismo momento del tema.
 // Siempre en el mismo orden, para poder predecirlas: la 1 con MENOS elementos (o energía) y la 2
 // con MÁS. Lo que no se nombra en una versión NO suena en ella (presencia 0)
@@ -44,30 +44,30 @@ const scene = (label, v1, v2) => ({ label, mixes: [{ ...EMPTY, ...v1 }, { ...EMP
 export const SCENES = {
   // ── sin kick
   break: scene('BREAK',
-    { pad: 1, chord: 0.45, hat: 0.3 },                                  // manda el pad: acordes flojos y un hat lejano
-    { pad: 1, chord: 1, hat: 0.3, perc: 0.6 }),                         // acordes enteros y algo de percusión
+    { pad: 1, chord: 0.45, hat: 0.3, foley: 0.5 },                      // manda el pad: acordes flojos, un hat lejano, foley
+    { pad: 1, chord: 1, hat: 0.3, perc: 0.6, foley: 0.8 }),             // acordes enteros, algo de percusión y más foley
   drift: scene('DRIFT',
-    { bass: 1, chord: 1, pad: 0.85 },                                   // bajo y armonía flotando, sin batería
-    { bass: 1, chord: 1, pad: 0.85, hat: 0.4, perc: 0.6 }),             // con pulso: hats lejanos y percusión
+    { bass: 1, chord: 1, pad: 0.85, foley: 0.5 },                       // bajo y armonía flotando, sin batería; foley suelto
+    { bass: 1, chord: 1, pad: 0.85, hat: 0.4, perc: 0.6, foley: 0.85 }), // con pulso: hats lejanos, percusión y foley
   build: scene('BUILD',
-    { hat: 1, perc: 1, chord: 0.9, pad: 0.6 },                          // el ritmo arriba, sin clap ni open hat
-    { ...TOPS, chord: 0.9, pad: 0.6 }),                                 // con clap y open hat
+    { hat: 1, perc: 1, chord: 0.9, pad: 0.6, foley: 0.4 },              // el ritmo arriba, sin clap ni open hat
+    { ...TOPS, chord: 0.9, pad: 0.6, foley: 0.6 }),                     // con clap y open hat
   kickout: scene('KICK-OUT',
-    { bass: 1, hat: 1, perc: 1, chord: 0.9 },                           // bajo, hats, percusión y acordes
-    { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6 }),          // el DROP sin kick
+    { bass: 1, hat: 1, perc: 1, chord: 0.9, foley: 0.6 },               // bajo, hats, percusión, acordes y foley
+    { ...ALL_DRUMS, kick: 0, bass: 1, chord: 0.9, pad: 0.6, foley: 0.75 }), // el DROP sin kick
   // ── con kick
   intro: scene('INTRO',
-    { kick: 1, hat: 0.85, perc: 0.4 },                                  // kick y hats secos, algo de percusión
-    { kick: 1, ...TOPS }),                                              // toda la batería (el antiguo SOLO DRUMS)
+    { kick: 1, hat: 0.85, perc: 0.4, foley: 0.5 },                      // kick y hats secos, algo de percusión y foley
+    { kick: 1, ...TOPS, foley: 0.8 }),                                  // toda la batería (el antiguo SOLO DRUMS) y foley
   groove: scene('GROOVE',
-    { kick: 1, bass: 1, hat: 1, perc: 0.5 },                            // el roller: kick, bajo, hats
-    { kick: 1, bass: 1, ...TOPS }),                                     // toda la batería y bajo, sin música
+    { kick: 1, bass: 1, hat: 1, perc: 0.5, foley: 0.5 },                // el roller: kick, bajo, hats
+    { kick: 1, bass: 1, ...TOPS, foley: 0.8 }),                         // toda la batería y bajo, sin música
   main: scene('MAIN',
-    { ...ALL_DRUMS, bass: 1, clap: 0.9, ohat: 0.75, chord: 0.6 },       // todo el ritmo, acordes suaves, sin pad
-    { ...ALL_DRUMS, bass: 1, clap: 0.9, ohat: 0.75, chord: 0.95 }),     // acordes enteros, aún sin pad
+    { ...ALL_DRUMS, bass: 1, clap: 0.9, ohat: 0.75, chord: 0.6, foley: 0.3 }, // todo el ritmo, acordes suaves, sin pad
+    { ...ALL_DRUMS, bass: 1, clap: 0.9, ohat: 0.75, chord: 0.95, foley: 0.5 }), // acordes enteros, aún sin pad
   drop: scene('DROP',
-    { ...ALL_DRUMS, bass: 1, chord: 0.9, pad: 0.6 },                    // todo
-    { ...ALL_DRUMS, bass: 1, chord: 1, pad: 0.95 }),                    // todo, con acordes y pad enteros
+    { ...ALL_DRUMS, bass: 1, chord: 0.9, pad: 0.6, foley: 0.3 },        // todo; el foley discreto
+    { ...ALL_DRUMS, bass: 1, chord: 1, pad: 0.95, foley: 0.5 }),        // todo, con acordes y pad enteros
 };
 
 // mezcla de una parte en una versión (0 = la 1, 1 = la 2)
@@ -90,7 +90,7 @@ export function likeness(p, name, v = 0) {
 // [umbral donde empieza a oírse, presencia en la que llega a tope]
 const RAMP = {
   kick: [0.1, 0.8], bass: [0.12, 0.8], hat: [0.15, 0.9], perc: [0.22, 0.95],
-  clap: [0.35, 0.95], ohat: [0.4, 0.95], chord: [0.25, 0.95], pad: [0.2, 0.95],
+  clap: [0.35, 0.95], ohat: [0.4, 0.95], foley: [0.2, 0.95], chord: [0.25, 0.95], pad: [0.2, 0.95],
 };
 
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -102,7 +102,7 @@ const amountOf = (k, p) => {
 const densityOf = (a) => clamp(0.15 + 0.95 * a);
 
 // ESCALONADA: orden en que cambian, de adorno a cimiento (el kick, el último)
-const ORDER = { pad: 0, ohat: 1, perc: 2, chord: 3, hat: 4, clap: 5, bass: 6, kick: 7 };
+const ORDER = { pad: 0, ohat: 1, foley: 1.5, perc: 2, chord: 3, hat: 4, clap: 5, bass: 6, kick: 7 };
 
 // Plan de un viaje ESCALONADO de `bars` compases: para cada instrumento que cambia,
 // [empieza, llega] en fracción del viaje. Los que cambian se reparten en tramos (uno por

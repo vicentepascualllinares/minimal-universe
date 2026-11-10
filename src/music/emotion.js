@@ -125,6 +125,13 @@ export function mapEmotion(v, a, drift = 0) {
       drive: 0.03 + 0.35 * tense,
     },
 
+    // FOLEY: objetos (papel, llaves, gota...) más brillantes o apagados y más secos o largos
+    foley: {
+      bright: 0.75 + 0.5 * vn,                     // multiplica los filtros y la altura
+      decayMul: lerp(1.5, 0.7, an) * (1 + 0.5 * abyss),
+      drive: 0.02 + 0.2 * tense,
+    },
+
     bass: {
       cutoff: 90 + 260 * vn + 700 * an * (0.4 + 0.6 * vn) + 60 * drift,
       env: 1.2 + 3.5 * an + 2 * tension,

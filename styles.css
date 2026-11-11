@@ -577,6 +577,18 @@ body.mode-dj .gen { gap: 8px; }
 .mv-it.on .mv-name { color: var(--fg); }
 .mv-it.queued { box-shadow: inset 2px 0 0 var(--fg); }
 .mv-seed { color: var(--dim); }
+/* ✎ ⇢ ✕ en cada universo (y ✎ ✕ en la cabecera de la carpeta): tenues hasta pasar por encima */
+.mv-top { display: flex; align-items: center; gap: 2px; }
+.mv-top .mv-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.mv-tool { flex: none; width: 20px; padding: 2px 0; font-size: 10px; letter-spacing: 0; color: var(--faint); opacity: 0.5; }
+.mv-it:hover .mv-tool, .mv-head:hover .mv-tool { opacity: 1; }
+.mv-tool:hover { color: var(--fg); }
+@media (hover: none) { .mv-tool { opacity: 1; } }
+.mv-row.editing, .mv-head.editing { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 8px; cursor: default; }
+.mv-row.editing .ui-rename, .mv-head.editing .ui-rename { margin: 0; padding: 4px 6px; font-size: 9px; }
+.mv-row.editing .ui-mv-to { flex: 1 1 100%; }
+.mv-row.editing .ui-ask, .mv-head.editing .ui-ask { font-size: 9px; }
+.mv-row.editing button, .mv-head.editing button { padding: 4px 6px; font-size: 8px; }
 /* TRAER un universo (universeIO.js): en el panel y en OPCIONES */
 .ui-line { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ui-in { flex: 1; min-width: 0; background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 6px 8px; font: inherit; font-size: 10px; letter-spacing: 0.06em; }

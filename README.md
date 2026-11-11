@@ -575,8 +575,9 @@ Para volver a tener un universo que gusta (2026-11-11; código en `src/music/uni
     (los sueltos, en SIN CARPETA; **+ CARPETA** crea una); al pulsar una, su lista con **nombre,
     escala, BPM y semilla** (‹ vuelve). **Doble clic** (o doble toque) en un universo = **a la cola**;
     IMPORTAR lo lanza en el 1 del compás siguiente.
-  Renombrar, mover y borrar (y traer una semilla escrita o un archivo de fuera) están en OPCIONES →
-  UNIVERSOS. En DJ todo sigue en la cabecera de cada universo, y traer y guardar en OPCIONES →
+  En la lista, cada universo tiene **✎** (nombre), **⇢** (moverlo de carpeta) y **✕** (borrar, con
+  SÍ, BORRAR / NO; va a la papelera); en la cabecera de la carpeta, ✎ y ✕ para la carpeta. Traer una
+  semilla escrita o un archivo de fuera está en OPCIONES → UNIVERSOS. En DJ todo sigue en la cabecera de cada universo, y traer y guardar en OPCIONES →
   UNIVERSOS (también en móvil, donde el panel es una tira compacta solo con lo de generar).
 - **SEMILLA** — el código del universo, p. ej. `968782145-RO100-124-F#EOL`: la semilla, el estilo y
   cuánto (RO = ROMINIMAL; `-P60` si la PUREZA no es 100 %) y el **tempo** y la **tónica y el modo** con

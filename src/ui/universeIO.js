@@ -417,11 +417,13 @@ export function bindMultiverse(root, engine, deck) {
   };
   const list = () => {
     const items = inFolder(folder);
-    return `<div class="mv-head"><button class="mv-back" title="volver a las carpetas">‹</button><b>${esc(folder === LOOSE ? 'SIN CARPETA' : folder)}</b><small>${items.length}</small></div>
+    // la carpeta (si es una de verdad) se renombra ✎ y se borra ✕; cada universo, ✎ ⇢ ✕
+    const foTools = folder === LOOSE ? '' : '<button class="mv-fo-ren mv-tool" title="cambiar el nombre de la carpeta">✎</button><button class="mv-fo-del mv-tool" title="borrar la carpeta con lo que tenga dentro (pide confirmación; va a la papelera)">✕</button>';
+    return `<div class="mv-head"><button class="mv-back" title="volver a las carpetas">‹</button><b>${esc(folder === LOOSE ? 'SIN CARPETA' : folder)}</b><small>${items.length}</small>${foTools}</div>
       <div class="mv-list">
         <div class="mv-row mv-cols"><span>NOMBRE</span><span>ESCALA</span><span>BPM</span><span>SEMILLA</span></div>
         ${items.map((it) => `<div class="mv-row mv-it${it.file === sel ? ' on' : ''}${it.file === queued?.it.file ? ' queued' : ''}" data-f="${esc(it.file)}" title="doble clic: a la cola (luego, IMPORTAR)">
-          <span class="mv-name">${esc(it.name || it.code || it.file)}</span><span>${esc(scaleTxt(it.global))}</span><span>${esc(bpmTxt(it.global))}</span><span class="mv-seed">${esc(seedTxt(it))}</span>
+          <span class="mv-top"><span class="mv-name">${esc(it.name || it.code || it.file)}</span><button class="mv-ren mv-tool" title="cambiar el nombre">✎</button><button class="mv-mv mv-tool" title="moverlo a otra carpeta">⇢</button><button class="mv-del mv-tool" title="borrar (pide confirmación; va a la papelera)">✕</button></span><span>${esc(scaleTxt(it.global))}</span><span>${esc(bpmTxt(it.global))}</span><span class="mv-seed">${esc(seedTxt(it))}</span>
         </div>`).join('') || '<span class="ui-empty">vacía: al GUARDAR, elige esta carpeta</span>'}
       </div>`;
   };
@@ -481,9 +483,84 @@ export function bindMultiverse(root, engine, deck) {
     render();
   });
 
+  // RENOMBRAR, MOVER y BORRAR en la propia fila (o en la cabecera, la carpeta): un campo o una
+  // pregunta con SÍ / NO; Enter u OK = hacer, Esc o ✕ / NO = dejarlo. Borrar va a la papelera
+  const act = async (fn, ok) => {
+    try { await fn(); if (ok) say(ok); changed(); } catch (e) { say(`no se pudo: ${e.message}`); }
+    await refresh();
+  };
+  const editRow = (row, inner, onOk) => {
+    row.innerHTML = `${inner}<button class="ui-ren-ok">OK</button><button class="ui-ren-no" title="dejarlo como estaba">✕</button>`;
+    row.classList.add('editing');
+    const f = row.querySelector('input, select');
+    f.focus();
+    f.select?.();
+    row.querySelector('.ui-ren-ok').addEventListener('click', () => onOk(f.value.trim()));
+    row.querySelector('.ui-ren-no').addEventListener('click', render);
+    f.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') onOk(f.value.trim()); if (e.key === 'Escape') render(); });
+  };
+  const askRow = (row, text, onYes) => {
+    row.innerHTML = `<span class="ui-ask">${esc(text)}</span><button class="ui-del-yes">SÍ, BORRAR</button><button class="ui-del-no">NO</button>`;
+    row.classList.add('editing');
+    row.querySelector('.ui-del-no').addEventListener('click', render);
+    row.querySelector('.ui-del-yes').addEventListener('click', onYes);
+  };
+  const tools = (b) => {
+    const c = b.classList;
+    // ── la carpeta abierta
+    if (c.contains('mv-fo-ren') || c.contains('mv-fo-del')) {
+      const head = b.closest('.mv-head'), name = folder, n = inFolder(name).length;
+      if (c.contains('mv-fo-ren')) {
+        editRow(head, `<input class="ui-rename" type="text" maxlength="60" value="${esc(name)}">`, (to) => {
+          if (!to || to === name) { render(); return; }
+          act(async () => {
+            const r = await renameFolder(name, to);
+            folder = r.name;
+            if (shared.open.delete(name)) shared.open.add(r.name);
+            if (shared.lastFolder === name) shared.lastFolder = r.name;
+          }, `la carpeta ahora se llama «${to}»`);
+        });
+      } else {
+        askRow(head, `¿Borrar la carpeta «${name}»${n ? ` y sus ${n} universo${n === 1 ? '' : 's'}` : ''}?`, () => act(async () => {
+          await deleteFolder(name);
+          folder = null;
+          shared.open.delete(name);
+          if (shared.lastFolder === name) shared.lastFolder = '';
+        }, `carpeta «${name}» borrada (está en universos/papelera, por si acaso)`));
+      }
+      return;
+    }
+    // ── un universo
+    const row = b.closest('.mv-it');
+    const it = row && L.items.find((x) => x.file === row.dataset.f);
+    if (!it) return;
+    const label = it.name || it.code || it.file;
+    const follow = (r) => { if (sel === it.file) sel = r.file; if (queued?.it.file === it.file) queued.it = { ...queued.it, file: r.file, name: r.name, folder: r.folder }; showQueue(); };
+    if (c.contains('mv-ren')) {
+      editRow(row, `<input class="ui-rename" type="text" maxlength="80" value="${esc(it.name || it.code || '')}">`, (nm) => {
+        if (!nm || nm === (it.name || it.code)) { render(); return; }
+        act(async () => follow(await patchUniverse(it.file, { name: nm })), `ahora se llama «${nm}»`);
+      });
+    } else if (c.contains('mv-mv')) {
+      const opts = [['', 'SIN CARPETA'], ...L.folders.map((f) => [f.name, f.name])];
+      editRow(row, `<span class="ui-ask">mover «${esc(label)}» a</span><select class="ui-mv-to">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === it.folder ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`, () => {
+        const to = row.querySelector('.ui-mv-to').value;
+        if (to === it.folder) { render(); return; }
+        act(async () => follow(await patchUniverse(it.file, { folder: to })), `«${label}» ${to ? `ahora está en ${to}` : 'ya no está en ninguna carpeta'}`);
+      });
+    } else if (c.contains('mv-del')) {
+      askRow(row, `¿Borrar «${label}»?`, () => act(async () => {
+        await deleteUniverse(it.file);
+        if (sel === it.file) sel = null;
+      }, `borrado «${label}» (está en universos/papelera, por si acaso)`));
+    }
+  };
+
   lib.addEventListener('click', (ev) => {
+    if (ev.target.closest('.editing')) return; // (una fila con su campo o su pregunta abiertos)
     const b = ev.target.closest('button, .mv-it');
     if (!b) return;
+    if (b.classList.contains('mv-tool')) { tools(b); return; }
     if (b.classList.contains('mv-fo')) { folder = b.dataset.fo; sel = null; render(); return; }
     if (b.classList.contains('mv-back')) { folder = null; render(); return; }
     if (b.classList.contains('mv-mkdir')) {

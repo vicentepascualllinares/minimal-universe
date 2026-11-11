@@ -19,7 +19,7 @@
 @supports (height: 100dvh) { :root { --vh: 1dvh; } }
 
 /* un universo en ordenador: estructura · transición · complejidad en una fila */
-body.mode-solo { --pad: max(160px, min(calc(100vh - 220px), calc((100vw - var(--col) - 160px) / 2))); }
+body.mode-solo { --genw: 236px; --pad: max(160px, min(calc(100vh - 220px), calc((100vw - var(--col) - var(--genw) - 200px) / 2))); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -124,6 +124,9 @@ header { display: flex; justify-content: space-between; align-items: center; gap
   color: var(--fg); background: var(--bg);
   border: 1px solid var(--line); padding: 8px 10px;
 }
+.op-input { flex: 1; min-width: 0; background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 8px 10px; font: inherit; font-size: 11px; letter-spacing: 0.08em; }
+.op-input:focus { outline: none; border-color: var(--fg); }
+.op-ucode { color: var(--fg); font-weight: normal; letter-spacing: 0.08em; user-select: all; }
 .op-mini { font-size: 9px; letter-spacing: 0.14em; padding: 8px 10px; border: 1px solid var(--line); white-space: nowrap; }
 .op-mini:hover { color: var(--fg); }
 /* OPCIONES crece hacia abajo y se desplaza si no cabe */
@@ -275,6 +278,21 @@ body.mode-dj .cx { margin: 0 10px; gap: 8px; }
 body.mode-dj .cx-lab { font-size: 0; letter-spacing: 0; }
 body.mode-dj .cx-lab.lo::after { content: "−"; font-size: 12px; }
 body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
+/* UNIVERSO PARECIDO: cuánto se mantiene del sonido y de la música, y el botón */
+.sim { display: flex; align-items: center; gap: 6px; }
+.sim-k { display: flex; align-items: center; gap: 3px; }
+.sim-k .knob { width: 20px; height: 20px; }
+.sim-lab { font-size: 8px; letter-spacing: 0.1em; color: var(--fg); opacity: calc(0.3 + var(--v, 1) * 0.6); }
+.simbtn { font-size: 9px; letter-spacing: 0.14em; padding: 4px 0; color: var(--dim); }
+.simbtn:hover { color: var(--fg); }
+body.mode-dj .sim-lab { font-size: 0; }
+body.mode-dj .sim-s .sim-lab::after { content: 'SON'; font-size: 8px; }
+body.mode-dj .sim-m .sim-lab::after { content: 'MÚS'; font-size: 8px; }
+/* SEMILLA del universo que suena (clic = copiar) */
+.ucode { font-size: 9px; letter-spacing: 0.08em; color: var(--faint); padding: 4px 0; white-space: nowrap; }
+.ucode:hover { color: var(--dim); }
+.ucode.copied { color: var(--fg); }
+.ucode.copied::after { content: ' · COPIADA'; }
 .seed.pending { color: var(--fg); animation: blink 0.5s steps(2) infinite; }
 
 /* ESTILO de la próxima generación (NORMAL ↔ ROMINIMAL), junto a NUEVO UNIVERSO. La marca = el
@@ -294,6 +312,12 @@ body.mode-dj .cx-lab.hi::after { content: "+"; font-size: 12px; }
 .sty-k { display: none; align-items: center; gap: 4px; }
 .sty-k .knob { width: 24px; height: 24px; }
 .sty-klab { font-size: 9px; letter-spacing: 0.06em; color: var(--fg); opacity: calc(0.3 + var(--v, 0) * 0.7); }
+/* PUREZA: perilla junto al ESTILO (en todos los modos) */
+.pur { display: flex; align-items: center; gap: 4px; }
+.pur .knob { width: 22px; height: 22px; }
+.pur-lab { font-size: 8px; letter-spacing: 0.14em; color: var(--fg); opacity: calc(0.3 + var(--v, 1) * 0.6); white-space: nowrap; }
+body.mode-dj .pur-lab { font-size: 0; }
+body.mode-dj .pur-lab::after { content: 'PUR'; font-size: 9px; letter-spacing: 0.06em; }
 body.mode-dj .sty { display: none; }
 body.mode-dj .sty-k { display: flex; gap: 3px; }
 body.mode-dj .sty-k .knob { width: 22px; height: 22px; }
@@ -472,6 +496,150 @@ body.mode-dj .gen { gap: 8px; }
 .t-vol .fader .t-handle { width: 20px; height: 9px; }
 .t-vol-db { color: var(--dim); font-size: 9px; font-variant-numeric: tabular-nums; }
 .t-vol-db.moved { color: var(--fg); }
+
+/* ───────── UN UNIVERSO: el panel de la derecha, en dos bloques. GENERAR UNIVERSO (NUEVO grande y, a su
+   lado, PARECIDO con SONIDO y MÚSICA; ESTILO y PUREZA; ESCALA) y MULTIVERSO (SONANDO, EN COLA, BIBLIOTECA) */
+.genp.col { width: var(--genw); height: auto; max-height: max(calc(var(--pad) + 21px), calc(100 * var(--vh) - 260px)); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; align-items: stretch; gap: 12px; }
+.genp .col-title { text-align: center; }
+.genp .col-title.gp-multi { border-top: 1px solid var(--dim); padding-top: 14px; margin-top: 6px; }
+.gtop { display: flex; gap: 10px; align-items: stretch; }
+.genp .seed { flex: 0 0 104px; height: 104px; font-size: 12px; letter-spacing: 0.24em; color: var(--fg); border: 1px solid var(--dim); padding: 0; }
+.genp .seed:hover { border-color: var(--fg); }
+.genp .sim { flex: 1; min-width: 0; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 10px; }
+.genp .simbtn { border: 1px solid var(--line); padding: 9px 6px; color: var(--fg); font-size: 10px; }
+.genp .simbtn:hover { border-color: var(--fg); }
+.sim-ks { display: flex; justify-content: space-around; }
+.genp .sim-k { flex-direction: column; gap: 5px; }
+.genp .sim-k .knob { width: 28px; height: 28px; }
+.gp { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.gp-t { font-size: 9px; letter-spacing: 0.2em; color: var(--dim); }
+.gp-row { display: flex; align-items: center; justify-content: space-between; }
+.gp-h { font-style: normal; color: var(--faint); letter-spacing: 0.06em; margin-left: 4px; }
+.genp .sty { width: 100%; }
+.genp .ucode { text-align: left; white-space: normal; word-break: break-all; color: var(--dim); font-size: 9px; padding: 0; }
+/* ESCALA: tónica (arrastrar / rueda) | modo (clic = el siguiente) */
+.gp-scale { flex-direction: row; align-items: center; justify-content: space-between; }
+.gscale { display: flex; border: 1px solid var(--line); width: 150px; }
+.gs-key { flex: 0 0 42px; text-align: center; padding: 6px 0; font-size: 11px; letter-spacing: 0.06em; color: var(--fg); border-right: 1px solid var(--line); cursor: ns-resize; touch-action: none; user-select: none; }
+.gs-mode { flex: 1; font-size: 10px; letter-spacing: 0.16em; color: var(--fg); padding: 6px 0; }
+.gs-key:hover, .gs-mode:hover { background: rgba(255, 255, 255, 0.04); }
+.gs-mode.pending { animation: blink 0.5s steps(2) infinite; }
+/* MULTIVERSO: SONANDO (nombre, GUARDAR, semilla, carpeta) y EN COLA (IMPORTAR) */
+.mv-now { border-top: 0; padding-top: 0; }
+.mv-lab { font-size: 9px; letter-spacing: 0.18em; color: var(--dim); }
+.mv-now .ui-line { flex-wrap: nowrap; }
+.mv-now .ui-name { padding: 6px 6px; font-size: 9px; }
+.mv-now .ui-save { padding: 6px 6px; }
+.mv-sub { padding-left: 2px; }
+.mv-queue { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--dim); padding: 8px; }
+.mv-queue[hidden] { display: none; }
+.mv-q-what { display: flex; flex-direction: column; gap: 3px; }
+.mv-q-what b { font-weight: normal; font-size: 10px; letter-spacing: 0.08em; color: var(--fg); overflow-wrap: anywhere; }
+.mv-q-what small { font-size: 8px; letter-spacing: 0.04em; color: var(--dim); overflow-wrap: anywhere; }
+.mv-queue .ui-line { flex-wrap: wrap; }
+.mv-queue .ui-glob { flex: 1 1 100%; font-size: 8px; padding: 5px 6px; }
+.mv-q-x { font-size: 10px; color: var(--faint); border: 1px solid var(--line); padding: 6px 8px; }
+.mv-q-x:hover { color: var(--fg); }
+.mv-import { flex: 1; font-size: 10px; letter-spacing: 0.2em; color: var(--fg); border: 1px solid var(--fg); padding: 7px 8px; }
+.mv-import:hover { background: rgba(255, 255, 255, 0.06); }
+/* BIBLIOTECA: carpetas en cuadrícula; al abrir una, su lista */
+.mv-libbtn { align-self: flex-start; display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: 0.16em; border: 1px solid var(--line); padding: 7px 10px; color: var(--fg); }
+.mv-libbtn:hover { border-color: var(--fg); }
+.mv-libbtn.open { align-self: stretch; }
+.mv-libbtn.open .ui-arrow { transform: rotate(180deg); }
+.mv-lib { display: flex; flex-direction: column; margin-top: -6px; }
+.mv-lib[hidden] { display: none; }
+.mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.mv-fo, .mv-mkdir, .mv-mk { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 6px; min-height: 46px; padding: 7px 8px; border: 1px solid rgba(110, 160, 230, 0.45); text-align: left; }
+.mv-fo:hover { border-color: rgba(140, 185, 245, 0.95); background: rgba(110, 160, 230, 0.06); }
+.mv-fo b { font-weight: normal; font-size: 9px; letter-spacing: 0.1em; color: var(--fg); overflow-wrap: anywhere; }
+.mv-fo small { font-size: 8px; color: var(--faint); }
+.mv-fo.loose b { color: var(--dim); }
+.mv-mkdir { justify-content: center; align-items: center; border-style: dashed; border-color: var(--line); font-size: 8px; letter-spacing: 0.14em; color: var(--dim); }
+.mv-mkdir:hover { color: var(--fg); border-color: var(--fg); }
+.mv-mk { flex-direction: row; align-items: center; border-color: var(--line); padding: 4px; gap: 4px; }
+.mv-mk .ui-rename { margin: 0; padding: 4px 5px; font-size: 9px; }
+.mv-mk .ui-ren-ok { padding: 4px 5px; }
+.mv-head { display: flex; align-items: center; gap: 8px; border: 1px solid rgba(110, 160, 230, 0.45); border-bottom: 0; padding: 0 8px 0 0; }
+.mv-back { padding: 6px 9px; font-size: 13px; color: var(--dim); border-right: 1px solid var(--line); }
+.mv-back:hover { color: var(--fg); }
+.mv-head b { flex: 1; min-width: 0; font-weight: normal; font-size: 9px; letter-spacing: 0.12em; color: var(--fg); overflow-wrap: anywhere; }
+.mv-head small { font-size: 8px; color: var(--faint); }
+.mv-list { display: flex; flex-direction: column; border: 1px solid rgba(230, 110, 100, 0.6); max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+/* cada universo: el nombre arriba y, debajo, sus columnas ESCALA · BPM · SEMILLA */
+.mv-row { display: grid; grid-template-columns: 34% 12% 1fr; column-gap: 6px; row-gap: 3px; padding: 6px 8px; border-top: 1px solid var(--line); font-size: 8px; letter-spacing: 0.04em; color: var(--faint); cursor: pointer; user-select: none; }
+.mv-row > span { overflow-wrap: anywhere; }
+.mv-row > :first-child { grid-column: 1 / -1; }
+.mv-cols { cursor: default; border-top: 0; color: var(--dim); letter-spacing: 0.14em; font-size: 7px; padding: 5px 8px; }
+.mv-name { font-size: 10px; letter-spacing: 0.06em; color: var(--dim); }
+.mv-it:hover .mv-name { color: var(--fg); }
+.mv-it.on { background: rgba(255, 255, 255, 0.05); }
+.mv-it.on .mv-name { color: var(--fg); }
+.mv-it.queued { box-shadow: inset 2px 0 0 var(--fg); }
+.mv-seed { color: var(--dim); }
+/* TRAER un universo (universeIO.js): en el panel y en OPCIONES */
+.ui-line { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ui-in { flex: 1; min-width: 0; background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 6px 8px; font: inherit; font-size: 10px; letter-spacing: 0.06em; }
+.ui-in:focus { outline: none; border-color: var(--fg); }
+.ui-open, .ui-glob, .ui-go { font-size: 9px; letter-spacing: 0.12em; border: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; }
+.ui-open:hover, .ui-go:hover, .ui-glob:hover { color: var(--fg); }
+.ui-glob.on { color: var(--fg); border-color: var(--fg); }
+.ui-glob.on::before { content: '✓ '; }
+.ui-go { color: var(--fg); }
+.ui-glob[hidden], .ui-found[hidden] { display: none; }
+.ui-found { display: flex; flex-direction: column; gap: 6px; }
+.ui-what { font-size: 9px; color: var(--fg); letter-spacing: 0.06em; word-break: break-all; line-height: 1.5; }
+.ui-glob-txt, .ui-note { font-size: 8px; color: var(--faint); letter-spacing: 0.04em; line-height: 1.5; }
+.ui-note:empty { display: none; }
+.op-uimp, .op-usaver { display: flex; flex-direction: column; gap: 8px; }
+.ui-name { flex: 1; min-width: 0; background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 6px 8px; font: inherit; font-size: 10px; letter-spacing: 0.06em; }
+.ui-name:focus, .ui-rename:focus { outline: none; border-color: var(--fg); }
+.ui-save { font-size: 9px; letter-spacing: 0.12em; border: 1px solid var(--line); padding: 6px 8px; color: var(--fg); }
+.ui-save:hover { border-color: var(--fg); }
+.ui-saved { font-size: 8px; color: var(--faint); letter-spacing: 0.04em; line-height: 1.5; word-break: break-word; }
+.ui-saved:empty { display: none; }
+/* la BIBLIOTECA: GUARDADOS ▾ y su lista */
+.ui-libbtn { align-self: stretch; display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: 0.16em; border: 1px solid var(--line); padding: 7px 8px; color: var(--fg); }
+.ui-libbtn:hover { border-color: var(--fg); }
+.ui-count { font-weight: normal; color: var(--dim); letter-spacing: 0.04em; }
+.ui-arrow { font-style: normal; margin-left: auto; transition: transform 0.15s; }
+.ui-libbtn.open .ui-arrow { transform: rotate(180deg); }
+.ui-lib { display: flex; flex-direction: column; border: 1px solid var(--line); border-top: 0; margin-top: -8px; max-height: 240px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.ui-lib[hidden] { display: none; }
+.ui-it { display: flex; align-items: stretch; border-top: 1px solid var(--line); }
+.ui-it:first-child { border-top: 0; }
+.ui-it.on { background: rgba(255, 255, 255, 0.05); }
+.ui-it.on .ui-pick b { color: var(--fg); }
+.ui-pick { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 7px 8px; text-align: left; }
+.ui-pick b { font-weight: normal; font-size: 10px; letter-spacing: 0.08em; color: var(--dim); overflow-wrap: anywhere; }
+.ui-pick small { font-size: 8px; letter-spacing: 0.04em; color: var(--faint); overflow-wrap: anywhere; }
+.ui-pick:hover b { color: var(--fg); }
+.ui-ren, .ui-mv, .ui-del, .ui-fo-ren, .ui-fo-del { width: 24px; flex: none; font-size: 11px; color: var(--faint); letter-spacing: 0; }
+.ui-ren:hover, .ui-mv:hover, .ui-del:hover, .ui-fo-ren:hover, .ui-fo-del:hover { color: var(--fg); }
+.ui-it.asking, .ui-fo.asking, .ui-it.editing, .ui-fo.editing, .ui-tools.editing { align-items: center; gap: 6px; padding: 6px 8px; flex-wrap: wrap; }
+/* CARPETAS: una fila plegable; lo de dentro, sangrado */
+.ui-tools { display: flex; justify-content: flex-end; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.ui-mkdir { font-size: 8px; letter-spacing: 0.14em; color: var(--dim); padding: 3px 4px; }
+.ui-mkdir:hover { color: var(--fg); }
+.ui-fo { display: flex; align-items: stretch; border-top: 1px solid var(--line); background: rgba(255, 255, 255, 0.025); }
+.ui-tools + .ui-fo { border-top: 0; }
+.ui-fo-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 8px; text-align: left; }
+.ui-fo-open i { font-style: normal; color: var(--dim); width: 8px; }
+.ui-fo-open b { font-weight: normal; font-size: 10px; letter-spacing: 0.1em; color: var(--fg); overflow-wrap: anywhere; }
+.ui-fo-open small { font-size: 8px; color: var(--faint); letter-spacing: 0.04em; }
+.ui-it.in { padding-left: 14px; box-shadow: inset 2px 0 0 var(--line); }
+.ui-empty.in { padding-left: 22px; }
+.ui-lab { font-size: 8px; letter-spacing: 0.14em; color: var(--dim); }
+.ui-folder, .ui-mv-to { flex: 1; min-width: 0; font: inherit; font-size: 9px; letter-spacing: 0.08em; color: var(--fg); background: var(--bg); border: 1px solid var(--line); padding: 5px 6px; }
+.ui-newfolder { flex: 1 1 100%; min-width: 0; background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 6px 8px; font: inherit; font-size: 10px; letter-spacing: 0.06em; }
+.ui-newfolder:focus { outline: none; border-color: var(--fg); }
+.ui-newfolder[hidden] { display: none; }
+.ui-ask { flex: 1 1 100%; font-size: 9px; letter-spacing: 0.06em; color: var(--fg); overflow-wrap: anywhere; }
+.ui-del-yes, .ui-del-no, .ui-ren-ok, .ui-ren-no { font-size: 9px; letter-spacing: 0.12em; border: 1px solid var(--line); padding: 5px 7px; }
+.ui-del-yes { color: #e8a090; border-color: #e8a090; }
+.ui-rename { flex: 1; min-width: 0; margin: 5px 0 5px 6px; background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 5px 7px; font: inherit; font-size: 10px; letter-spacing: 0.06em; }
+.ui-it:has(.ui-rename) { align-items: center; gap: 4px; padding-right: 6px; }
+.ui-empty { font-size: 8px; color: var(--faint); letter-spacing: 0.04em; padding: 8px; line-height: 1.5; }
 
 /* ───────── columna TRANSICIÓN */
 .col {
@@ -664,6 +832,18 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
     gap: 10px;
   }
   header { gap: 8px; flex-wrap: wrap; }
+  .genp.col { width: auto; max-height: none; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; overflow: visible; }
+  /* (en pequeño: solo GENERAR; el MULTIVERSO y la ESCALA se quedan fuera, la escala ya está arriba) */
+  .genp .col-title, .genp .gp-t:not(.gp-row), .genp .gp-scale, .genp .mv-now, .genp .mv-libbtn, .genp .mv-lib, .genp .sty { display: none; }
+  .genp .gp-row { font-size: 0; letter-spacing: 0; }
+  .genp .gtop { gap: 12px; align-items: center; }
+  .genp .seed { flex: none; height: auto; }
+  .genp .sim { flex-direction: row; align-items: center; }
+  .genp .sim-k { flex-direction: row; }
+  .genp .sim-k .knob { width: 20px; height: 20px; }
+  .genp .gp { border: 0; padding: 0; flex-direction: row; align-items: center; gap: 10px; }
+  .genp .sty-k { display: flex; }
+  .genp .seed { padding: 6px 10px; font-size: 10px; }
   .brand { letter-spacing: 0.32em; font-size: 10px; }
   .meta { gap: 9px; }
   .hide-compact { display: none; }
@@ -685,6 +865,12 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   .sty { display: none; }
   .sty-k { display: flex; }
   .sty-k .knob { width: 30px; height: 30px; }
+  .pur .knob { width: 30px; height: 30px; }
+  .pur-lab { font-size: 0; }
+  .pur-lab::after { content: "PUR"; font-size: 9px; letter-spacing: 0.06em; }
+  .sim-lab { font-size: 0; }
+  .sim-s .sim-lab::after { content: "SON"; font-size: 8px; }
+  .sim-m .sim-lab::after { content: "MÚS"; font-size: 8px; }
 
   .unit { display: none; }
   .col { gap: 5px; }
@@ -756,6 +942,10 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   header { flex-wrap: nowrap; }
   main { align-items: center; }
   .rows, body.mode-solo .rows { flex-direction: row; gap: 18px; }
+  body.mode-solo { --pad: max(110px, min(calc(100 * var(--vh) - 150px), calc((100vw - var(--col) - 190px) / 2))); }
+  .genp.col { width: 96px; flex-direction: column; flex-wrap: nowrap; }
+  .genp .gp, .genp .gtop, .genp .sim { flex-direction: column; }
+  .genp .ucode { display: none; }
   .seed { padding: 4px 0; }
   .deck .strip { margin-top: 0; }
   .tabs button { padding: 6px 0; }

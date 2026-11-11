@@ -15,8 +15,10 @@ import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
 import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
-import { NORMAL, rollStyle, styleColor, sValue } from '../music/styles.js';
+import { NORMAL, rollStyle, styleColor, sValue, bassSweep } from '../music/styles.js';
 import { makeSpace } from '../music/space.js';
+import { applyGenState, applyStyleData, rollCharacter, captureUniverse } from '../music/universe.js';
+import { birthUniverse, blendUniverse } from '../music/similar.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
@@ -74,9 +76,15 @@ export class Deck {
     // que nacerá el PRÓXIMO universo; `sty` = el estilo con el que nació el que suena. No se guarda
     // (como el resto de OPCIONES, vendrá con las cuentas): cada sesión empieza en NORMAL
     this.styleNext = 0;
+    // PUREZA (styles.js): cuánto respeta ese estilo el próximo universo (1 = estricto). Igual: solo al generar
+    this.purityNext = 1;
+    // UNIVERSO PARECIDO (similar.js): cuánto se mantiene del sonido y de la música (perillas junto a NUEVO UNIVERSO)
+    this.keepSound = 1;
+    this.keepMusic = 0.5;
+    this.similarOf = null;
     this.sty = NORMAL;
     this.pendingSty = null;
-    this.waitStyle = 0; // el estilo con el que se sorteó el universo que espera al primer GENERAR (ver styleWaiting)
+    this.waitStyle = '0|1'; // el estilo (y la pureza) con el que se sorteó el universo que espera al primer GENERAR (ver styleWaiting)
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement(scene);
     this.events = [];
@@ -241,12 +249,71 @@ export class Deck {
     if (this.ctx) this.refreshSounds(this.pendingGen, true);
   }
   // el universo que viene: semilla, ESTILO (el del fader ahora), generadores y espacio
+  // (el estilo y la pureza, en pasos de 0,1 %: así el CÓDIGO DE SEMILLA, universe.js, lo rehace exacto)
   rollPending() {
     this.pendingSeed = newSeed();
-    this.pendingSty = rollStyle(this.pendingSeed, this.styleNext);
+    this.pendingGlobals = null;
+    const q = (x) => Math.round(x * 1000) / 1000;
+    this.pendingSty = rollStyle(this.pendingSeed, q(this.styleNext), undefined, q(this.purityNext));
+    this.pendingSnap = null;
     this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
     this.pendingSpace = makeSpace(this.pendingSeed, this.pendingSty);
     this.spaceFx?.prepare(this.pendingSpace); // su sala y su fondo se calculan ya (fuera del reloj)
+  }
+
+  // UNIVERSO GUARDADO (universe.js): `u` = un CÓDIGO DE SEMILLA leído ({ seed, style }) o un ARCHIVO
+  // (además, todo lo que había mutado y tocado). Espera como un NUEVO UNIVERSO y entra en el 1 del
+  // compás siguiente; antes del primer GENERAR, ya. El fader de ESTILO y la PUREZA pasan a los suyos.
+  // `withGlobals`: también su TEMPO, TÓNICA y MODO (los que traiga), al entrar; si no, los de ahora
+  loadUniverse(u, withGlobals = false) {
+    this.pendingGlobals = withGlobals && u.global ? { ...u.global } : null;
+    const S = u.style;
+    this.styleNext = S?.t ?? 0;
+    this.purityNext = S?.purity ?? 1;
+    this.waitStyle = `${this.styleNext}|${this.purityNext}`; // (que GENERAR no lo vuelva a sortear)
+    this.pendingSeed = u.seed >>> 0;
+    this.pendingSty = rollStyle(this.pendingSeed, this.styleNext, S?.name, this.purityNext);
+    applyStyleData(this.pendingSty, u.styleData); // (un PARECIDO: lo de su estilo que no sale de la semilla)
+    this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
+    if (u.gen) applyGenState(this.pendingGen, u.gen);
+    this.pendingSpace = u.space ? JSON.parse(JSON.stringify(u.space)) : makeSpace(this.pendingSeed, this.pendingSty);
+    this.pendingSnap = u.gen ? u : null;
+    this.spaceFx?.prepare(this.pendingSpace);
+    if (this.ctx) this.refreshSounds(this.pendingGen, true);
+    if (!this.engine.generated) {
+      // parado: entra ya, con su color puesto (como el primer universo)
+      const now = this.ctx?.currentTime ?? 0;
+      this.enterPending(now);
+      this.emotion.snap();
+      this.e = this.colorAt(now);
+      if (this.ctx) this.refreshSounds(this.gen, true);
+    }
+  }
+  // UNIVERSO PARECIDO (similar.js): uno nuevo que MANTIENE `keepS` del SONIDO y `keepM` de la MÚSICA
+  // del que suena (0..1; los dos a 1 = el mismo, exacto), con su mismo ESTILO y PUREZA. Lo que cambia
+  // sale de otro universo recién nacido con los mismos estilo y pureza. Entra como NUEVO UNIVERSO
+  similarUniverse(keepS, keepM) {
+    const E = this.engine;
+    const A = captureUniverse(this, E);
+    const seed = newSeed();
+    const B = birthUniverse(seed, A.style, (sty) => E.bornMix(sty));
+    const U = blendUniverse(A, B, keepS, keepM, new Rng((seed ^ 0x3c6ef372) >>> 0));
+    this.loadUniverse(U, false); // (tempo, tónica y modo: los de ahora)
+    return U;
+  }
+
+  // lo de un ARCHIVO que no sale de la semilla: encima de lo que acaba de sortear newCharacter
+  applySnap(u, t0) {
+    Object.assign(this.cx, u.cx);
+    if (u.osc) this.osc = JSON.parse(JSON.stringify(u.osc));
+    if (u.kit) this.kit = JSON.parse(JSON.stringify(u.kit));
+    if (u.color) this.emotion.setTarget(u.color.v, u.color.a);
+    if (u.fxPal) this.fxPal = { ...this.fxPal, ...u.fxPal };
+    if (u.fxRng !== undefined) this.fxRng.a = u.fxRng;
+    if (u.spaceRng !== undefined) this.spaceRng.a = u.spaceRng;
+    if (u.transition) { this.form = u.transition.form ?? this.form; this.flow = u.transition.flow ?? this.flow; }
+    this.cxVersion++;
+    this.engine.universeLoaded(this, u, t0);
   }
 
   // ANTES DEL PRIMER GENERAR: el universo que espera nace ya con el ESTILO que marca el fader (NORMAL,
@@ -255,8 +322,9 @@ export class Deck {
   // puesto (sin la inercia de ~2 s). Lo llama la vista al mover el fader y el motor al pulsar GENERAR
   // (por si no dio tiempo). Devuelve si ha cambiado algo
   styleWaiting() {
-    if (this.engine.generated || !this.ctx || this.waitStyle === this.styleNext) return false;
-    this.waitStyle = this.styleNext;
+    const want = `${this.styleNext}|${this.purityNext}`;
+    if (this.engine.generated || !this.ctx || this.waitStyle === want) return false;
+    this.waitStyle = want;
     this.rollPending();
     const now = this.ctx.currentTime;
     this.enterPending(now);
@@ -278,27 +346,31 @@ export class Deck {
     this.newFxPalette(this.seed);
     this.newSpace(this.seed, this.pendingSpace ?? undefined); // y su ESPACIO, desde el 1 de este compás
     this.pendingSpace = null;
+    const snap = this.pendingSnap;
+    this.pendingSnap = null;
+    this.similarOf = snap?.similar ?? null; // ¿es un PARECIDO? (no se rehace con su semilla)
+    if (this.pendingGlobals) this.engine.applyGlobals(this.pendingGlobals); // TEMPO, TÓNICA y MODO, si se pidió
+    this.pendingGlobals = null;
     this.spaceFx?.set(this.space, t0, this.engine.stepDur);
     // con estilo, nace también con su MEZCLA (faders y MUTE), en el 1 de este compás. En NORMAL el
     // MIXER no se toca, como siempre, salvo para devolver la mezcla de antes si el universo que se
     // va la traía de un estilo (ver Engine.styleMix)
     this.engine.styleMix(this, this.sty, t0);
     this.setBus(this.sty, t0);
+    if (snap) this.applySnap(snap, t0); // UNIVERSO GUARDADO: lo mutado y lo tocado, encima
   }
 
   // CARÁCTER del universo (sale de la semilla y de su ESTILO): color del sonido y complejidad
   // de cada grupo. Sustituye al antiguo pad de EMOCIÓN: el timbre cambia con
   // inercia (~2 s); el global no se toca (es del intérprete).
   newCharacter(seed) {
-    const r = new Rng(seed ^ 0x9e3779b9);
-    const S = this.sty, t = S.t;
-    // con estilo, el color se sortea en su zona (mismas dos tiradas)
-    const range = (a, b, R) => (t && R ? r.float(lerp(a, R[0], t), lerp(b, R[1], t)) : r.float(a, b));
-    this.emotion.setTarget(range(-0.8, 0.8, S.v), range(-0.7, 0.7, S.a));
-    this.emotion.setStyle(t ? S.color : null); // y el timbre, a los rangos del estilo
-    Object.assign(this.cx, randomComplexity(r, S));
-    this.osc = randomOsc(r, this.cx, S);
-    this.kit = randomKit(r, S); // al final: la misma semilla sigue dando el mismo color y complejidad
+    // (el sorteo, en universe.js: rollCharacter; también lo usa el PARECIDO)
+    const S = this.sty, C = rollCharacter(seed, S);
+    this.emotion.setTarget(C.v, C.a);
+    this.emotion.setStyle(S.t ? S.color : null); // y el timbre, a los rangos del estilo
+    Object.assign(this.cx, C.cx);
+    this.osc = C.osc;
+    this.kit = C.kit;
     this.cxVersion++;
   }
   setComplexity(group, v) { this.cx[group] = v; }
@@ -855,10 +927,39 @@ export class Deck {
       for (const h of ev) if (this.drums.hit(`f${h.n}`, tf, h.vel)) emit('foley', tf + lat, h.vel);
     }
     if ((ev = B.bass[s]) && A.audible('bass', t)) {
-      const semis = degreeToSemis(ev.deg, scale) + 12;
-      const dur = Math.max(sd * 0.55, ev.len * sd * e.bass.lenMul - 0.01);
+      const fOf = (deg) => root * Math.pow(2, (degreeToSemis(deg, scale) + 12) / 12);
       const tb = tg('bass');
-      V.bass(ctx, C.bass.input, tb, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, this.engine.q.lean);
+      const F = this.sty.t ? this.gen.bass.feel : null;
+      if (!F) {
+        const dur = Math.max(sd * 0.55, ev.len * sd * e.bass.lenMul - 0.01);
+        V.bass(ctx, C.bass.input, tb, ev.vel, fOf(ev.deg), dur, e.bass, this.engine.q.lean);
+      } else {
+        // ESTILO (styles.js `bass.feel`, generators.js `articulate`): la nota ligada suena todo su
+        // largo (hasta la siguiente), los deslizamientos dentro de su largo, el FILTRO LENTO (el corte
+        // y, con él, cuánto abre la envolvente), el REGISTRO (lo que pase del techo baja una octava;
+        // la octava de la tónica, corta, puede pasar) y el sonido de la nota (envolvente, paso bajo
+        // fijo, altura al atacar, caída al final)
+        const [lo, hi] = F.range;
+        const fit = (f, oct) => {
+          if (oct && f <= F.octaveMax) return f;
+          while (f > hi) f /= 2;
+          while (f < lo) f *= 2;
+          return f;
+        };
+        const len = ev.len * sd;
+        const dur = ev.tie ? len - 0.012 : Math.max(sd * 0.55, len * e.bass.lenMul - 0.01);
+        const slides = ev.gl?.filter((g) => g.o < ev.len).map((g) => ({
+          t: s + g.o < 16 ? this.grooveTime('bass', s + g.o, gridT + g.o * sd) : gridT + g.o * sd,
+          f: fit(fOf(g.deg), false),
+        }));
+        const oct = bassSweep(F, b + s / 16);
+        const p = { ...e.bass, cutoff: e.bass.cutoff * Math.pow(2, oct), env: e.bass.env * Math.pow(2, oct * 0.5), filtDecay: e.bass.filtDecay * Math.pow(2, oct * 0.4) };
+        const x = {
+          slides: slides?.length ? slides : null, tau: F.glideTau, sus: F.sus, dec: F.dec, post: F.post,
+          pitch: F.pitch, fall: ev.fall ? F.fall : null,
+        };
+        V.bass(ctx, C.bass.input, tb, ev.vel, fit(fOf(ev.deg), ev.oct), dur, p, this.engine.q.lean, x);
+      }
       emit('bass', tb, ev.vel);
     }
     // acordes y pad: dos octavas sobre la tónica del kick

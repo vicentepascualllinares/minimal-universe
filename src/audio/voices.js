@@ -78,7 +78,15 @@ export function clap(ctx, out, t, vel, p, noise) {
 
 // ───────────────────────── BASS
 // `lite` (CALIDAD LIGERA): no crea el oscilador cuadrado si casi no se oye
-export function bass(ctx, out, t, vel, freq, dur, p, lite = false) {
+// `x` (solo con ESTILO; sin él, el bajo de siempre):
+//   slides  [{ t, f }]: la nota no se re-ataca y resbala a la frecuencia f desde t, con constante de
+//           tiempo `tau` (s; como el slide del 303: una curva, más deprisa al principio)
+//   sus,dec la envolvente: nivel que sostiene (× vel) y lo que tarda en llegar (s)
+//   post    PASO BAJO fijo de 24 dB/oct (Hz; dos biquads de Butterworth) al final: solo graves
+//   pitch   { semis, tau }: la altura empieza `semis` arriba (o abajo, si es negativo) y llega a la
+//           nota con constante `tau`
+//   fall    { semis, dur }: al final de la nota la altura cae `semis` en `dur` s
+export function bass(ctx, out, t, vel, freq, dur, p, lite = false, x = null) {
   const saw = ctx.createOscillator();
   saw.type = 'sawtooth';
   saw.frequency.value = freq;
@@ -111,13 +119,41 @@ export function bass(ctx, out, t, vel, freq, dur, p, lite = false) {
   const g = ctx.createGain();
   sub.connect(gb).connect(g);
   lp.connect(g);
+  const sus = x ? x.sus : 0.75, dec = x ? x.dec / 3 : 0.05;
   g.gain.setValueAtTime(0, t);
   g.gain.linearRampToValueAtTime(vel, t + 0.004);
-  g.gain.setTargetAtTime(vel * 0.75, t + 0.004, 0.05);
+  g.gain.setTargetAtTime(vel * sus, t + 0.004, dec);
   g.gain.setTargetAtTime(0, t + dur, p.release / 3.5);
-  g.connect(out);
+  let tail = g;
+  if (x && x.post < 15000) {
+    for (const Q of [0.5412, 1.3066]) {
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = x.post;
+      f.Q.value = Q;
+      tail = tail.connect(f);
+    }
+  }
+  tail.connect(out);
 
   const end = t + dur + p.release * 2 + 0.05;
+  if (x) {
+    const oscs = [saw, sq, sub].filter(Boolean);
+    for (const o of oscs) {
+      o.frequency.setValueAtTime(freq, t);
+      if (x.slides) for (const sl of x.slides) o.frequency.setTargetAtTime(sl.f, sl.t, x.tau);
+      // altura al atacar y caída al final: en el detune (cents), aparte de la frecuencia y sus deslizamientos
+      const d0 = o.detune.value;
+      if (x.pitch && Math.abs(x.pitch.semis) > 0.05) {
+        o.detune.setValueAtTime(d0 + 100 * x.pitch.semis, t);
+        o.detune.setTargetAtTime(d0, t, x.pitch.tau);
+      }
+      if (x.fall) {
+        const tf = Math.max(t + 0.02, t + dur - x.fall.dur);
+        o.detune.setTargetAtTime(d0 - 100 * x.fall.semis, tf, x.fall.dur / 2.5);
+      }
+    }
+  }
   for (const o of [saw, sq, sub]) if (o) { o.start(t); o.stop(end); }
 }
 

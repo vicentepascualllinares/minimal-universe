@@ -121,7 +121,7 @@ function start(mode) {
   mixView.render(); // MIXER: en DJ, A y B
   document.body.classList.add(`mode-${mode}`);
   if (mode === 'solo') {
-    views = [deckView($('#deckA'), A, 'UNIVERSO')];
+    views = [deckView($('#deckA'), A, 'UNIVERSO', { panel: true })]; // (la GENERACIÓN, en su panel a la derecha)
   } else {
     views = [deckView($('#deckA'), A), deckView($('#deckB'), B)];
     const eqKnobs = [...document.querySelectorAll('.mx-grid [data-k]')].map((el) => {
@@ -181,6 +181,9 @@ function frame() {
   }
 
   $('#key').textContent = NOTE[engine.rootMidi % 12];
+  // (el BPM también puede cambiarlo un UNIVERSO GUARDADO al entrar: ver Engine.universeLoaded)
+  const bpmTxt = String(engine.bpm % 1 ? engine.bpm.toFixed(1) : engine.bpm);
+  if ($('#bpm').textContent !== bpmTxt) $('#bpm').textContent = bpmTxt;
   const nextScale = engine.scaleNext !== null ? SCALES[engine.scaleNext] : null;
   const modeTxt = (nextScale || engine.scale).name.toUpperCase();
   if ($('#mode').textContent !== modeTxt) $('#mode').textContent = modeTxt;

@@ -1,11 +1,24 @@
-// OPCIONES: preferencias del instrumento, por apartados (DJ, AUTO-ARREGLOS, RENDIMIENTO).
+// OPCIONES: preferencias del instrumento, por apartados (UNIVERSOS, DJ, AUTO-ARREGLOS, RENDIMIENTO).
 // Se abre encima del escenario como el MIXER; la música sigue sonando.
 // Calidad, búfer, margen y salida de audio se guardan en este navegador (son del aparato);
-// el resto todavía no se guarda: vendrá con las cuentas.
+// el resto todavía no se guarda: vendrá con las cuentas. Los UNIVERSOS se guardan en archivos.
 
 import { EQ_TYPES } from '../audio/strip.js';
 import { BUFFER_MODES, MARGIN_MODES } from '../audio/engine.js';
 import { QUALITY_MODES } from '../audio/quality.js';
+import { importerHTML, bindImporter, saverHTML, bindSaver, downloadUniverse, currentCode } from './universeIO.js';
+
+// UNIVERSOS: una fila por universo (B solo en DJ): su semilla, GUARDAR y TRAER (universeIO.js)
+const uniRow = (L, i) => `
+      <div class="op-row op-uni" data-i="${i}">
+        <span class="op-lab">UNIVERSO ${L} · SEMILLA <b class="op-ucode"></b></span>
+        <div class="op-usaver">${saverHTML()}</div>
+        <div class="op-out-row">
+          <button class="op-mini op-udown" title="descarga un archivo con el universo TAL COMO SUENA, para llevarlo a otro sitio (lo de la biblioteca ya está en la carpeta universos/)">DESCARGAR ARCHIVO</button>
+          <span class="op-note op-udown-note"></span>
+        </div>
+        <div class="op-uimp">${importerHTML()}</div>
+      </div>`;
 
 const choice = (attr, k, t) => `<button class="op-choice" ${attr}="${k}"><b>${t.label}</b><small>${t.desc}</small></button>`;
 // RENDIMIENTO: sin texto, solo el nombre (la descripción queda al pasar el ratón) y en orden
@@ -33,6 +46,11 @@ export function optionsPanel(root, engine, onClose) {
   root.innerHTML = `
     <div class="im-head">
       <span class="im-title">OPCIONES</span>
+    </div>
+    <div class="op-sec">
+      <div class="op-sec-title">UNIVERSOS</div>
+      ${uniRow('A', 0)}${uniRow('B', 1)}
+      <span class="op-note">la SEMILLA vuelve a generar el universo tal como nace (con su estilo y su pureza) · el ARCHIVO lo guarda tal como suena ahora · la estructura y los viajes no van en el universo: son tuyos</span>
     </div>
     <div class="op-sec">
       <div class="op-sec-title">DJ</div>
@@ -169,8 +187,31 @@ export function optionsPanel(root, engine, onClose) {
     });
   }
 
+  // ── UNIVERSOS: la semilla del que suena, guardar, y traer otro (universeIO.js)
+  const unis = [...root.querySelectorAll('.op-uni')].map((row) => {
+    const i = +row.dataset.i;
+    const deck = () => engine.decks[i];
+    const imp = bindImporter(row.querySelector('.op-uimp'), engine, deck);
+    const sav = bindSaver(row.querySelector('.op-usaver'), engine, deck);
+    row.querySelector('.op-udown').addEventListener('click', () => {
+      row.querySelector('.op-udown-note').textContent = `descargado: ${downloadUniverse(deck(), engine)}`;
+    });
+    return { row, i, imp, sav, code: row.querySelector('.op-ucode') };
+  });
+  const showUnis = () => {
+    for (const U of unis) {
+      U.row.hidden = U.i === 1 && engine.mode !== 'dj';
+      const d = engine.decks[U.i];
+      const c = d ? currentCode(d, engine) : '';
+      if (U.code.textContent !== c) U.code.textContent = c;
+      U.imp.frame();
+      U.sav.frame();
+    }
+  };
+
   root.querySelector('.im-close').addEventListener('click', onClose);
   show();
+  showUnis();
 
   // REGISTRO DE INCIDENCIAS: las más recientes arriba (ver logIncident en engine.js)
   const inc = q('.op-inc');
@@ -197,6 +238,7 @@ export function optionsPanel(root, engine, onClose) {
   return {
     frame() {
       show();
+      showUnis();
       showIncidents();
       const L = engine.latencyInfo();
       const txt = engine.rebuilding ? 'rehaciendo el audio…'

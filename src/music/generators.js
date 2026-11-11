@@ -508,6 +508,60 @@ function simplifyDeg(deg, mode) {
   return deg === 7 ? 7 : 0;
 }
 
+// ESTILO: lo que el 2º compás de la frase cambia del motivo (la RESPUESTA): la 1ª mitad igual (la
+// pregunta se repite), en la 2ª otras alturas y uno o dos golpes que entran o salen. Se guarda como
+// cambios, no como copia: cuando el motivo muta, la respuesta muta con él
+// (con CELDA, la respuesta contesta con las alturas de la celda: sobre todo la de color)
+function makeAnswer(r, sty, cell) {
+  const deg = {}, w = {};
+  for (let s = 8; s < 16; s++) {
+    if (!r.chance(0.5)) continue;
+    deg[s] = cell
+      ? r.weighted(cell.todas, cell.todas.map((d) => (d === cell.color ? 3 : d === 0 ? 1.5 : 1.2)))
+      : sWeighted(r, sty, 'bass.answer', [0, 7, 4, 6, 2, 1, -3], [1, 1, 1, 1, 1, 1, 1]);
+  }
+  for (let i = r.int(1, 2); i > 0; i--) w[r.int(8, 15)] = r.float(-0.45, 0.45);
+  return { deg, w };
+}
+
+// ESTILO · CELDA (styles.js, `bassCells`): la altura más cercana dentro de un conjunto (en grados;
+// a la misma distancia, la que no es la tónica: que el salto de la celda se oiga)
+function nearestIn(deg, set) {
+  if (set.includes(deg)) return deg;
+  let best = set[0];
+  for (const x of set) {
+    const dx = Math.abs(x - deg), db = Math.abs(best - deg);
+    if (dx < db || (dx === db && best === 0)) best = x;
+  }
+  return best;
+}
+
+// ESTILO · PAPELES de cada paso del motivo [Producer School, Attack «5 tips»]: la tónica cae con el
+// kick (corta), la altura de COLOR en los contratiempos (más larga y acentuada), las semicorcheas de
+// relleno flojas y cortas («dead notes»); a veces una NOTA DE PASO (un grado al lado de la celda), que
+// solo suena con complejidad alta. `t` = el estilo: con menos, más pasos se quedan como estaban
+function cellMotif(r, home, F, t) {
+  const C = F.cell, others = C.todas.filter((d) => d !== 0 && d !== C.color);
+  const pickOther = () => (others.length ? r.pick(others) : C.color);
+  home.forEach((n, s) => {
+    const role = s % 4 === 0 ? 'beat' : s % 4 === 2 ? 'off' : 'fill';
+    // (con menos PUREZA, más pasos fuera de la celda: los de siempre)
+    const u = r.next(), keep = r.next() >= t * (1 - (F.cellLoose || 0)), pass = r.next() < 0.12;
+    if (keep) return;
+    if (role === 'beat') n.deg = u < 0.75 ? 0 : u < 0.9 ? C.color : pickOther();
+    else if (role === 'off') n.deg = u < 0.6 ? C.color : u < 0.8 ? 0 : pickOther();
+    else n.deg = u < 0.5 ? 0 : u < 0.75 ? C.color : pickOther();
+    if (pass && s % 4 !== 0) n.deg += r.chance(0.5) ? 1 : -1;
+    // largo y fuerza por papel: el contratiempo pesa, el relleno es un golpe flojo
+    if (role === 'fill') { n.len = 1; n.vel = 0.55 + 0.15 * r.next(); }
+    else if (role === 'off') { n.len = Math.max(n.len, r.chance(0.5) ? 2 : 1); n.vel = 0.85 + 0.15 * r.next(); }
+    else n.len = 1;
+  });
+}
+const applyAnswer = (m, A) => m.map((n, s) => (s in A.deg || s in A.w
+  ? { ...n, deg: A.deg[s] ?? n.deg, w: clamp(n.w + (A.w[s] ?? 0), 0, 1.2) }
+  : n));
+
 export class BassGen {
   constructor(rng, sty = NORMAL) {
     this.rng = rng;
@@ -515,25 +569,73 @@ export class BassGen {
     this.home = makeBassMotif(rng, sty);
     const first = this.home.find((n) => n.w < 0.5); // la primera nota fuerte, tónica
     if (first) first.deg = 0;
-    this.variant = this.derive(this.home, 2);
+    // ESTILO (styles.js, `bass.feel`): la frase y cómo se toca cada paso. Con su propio dado: los
+    // del bajo salen igual que sin él
+    const F = sty.t ? sty.k['bass.feel'] : null;
+    this.feel = F || null;
+    if (F) {
+      const r = new Rng(F.seed);
+      // por paso, fijo: desliza hasta aquí · llega a la siguiente · cae al final
+      this.flags = Array.from({ length: 16 }, () => ({ glide: r.next() < F.glide, legato: r.next() < F.legato, fall: r.next() < F.fall.p }));
+      // la CELDA: las alturas del motivo por papeles (y la primera nota fuerte, la tónica)
+      this.cell = F.cell || null;
+      if (this.cell) {
+        cellMotif(new Rng(F.seed ^ 0x51ed27), this.home, F, sty.t);
+        if (first) first.deg = 0;
+      }
+      this.ans = makeAnswer(r, sty, this.cell);
+      this.answer = applyAnswer(this.home, this.ans);
+    }
+    this.variant = this.derive(F ? this.answer : this.home, 2);
   }
   derive(m, changes) {
     const r = this.rng;
     const v = m.map((n) => ({ ...n }));
     for (let i = 0; i < changes; i++) {
       const s = r.int(1, 15);
-      if (r.chance(0.6)) v[s].deg = sPick(r, this.sty, 'bass.derive', [0, 7, 4, 6, 2, 9, 11]);
-      else v[s].w = clamp(v[s].w + r.float(-0.4, 0.4), 0, 1.2);
+      if (r.chance(0.6)) {
+        const d = sPick(r, this.sty, 'bass.derive', [0, 7, 4, 6, 2, 9, 11]);
+        v[s].deg = this.cell ? nearestIn(d, this.cell.todas) : d; // con CELDA, muta dentro de ella
+      } else v[s].w = clamp(v[s].w + r.float(-0.4, 0.4), 0, 1.2);
     }
     return v;
   }
+  // la altura que suena con la complejidad: sin CELDA, la de siempre (tónica · tónica, 5ª y octava ·
+  // todas); con CELDA, sus DOS alturas · la celda entera · todas (con las notas de paso). Menos
+  // complejidad = menos alturas distintas, nunca un salto más pobre
+  pitch(deg, mode) {
+    const C = this.cell;
+    if (!C) return simplifyDeg(deg, mode);
+    if (mode === 'all') return deg;
+    return nearestIn(deg, mode === 'few' ? C.todas : C.dos);
+  }
+  // UNIVERSO CARGADO (universe.js): lo que no se guarda, rehecho del motivo guardado
+  restored() {
+    if (this.feel) this.answer = applyAnswer(this.home, this.ans);
+  }
   mutate() {
     this.home = this.derive(this.home, 1);
-    this.variant = this.derive(this.home, this.rng.int(1, 3));
+    if (this.feel) this.answer = applyAnswer(this.home, this.ans);
+    this.variant = this.derive(this.feel ? this.answer : this.home, this.rng.int(1, 3));
+  }
+  // qué versión del motivo toca el compás `b`: sin frase, el motivo y su variante al final de cada 4
+  // (con complejidad); con frase (ESTILO), la letra que toca (A motivo, B respuesta, C variante)
+  motifAt(b, cx) {
+    const L = this.letterAt(b, cx);
+    return L === 'A' ? this.home : L === 'B' ? this.answer : this.variant;
+  }
+  // (la letra: sin frase, A o la variante C; con frase, la que toca. La variante: siempre en ABAC; en
+  // el resto, como siempre, solo con complejidad y al final de los 4 compases)
+  letterAt(b, cx) {
+    const ph = this.feel?.phrase;
+    if (!ph) return cx.bassVariant && b % 4 === 3 ? 'C' : 'A';
+    const L = ph[b % 4];
+    if (L === 'A') return 'A';
+    return L === 'C' || (cx.bassVariant && b % 4 === 3) ? 'C' : 'B';
   }
   bar(b, d, e) {
     const cx = e.cx;
-    const m = cx.bassVariant && b % 4 === 3 ? this.variant : this.home;
+    const m = this.motifAt(b, cx);
     // simple = corcheas en contratiempo (el bajo clásico); más complejidad = semicorcheas
     const thr = 0.12 + 0.5 * d * (0.6 + 0.4 * e.gen.density); // el bajo deja aire al kick
     const st = new Array(16).fill(null);
@@ -541,10 +643,83 @@ export class BassGen {
     for (let s = 0; s < 16; s++) {
       const n = m[s];
       if (n.w + fastPenalty(s, cx.fast, 0.4) >= thr || s - last < 1) continue;
-      st[s] = { deg: simplifyDeg(n.deg, cx.bassPitches), len: n.len, vel: n.vel };
+      st[s] = { deg: this.pitch(n.deg, cx.bassPitches), len: n.len, vel: n.vel };
       last = s;
     }
-    return trimLens(st); // bajo monofónico: sin solapes
+    if (this.cell) this.walkTo(b, st, cx.bassPitches);
+    trimLens(st); // bajo monofónico: sin solapes
+    return this.feel ? this.articulate(st, this.letterAt(b, cx)) : st;
+  }
+
+  // ESTILO · REMATE: el último compás de cada `walkEvery` camina hasta la tónica del siguiente (5ª,
+  // 6ª, 7ª graves que suben, desde abajo: así no se va arriba; o 4ª, 3ª, 2ª que bajan, en los pasos 13–15). Con complejidad media, solo la
+  // última nota (la 7ª o la 2ª, la que tira hacia la tónica); con baja, nada
+  walkTo(b, st, mode) {
+    const F = this.feel;
+    if (mode === 'root' || b % F.walkEvery !== F.walkEvery - 1) return;
+    const W = F.walk === 'up' ? [-3, -2, -1] : [3, 2, 1];
+    const from = mode === 'all' ? 0 : 2;
+    for (let i = from; i < 3; i++) st[13 + i] = { deg: W[i], len: 1, vel: i === 2 ? 0.9 : 0.75, walk: true };
+  }
+
+  // ESTILO: cómo se toca el compás, con las marcas fijas de cada paso (las mismas cada compás: el
+  // loop se repite) y la letra de la frase. Las notas siguen sin solaparse. En el evento:
+  //   tie   suena todo su largo (sin el lenMul del timbre)
+  //   gl    deslizamientos [{ o: pasos desde su inicio, deg }]: la nota sigue sonando y resbala a esa
+  //         altura (no se re-ataca); el paso de la nota a la que resbala queda vacío
+  //   oct   la octava de la tónica: un golpe corto (puede pasar del techo del registro)
+  //   fall  la altura cae al final (solo si detrás hay hueco)
+  // (2026-11-11, al escucharlo: antes había notas de hasta 8 pasos y ligados a la siguiente por lejos
+  // que estuviera: 11 % de las notas pasaban de 600 ms, sin intención. Ahora la nota larga es UNA,
+  // en su sitio y en su compás)
+  articulate(st, letter) {
+    const F = this.feel, fl = this.flags;
+    const next = (s) => { let nx = s + 1; while (nx < 16 && !st[nx]) nx++; return nx; };
+    // LA OCTAVA, corta: el salto 1–8 es un golpe, no una nota que se queda arriba
+    for (let s = 0; s < 16; s++) if (st[s]?.deg === 7) st[s] = { ...st[s], len: 1, oct: true };
+    // LA NOTA LARGA: en su contratiempo (o la nota de hasta 2 pasos antes), en la respuesta y la
+    // variante (en el sub, en todos los compases); se come lo que cae debajo, sin pisar el REMATE
+    const Lg = F.long;
+    if (Lg && (Lg.every || letter !== 'A')) {
+      let s = Lg.step;
+      while (s > Lg.step - 2 && !st[s]) s--;
+      if (st[s] && !st[s].walk) {
+        let len = Math.min(Lg.len, 16 - s);
+        for (let j = s + 1; j < s + len; j++) if (st[j]?.walk) { len = j - s; break; }
+        st[s] = { ...st[s], len, tie: true, long: true, oct: false };
+        for (let j = s + 1; j < s + len; j++) st[j] = null;
+      }
+    }
+    // DESLIZAMIENTO: como mucho uno por compás, entre alturas distintas, a 2–4 pasos (no a la
+    // semicorchea de al lado: ahí sonaba a salto)
+    let head = -1, slid = false;
+    for (let s = 0; s < 16; s++) {
+      const n = st[s];
+      if (!n) continue;
+      const h0 = head >= 0 ? st[head] : null;
+      if (!slid && h0 && fl[s].glide && s - head >= 2 && s - head <= 4 && n.deg !== h0.deg && !h0.long && !n.walk && !n.oct && !h0.oct) {
+        const h = (st[head] = { ...h0 });
+        h.gl = [{ o: s - head, deg: n.deg }];
+        h.len = s - head + n.len;
+        h.tie = true;
+        st[s] = null;
+        slid = true;
+        continue;
+      }
+      head = s;
+    }
+    // LIGADO: hasta la siguiente, solo si está cerca (2 pasos como mucho)
+    for (let s = 0; s < 16; s++) {
+      if (!st[s] || !fl[s].legato || st[s].gl || st[s].oct || st[s].long) continue;
+      const nx = next(s);
+      if (nx < 16 && nx - s <= 2 && nx - s > st[s].len) st[s] = { ...st[s], len: nx - s, tie: true };
+    }
+    // CAÍDA al final: si detrás de la nota hay hueco (si no, la siguiente la taparía)
+    for (let s = 0; s < 16; s++) {
+      if (!st[s] || !fl[s].fall || st[s].gl || st[s].oct) continue;
+      if (next(s) - s > st[s].len) st[s] = { ...st[s], fall: true };
+    }
+    return st;
   }
 }
 

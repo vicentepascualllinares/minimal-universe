@@ -558,6 +558,88 @@ próximo universo. Investigación, fuentes, rasgos por dimensión y qué falta: 
 - No toca lo que es del intérprete ni lo global: estructura, transición, GLOBAL, BPM, tónica
   y modo (en ROMINIMAL.md §9, cómo tocarlo). No se guarda: cada sesión empieza en NORMAL.
 
+## Universos guardados: semilla y archivo
+
+Para volver a tener un universo que gusta (2026-11-11; código en `src/music/universe.js`, interfaz en
+`src/ui/universeIO.js`):
+
+- **El panel de la derecha** (en UN UNIVERSO; rehecho el 2026-11-11 según el dibujo del usuario), en
+  dos bloques:
+  - **GENERAR UNIVERSO**: **NUEVO** (grande) y, a su lado, **PARECIDO** con sus perillas **SONIDO** y
+    **MÚSICA** (ver abajo); debajo, el **ESTILO** (fader NORMAL ↔ ROMINIMAL, con la PUREZA al lado del
+    título) y la **ESCALA**: tónica (arrastrar o rueda) y modo (clic = el siguiente). Es la misma
+    escala global de la cabecera, no una aparte.
+  - **MULTIVERSO**: **SONANDO** (nombre para guardarlo y **GUARDAR**; debajo, su semilla —clic =
+    copiarla— y **EN** qué carpeta se guarda), **EN COLA** (el que espera, con **IMPORTAR**, el
+    interruptor CON SU TEMPO Y ESCALA y ✕ para quitarlo) y **BIBLIOTECA**: las carpetas en cuadrícula
+    (los sueltos, en SIN CARPETA; **+ CARPETA** crea una); al pulsar una, su lista con **nombre,
+    escala, BPM y semilla** (‹ vuelve). **Doble clic** (o doble toque) en un universo = **a la cola**;
+    IMPORTAR lo lanza en el 1 del compás siguiente.
+  Renombrar, mover y borrar (y traer una semilla escrita o un archivo de fuera) están en OPCIONES →
+  UNIVERSOS. En DJ todo sigue en la cabecera de cada universo, y traer y guardar en OPCIONES →
+  UNIVERSOS (también en móvil, donde el panel es una tira compacta solo con lo de generar).
+- **SEMILLA** — el código del universo, p. ej. `968782145-RO100-124-F#EOL`: la semilla, el estilo y
+  cuánto (RO = ROMINIMAL; `-P60` si la PUREZA no es 100 %) y el **tempo** y la **tónica y el modo** con
+  que sonaba (FRI, EOL, DOR, MIX). Se escribe como se quiera (`968782145 ro 100 124 f# eol`), y tempo y
+  escala son opcionales. Vuelve ese universo **tal como nace** (estilo, generadores, espacio,
+  transiciones, color, complejidad, osciladores, CANT · VAR). El fader de ESTILO y la PUREZA se ponen
+  en los suyos (por eso al generar se redondean a 0,1 %: el código lo rehace exacto).
+- **ARCHIVO** — GUARDAR ARCHIVO descarga `universo-<código>.json` con el universo **tal como
+  suena**: además, lo que ha **mutado** mientras sonaba (los generadores y sus dados), lo que se ha
+  **tocado** (complejidad, osciladores, CANT · VAR, envíos, su MIXER) y su tempo y escala.
+  Comprobado: un universo cargado tiene el mismo estado, dato a dato, que el que se guardó.
+- **BIBLIOTECA** — los universos guardados son archivos `.json` en la carpeta **`universos/`** del
+  proyecto; el servidor de la app (`serve.mjs`, `/api/universos`) los lista, guarda, renombra y borra
+  (no dependen del navegador; valen también desde el móvil). La lista se lee de la carpeta cada vez
+  (al abrirla, al guardar, renombrar o borrar, y al volver a la app): lo guardado aparece al momento,
+  sin reiniciar nada; también un archivo metido a mano en `universos/`. En EL QUE SUENA: escribe un **nombre** y
+  **GUARDAR** (vacío = uno automático: arquetipo, código, tempo y escala). En TRAER UN UNIVERSO:
+  **GUARDADOS ▾** despliega la lista (nombre, estilo, tempo, escala y fecha; los más nuevos arriba):
+  clic = elegirlo; **✎** = cambiarle el nombre (Enter u OK; Esc deja como estaba); **✕** = borrar,
+  con confirmación (**SÍ, BORRAR** / NO). Borrar no destruye: el archivo va a `universos/papelera/`.
+- **CARPETAS** — dentro de GUARDADOS (un nivel; p. ej. una familia: una semilla y sus parecidos).
+  **+ CARPETA** crea una; la fila de cada carpeta se abre y se cierra (▸ ▾) y tiene ✎ (nombre) y ✕
+  (borrarla con todo lo que tenga dentro, con confirmación; va a la papelera). En cada universo, **⇢**
+  lo mueve a otra carpeta (o fuera). Al GUARDAR se elige **EN** qué carpeta (o + NUEVA CARPETA…) y se
+  recuerda la última: las versiones de una familia se guardan seguidas sin tocar nada. En el disco,
+  cada carpeta es una carpeta dentro de `universos/`.
+  OPCIONES → UNIVERSOS tiene lo mismo y, además, **DESCARGAR ARCHIVO** (para llevarlo a otro sitio).
+  Con `--lan` (móvil), cualquiera en la misma wifi podría guardar o borrar: es para casa.
+- **TRAER** (de la lista, una semilla o un archivo de fuera): antes de traerlo se ve qué es, si es «tal como nace» o «tal como
+  sonaba», y **con qué tempo y escala se guardó y cuáles suenan ahora**. El interruptor **CON SU TEMPO
+  Y ESCALA** decide si se aplican al entrar (apagado: no cambian solos; recuerda la última elección).
+  Entra en el 1 del compás siguiente, como NUEVO UNIVERSO (parado, ya). En DJ, tempo y escala son
+  de los dos universos.
+- No van en el universo: la estructura y los viajes (son del intérprete), los AUTO-ARREGLOS y lo
+  demás de OPCIONES, y la deriva lenta del color (varía sola con el tiempo de la sesión).
+- Los universos guardados del proyecto están en `universos/`.
+- **Semillas vecinas NO dan universos parecidos** (medido en 500 parejas: se parecen igual que dos al
+  azar): cada semilla pasa por un mezclador. Para eso está el PARECIDO.
+
+### Universo PARECIDO
+
+Junto a NUEVO UNIVERSO: dos perillas, **SONIDO** y **MÚSICA** (en DJ y en móvil, SON y MÚS: cuánto se
+**mantiene** de cada cosa del universo que suena; doble clic = 100 %), y el botón **PARECIDO**, que
+genera uno nuevo con su **mismo estilo y pureza** y entra como NUEVO UNIVERSO (código en
+`src/music/similar.js`). Lo que cambia sale de otro universo recién nacido con el mismo estilo y
+pureza, así que siempre está dentro del estilo.
+
+- **SONIDO**: el color (timbre de todos los sintes), los rangos de timbre de cada instrumento, el modo
+  del bajo (con su envolvente, paso bajo, altura al atacar, caídas, deslizamiento y filtro lento) y el
+  de los acordes, el sonido de cada tipo de hat, el timbre de cada percusión y de cada foley, el
+  espacio (delay, reverb y fondo con sus envíos), los sonidos de las transiciones y la mezcla.
+- **MÚSICA**: las notas y ritmos del bajo (motivo, respuesta, variante, celda, frase, remate,
+  deslizamientos, ligados, nota larga), los ritmos de hats, open, clap, percusión y foley, la altura
+  de cada percusión, la armonía, el groove, el salto del kick, los MUTE, los dados de cada generador,
+  la complejidad, CANT · VAR y los osciladores.
+- **100 % y 100 %** = exactamente el mismo universo (tal como suena). Cambiar el sonido no toca ni una
+  nota; cambiar la música no toca ni un timbre (medido: `herramientas/similar.mjs`).
+- La MÚSICA va **calibrada**: sus piezas se arrastran unas a otras (la complejidad o los dados mueven
+  todas las notas), así que por dentro cada pieza se mantiene con MÚSICA^0,48. Medido: a 50 %, el
+  52–56 % de las notas del bajo y los golpes de la percusión siguen iguales; a 80 %, el 79–83 %.
+- Un PARECIDO no se rehace con su semilla (la cabecera dice «· PARECIDO»): para no perderlo,
+  **GUARDAR ARCHIVO** (lleva lo del estilo que ya no sale de la semilla).
+
 ## Mesa de mezcla (centro)
 
 | Control | Qué hace |

@@ -39,23 +39,54 @@ const specW = (spec, items, w0) => (Array.isArray(spec) ? spec : items.map((it, 
 export const mixW = (w0, w1, t) => w0.map((w, i) => w + (w1[i] - w) * t);
 const spec = (sty, key) => (sty.t ? sty.k[key] : undefined);
 
+// ───────────────────────── PUREZA (2026-11-11)
+// Una perilla aparte del fader de ESTILO: el fader dice QUÉ estilo (un punto entre NORMAL y el
+// género); la PUREZA, CUÁNTO lo respeta el universo que nace. 100 % = el estilo estricto (lo de
+// siempre). Con menos, cada regla se afloja una cantidad propia, fija para ese universo (unas casi
+// nada, otras mucho: «saltarse alguna regla»), hasta (1 − pureza) × 1,5:
+//   elecciones (pesos)  se aplanan: entra lo que el estilo casi prohibía
+//   rangos              se ensanchan hacia todo lo que el motor sabe hacer (lo normal y lo del estilo)
+//   probabilidades      se desvían hacia un valor propio de cada regla
+// `sty.loose` = 1 − pureza; `sty.lseed` = el dado de qué regla se afloja cuánto
+const keyU = (seed, key) => {
+  let h = (seed ^ 0x811c9dc5) >>> 0;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x5bd1e995) >>> 0;
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+};
+// cuánto se afloja la regla `key` en este universo (0 = estricta)
+export const looseOf = (sty, key) => (sty.loose ? Math.min(1, sty.loose * 1.5 * keyU(sty.lseed, key)) : 0);
+const flatten = (w, L) => {
+  const m = w.reduce((a, x) => a + x, 0) / w.length;
+  return w.map((x) => x + (m - x) * L);
+};
+
 export function sWeighted(r, sty, key, items, w0) {
   const s = spec(sty, key);
-  return s ? r.weighted(items, mixW(w0, specW(s, items, w0), sty.t)) : r.weighted(items, w0);
+  if (!s) return r.weighted(items, w0);
+  const w = mixW(w0, specW(s, items, w0), sty.t), L = looseOf(sty, key);
+  return r.weighted(items, L ? flatten(w, L) : w);
 }
 export function sPick(r, sty, key, items) {
   const s = spec(sty, key);
   if (!s) return r.pick(items);
   const ones = items.map(() => 1);
-  return r.weighted(items, mixW(ones, specW(s, items, ones), sty.t));
+  const w = mixW(ones, specW(s, items, ones), sty.t), L = looseOf(sty, key);
+  return r.weighted(items, L ? flatten(w, L) : w);
 }
 export function sFloat(r, sty, key, a, b) {
   const s = spec(sty, key);
-  return s ? r.float(lerp(a, s[0], sty.t), lerp(b, s[1], sty.t)) : r.float(a, b);
+  if (!s) return r.float(a, b);
+  let lo = lerp(a, s[0], sty.t), hi = lerp(b, s[1], sty.t);
+  const L = looseOf(sty, key);
+  if (L) { lo = lerp(lo, Math.min(a, s[0]), L); hi = lerp(hi, Math.max(b, s[1]), L); }
+  return r.float(lo, hi);
 }
 export function sChance(r, sty, key, p) {
   const s = spec(sty, key);
-  return r.chance(s === undefined ? p : lerp(p, s, sty.t));
+  if (s === undefined) return r.chance(p);
+  const q = lerp(p, s, sty.t), L = looseOf(sty, key);
+  return r.chance(L ? lerp(q, keyU(sty.lseed, key + '!'), L * 0.7) : q);
 }
 export function sValue(sty, key, v) {
   const s = spec(sty, key);
@@ -125,6 +156,7 @@ export function styleColor(e, sx) {
 // Las fuentes de cada rasgo están en ROMINIMAL.md (entre corchetes, la abreviatura que usa allí).
 export const ROMINIMAL = {
   label: 'ROMINIMAL',
+  code: 'RO', // en el CÓDIGO DE SEMILLA (universe.js): «968782145-RO100»
   // COLOR del universo (valencia y activación, como NUEVO UNIVERSO): de oscuro a algo cálido, de
   // quieto a medio; nunca el extremo intenso ni el muy luminoso. «smoky, smooth and understated»
   // [RA fabric 72], «hypnotic, meditative» [RMC], «dark and trippy, floaty» [Caia]
@@ -194,6 +226,98 @@ export const ROMINIMAL = {
       k: { 'bass.len': { 1: 7, 2: 2.5, 3: 0.8 } },
     },
   },
+  // CÓMO SE TOCA EL BAJO (2026-11-11, ROMINIMAL.md §6 «El bajo»). Rehecho el mismo día al escucharlo
+  // («notas muy largas sin intención, siempre el mismo bajo sostenido, legato muy rápido, notas muy
+  // altas») con NÚMEROS de las fuentes [Slow Techno Bible, Producer School sub, Open303, Attack
+  // Immaterial, soundbridge]. Por modo:
+  //   glide     probabilidad de DESLIZAR hasta un paso (como mucho uno por compás, nunca a la
+  //             semicorchea siguiente); glideTau = constante de tiempo (s): llega al 90 % en ~2,3 ×.
+  //             303: RC de 200 kΩ y 220 nF, τ calculada ~0,15 s, «completo a los ~60 ms» medido a oído
+  //             [Open303]; recetas de minimal 30–40 ms [Bible]. Antes τ = 12–40 ms (sonaba a salto)
+  //   legato    probabilidad de que una nota llegue a la siguiente (solo si está a 2 pasos o menos)
+  //   long      la NOTA LARGA con intención: probabilidad de que el universo la tenga, en un
+  //             contratiempo fijo, 3–4 pasos (360–480 ms a 125 BPM: «event duration 300–600 ms»
+  //             [Bible]), en la respuesta (o en todos los compases, en el sub)
+  //   sus, dec  la ENVOLVENTE: nivel que sostiene y lo que tarda en llegar (s). Arquetipos [Bible]:
+  //             pluck D 800 ms S 0; acento D 300 ms S 60 %; bloom D 2 s S 40 %. Antes, siempre 75 % en 50 ms
+  //   post      PASO BAJO fijo de 24 dB/oct (Hz) al final: que solo queden graves. «LP at 300 Hz» tras
+  //             saturar el sub; sierra filtrada 250–400 Hz; 200–500 Hz «classic techno body», 500–1200
+  //             «nasal, tension» [Bible]; tech house, 150 Hz [soundbridge]
+  //   sweep     el FILTRO LENTO (± octavas del corte) y su periodo en compases: LFO de minimal
+  //             0,1–0,3 Hz, profundidad 5–15 %, ciclos de 4–8 compases [Bible] (antes ±0,3–1,8 oct)
+  //   pitch     ENVOLVENTE DE ALTURA al atacar: none · blip (empieza arriba y cae: «a few semitones,
+  //             very short decay» [Violet, Jatari], decay 80–125 ms [Attack Immaterial]) · scoop (entra
+  //             desde abajo); semitonos y τ (s)
+  //   fall      CAÍDA al final de nota: probabilidad por paso (fija), semitonos y lo que dura (s)
+  //   cells     qué CELDA de alturas toca (abajo, `bassCells`): probabilidades
+  bassFeel: {
+    pluck: {
+      glide: 0.05, legato: 0.05, long: 0.15, glideTau: [0.04, 0.06],
+      sus: [0, 0.15], dec: [0.12, 0.25], post: [300, 450], sweep: [0.2, 0.45],
+      pitch: { none: 1, blip: 2, scoop: 0.5 }, blip: [2, 7], scoop: [1, 2], pitchTau: [0.012, 0.03],
+      fall: 0.1, fallSemis: [3, 12], fallDur: [0.06, 0.12],
+      cells: { octava: 2, quinta: 2, septima: 2, cuarta: 1.5, tercera: 1.5, segunda: 1, sexta: 0.7, novena: 0.3, quintaBaja: 1, unisono: 0.5 },
+    },
+    round: {
+      glide: 0.2, legato: 0.15, long: 0.35, glideTau: [0.045, 0.075],
+      sus: [0.3, 0.55], dec: [0.18, 0.35], post: [260, 400], sweep: [0.2, 0.5],
+      pitch: { none: 1.5, blip: 1.5, scoop: 1 }, blip: [1, 4], scoop: [1, 2], pitchTau: [0.015, 0.035],
+      fall: 0.15, fallSemis: [2, 7], fallDur: [0.08, 0.15],
+      cells: { octava: 2, quinta: 2.5, septima: 2, cuarta: 2, tercera: 1, segunda: 0.5, sexta: 1, novena: 0.3, quintaBaja: 1.5, unisono: 0.5 },
+    },
+    sub: {
+      glide: 0.1, legato: 0.2, long: 0.6, glideTau: [0.05, 0.08],
+      sus: [0.5, 0.75], dec: [0.3, 0.6], post: [160, 260], sweep: [0.1, 0.3],
+      pitch: { none: 2, blip: 1, scoop: 1 }, blip: [1, 3], scoop: [1, 2], pitchTau: [0.02, 0.04],
+      fall: 0.2, fallSemis: [2, 5], fallDur: [0.1, 0.2],
+      cells: { octava: 2, quinta: 1.5, septima: 1, cuarta: 1.5, tercera: 0.5, segunda: 0.5, sexta: 1, novena: 0.1, quintaBaja: 2.5, unisono: 2 },
+    },
+    acid: {
+      glide: 0.5, legato: 0.15, long: 0.1, glideTau: [0.04, 0.06],
+      sus: [0.25, 0.45], dec: [0.15, 0.25], post: [450, 800], sweep: [0.4, 0.8],
+      pitch: { none: 3, blip: 0.5, scoop: 0.5 }, blip: [1, 3], scoop: [1, 2], pitchTau: [0.01, 0.025],
+      fall: 0.05, fallSemis: [5, 12], fallDur: [0.06, 0.1],
+      cells: { octava: 1.5, quinta: 1, septima: 2, cuarta: 1, tercera: 2, segunda: 2, sexta: 1, novena: 0.3, quintaBaja: 0.5, unisono: 0.3 },
+    },
+  },
+  // REGISTRO del bajo (Hz de la fundamental): lo que pase del techo baja una octava y lo que no llegue
+  // al suelo sube; la OCTAVA de la tónica puede pasar (el salto 1–8 de siempre) pero corta. Bajo de
+  // tech house: fundamental 40–80 Hz; un club reproduce 30–100 Hz [Producer School sub]. Medido antes
+  // de esto: 27 % de las notas por encima de 150 Hz, hasta 250. La octava corta, hasta 200 Hz (con la tónica en E–F#; en G y A baja a la tónica)
+  bassRange: [40, 140], bassOctaveMax: 200,
+  // CELDAS de alturas del bajo (2026-11-11, al escucharlo: «que la complejidad sea baja no tiene que
+  // limitar el salto entre notas»). Cada universo toca una: «one or two core tones» [MD], pero no
+  // siempre tónica y octava. En GRADOS del modo (0 tónica, 1 2ª, 2 3ª, 3 4ª, 4 5ª, 5 6ª, 6 7ª, 7
+  // octava, 8 novena, −3 la 5ª grave): con el modo menor de siempre, la 7ª y la 3ª son menores.
+  //   dos   las DOS alturas de la complejidad baja (pocas notas y pocas veces, pero el salto es el
+  //         de la celda: 1–7, 1–4, 5–4…)
+  //   todas la celda entera (complejidad media); con complejidad alta, además, notas de paso
+  //   color qué altura va en los contratiempos (la tónica cae con el kick)
+  // De los tutoriales [Attack «5 tips», Producer School, Splice]: 1–5–8, 1–5–9, 1–7–8 («jumps from
+  // the seventh to the octave»), 1–3–7, 1–b3–5; la 2ª menor frigia para oscurecer; y el bajo de
+  // una sola altura en contratiempo (Villalobos, «Dexter» [Attack]: «insistent blippy bass sequence on
+  // the offbeats»), el «monotone sub-bass» [RA Mihigh]
+  bassCells: {
+    octava: { dos: [0, 7], todas: [0, 7, 4], color: 7 },
+    quinta: { dos: [0, 4], todas: [0, 4, 7], color: 4 },
+    quintaBaja: { dos: [0, -3], todas: [0, -3, 7], color: -3 },
+    septima: { dos: [0, 6], todas: [0, 6, 7, 4], color: 6 },
+    cuarta: { dos: [0, 3], todas: [0, 3, 4], color: 3 },
+    tercera: { dos: [0, 2], todas: [0, 2, 4, 6], color: 2 },
+    segunda: { dos: [0, 1], todas: [0, 1, -3], color: 1 },
+    sexta: { dos: [0, 5], todas: [0, 5, 4], color: 5 },
+    novena: { dos: [0, 8], todas: [0, 4, 8], color: 8 },
+    unisono: { dos: [0], todas: [0, 7], color: 0 },
+  },
+  // REMATE al final de frase (el «fill» del 4º compás que camina hasta la tónica del siguiente
+  // [Producer School]: la 5ª, 6ª y 7ª que suben, o la 4ª, 3ª y 2ª que bajan): cada cuántos compases
+  bassWalkEvery: { 4: 1, 8: 2 },
+  // FRASE del bajo (pregunta y respuesta, ROMINIMAL.md §7 punto 2): A = el motivo, B = la respuesta
+  // (la 1ª mitad igual, la 2ª contesta), C = una variante de la respuesta. Cada 4 compases
+  bassPhrase: { ABAB: 3, AAAB: 2, ABAC: 2 },
+  // el periodo del filtro lento (compases): dos senos, el segundo más corto y sin múltiplo. Ciclos de
+  // 4–8 compases [Bible] el corto; el largo, una frase larga (antes 16–48)
+  bassSweepBars: [12, 32],
   chordModeW: { dub: 4, keys: 1.5, organ: 1 },
   chordModes: {
     dub: { color: {}, k: { 'chord.len': { 1: 7, 2: 2.5, 3: 0.8, 6: 0.3 } } },
@@ -271,6 +395,8 @@ export const ROMINIMAL = {
     'bass.cat': [0.28, 0.4, 1.15, 0.95], // corchea en contratiempo · semicorchea · el 1 · los otros tiempos
     'bass.deg': { 0: 14, 7: 4, 4: 1.2, 6: 0.8, 2: 0.6, 1: 1.4, 3: 0.6, '-3': 1.6 },
     'bass.derive': { 0: 4, 7: 2, 4: 0.6, 6: 0.4, 2: 0.3, 9: 0.6, 11: 0.3 },
+    // la RESPUESTA (2º compás de la frase): contesta sobre todo con la octava y la quinta
+    'bass.answer': { 7: 3, 4: 2, '-3': 2, 0: 1.5, 1: 0.7, 2: 0.5, 6: 0.5 },
     'bass.pitch': [0.42, 0.8], // umbrales de la complejidad del bajo: solo tónica · pocas notas (antes 0,3 · 0,55)
     // ARMONÍA: casi siempre un solo acorde; voicings abiertos (dub: 5ª, 7ª, 9ª sin 3ª) y huecos
     'harm.voicing': [1.5, 4, 2, 0.8, 2.5], // séptima · abierto dub · cuartas · add9 · 5ª + 10ª
@@ -532,29 +658,37 @@ export const DEFAULT_STYLE = 'rominimal';
 // rangos de color. Con su propio dado (la semilla con otra sal): los de siempre no se tocan, y la
 // misma semilla con el mismo t da siempre lo mismo. Las tiradas no dependen de t (con más t, las
 // mismas decisiones pesan más): moverlo un poco no cambia de arquetipo ni de MUTE de golpe
-export function rollStyle(seed, t, name = DEFAULT_STYLE) {
+// `purity` (0..1, PUREZA): cuánto respeta el universo su estilo (ver «PUREZA», arriba). Con 1, sin
+// aflojar nada (las mismas tiradas que antes de existir la perilla)
+export function rollStyle(seed, t, name = DEFAULT_STYLE, purity = 1) {
   t = clamp(t);
   const P = STYLES[name];
   if (!(t > 0) || !P) return NORMAL;
   const r = new Rng((seed ^ 0x2c1b3c6d) >>> 0);
+  const Lq = { loose: 1 - clamp(purity), lseed: (seed ^ 0x7a3d91c5) >>> 0 };
+  const loose = (key, w) => { const L = looseOf(Lq, key); return L ? flatten(w, L) : w; };
   const names = Object.keys(P.arch);
-  const arch = r.weighted(names, names.map((n) => P.arch[n].w));
+  const arch = r.weighted(names, loose('arch', names.map((n) => P.arch[n].w)));
   const A = P.arch[arch];
-  const mode = (modes, w) => {
+  const mode = (modes, w, key) => {
     const ks = Object.keys(modes);
-    return r.weighted(ks, ks.map((m) => w[m] ?? 0));
+    return r.weighted(ks, loose(key, ks.map((m) => w[m] ?? 0)));
   };
-  const bassMode = mode(P.bassModes, A.bassModes ?? P.bassModeW);
-  const chordMode = mode(P.chordModes, A.chordModes ?? P.chordModeW);
-  // MUTE: una tirada por instrumento, siempre en el mismo orden; suena con probabilidad × t
+  const bassMode = mode(P.bassModes, A.bassModes ?? P.bassModeW, 'mode.bass');
+  const chordMode = mode(P.chordModes, A.chordModes ?? P.chordModeW, 'mode.chord');
+  // MUTE: una tirada por instrumento, siempre en el mismo orden; suena con probabilidad × t (con
+  // menos PUREZA, cada probabilidad se desvía hacia la suya)
   const mutes = [];
-  for (const k of INSTRUMENTS) if (r.next() < (A.mute[k] ?? 0) * t) mutes.push(k);
+  for (const k of INSTRUMENTS) {
+    const p = (A.mute[k] ?? 0) * t, L = k === 'kick' || k === 'bass' ? 0 : looseOf(Lq, `mute.${k}`) * 0.7;
+    if (r.next() < (L ? lerp(p, 0.6 * keyU(Lq.lseed, `mute.${k}!`), L) : p)) mutes.push(k);
+  }
   if (mutes.includes('perc') && mutes.includes('foley')) mutes.splice(mutes.indexOf('foley'), 1); // siempre queda algo de percusión
   // MEZCLA: la del estilo, lo del arquetipo, lo de los modos (un modo más lleno, algo más abajo) y
-  // ±1 dB de cada universo (nunca por encima de 0 dB)
+  // ±1 dB de cada universo (nunca por encima de 0 dB; con menos PUREZA, hasta ±3 dB)
   const BM = P.bassModes[bassMode].mix || {}, CM = P.chordModes[chordMode].mix || {};
-  const mix = {};
-  for (const k of [...INSTRUMENTS, 'fx']) mix[k] = Math.min(0, P.mix[k] + (A.mix?.[k] ?? 0) + (BM[k] ?? 0) + (CM[k] ?? 0) + r.float(-1, 1));
+  const mix = {}, mixVar = Lq.loose ? 1 + 2 * Lq.loose : 1;
+  for (const k of [...INSTRUMENTS, 'fx']) mix[k] = Math.min(0, P.mix[k] + (A.mix?.[k] ?? 0) + (BM[k] ?? 0) + (CM[k] ?? 0) + r.float(-1, 1) * mixVar);
   // los RETORNOS (DELAY, REVERB) sin tirada: cuánto efecto lleva ya está en sus envíos (space.js)
   for (const k of RETURNS) mix[k] = Math.min(0, (P.mix[k] ?? 0) + (A.mix?.[k] ?? 0));
   // GENERACIÓN: lo del estilo, lo que sustituye el arquetipo, los modos y lo que multiplica
@@ -573,13 +707,19 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
   }
   if (P.percBack) k['perc.back'] = r.float(...(A.percBack ?? P.percBack));
   if (P.groove) k['groove'] = rollGroove(r, { ...P.groove, ...(A.groove || {}) });
-  // COLOR: [t, lo0, hi0, lo1, hi1...] en el orden de COLOR_PARAMS
+  if (P.bassFeel) k['bass.feel'] = rollBassFeel(r, P, bassMode, t, Lq);
+  // COLOR: [t, lo0, hi0, lo1, hi1...] en el orden de COLOR_PARAMS (con menos PUREZA, cada rango se
+  // ensancha hacia lo que da el color de siempre)
   const C = { ...P.color, ...P.bassModes[bassMode].color, ...P.chordModes[chordMode].color };
   const color = new Float64Array(1 + 2 * COLOR_PARAMS.length);
   color[0] = t;
+  const N = Lq.loose ? natural() : null;
   COLOR_PARAMS.forEach((p, n) => {
-    color[1 + 2 * n] = C[p][0];
-    color[2 + 2 * n] = C[p][1];
+    let [lo, hi] = C[p];
+    const L = N ? looseOf(Lq, `color.${p}`) : 0;
+    if (L) { lo = lerp(lo, Math.min(lo, N[n][0]), L); hi = lerp(hi, Math.max(hi, N[n][1]), L); }
+    color[1 + 2 * n] = lo;
+    color[2 + 2 * n] = hi;
   });
   // ENVÍOS: el recorte del estilo (`sendTrim`) en ganancia, a medias con el fader (1 = como siempre)
   const sends = {};
@@ -587,7 +727,7 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
     sends[fx] = {};
     for (const [kk, d] of Object.entries(ks)) sends[fx][kk] = 1 + ((d === -Infinity ? 0 : Math.pow(10, d / 20)) - 1) * t;
   }
-  return { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a, sends };
+  return { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a, sends, purity: 1 - Lq.loose, loose: Lq.loose, lseed: Lq.lseed };
 }
 
 // GROOVE de un universo (ver `groove` en ROMINIMAL): por instrumento, su swing de más (`sw`) y su
@@ -609,5 +749,55 @@ function rollGroove(r, G) {
   return out;
 }
 
+// CÓMO SE TOCA EL BAJO de un universo (`bassFeel`, `bassPhrase`): probabilidades × t (a medio fader,
+// menos deslizamientos y notas largas; con t bajo, a veces sin respuesta: lo de siempre), la frase,
+// el filtro lento y una semilla para lo que el BassGen fija por paso (generators.js)
+// (con menos PUREZA, `Lq`: las probabilidades de cada paso se desvían, todas las celdas y frases
+// entran, y el motivo deja más notas fuera de la celda: `cellLoose`, ver generators.js cellMotif)
+function rollBassFeel(r, P, mode, t, Lq) {
+  const F = P.bassFeel[mode], PW = P.bassPhrase, ph = Object.keys(PW);
+  const lw = (key, w) => { const L = looseOf(Lq, key); return L ? flatten(w, L) : w; };
+  const lp = (key, p) => { const L = looseOf(Lq, key) * 0.7; return L ? lerp(p, 0.5 * keyU(Lq.lseed, key + '!'), L) : p; };
+  const phrase = r.weighted(ph, lw('bass.phrase', ph.map((p) => PW[p])));
+  const answer = r.next() < t;
+  const [b0, b1] = P.bassSweepBars;
+  const p1 = r.float(b0, b1);
+  const PK = Object.keys(F.pitch);
+  const pitchKind = r.weighted(PK, lw('bass.pitchKind', PK.map((k) => F.pitch[k])));
+  const pitchAmt = pitchKind === 'blip' ? r.float(...F.blip) : pitchKind === 'scoop' ? -r.float(...F.scoop) : 0;
+  return {
+    phrase: answer ? phrase : null,
+    glide: lp('bass.glide', F.glide) * t, legato: lp('bass.legato', F.legato) * t,
+    cellLoose: looseOf(Lq, 'bass.cell'),
+    glideTau: r.float(...F.glideTau),
+    // la NOTA LARGA con intención: en qué contratiempo, cuántos pasos y en qué compases (null: no hay)
+    long: r.next() < lp('bass.long', F.long) * t ? { step: r.pick([2, 6, 10, 14]), len: r.pick([3, 4]), every: mode === 'sub' } : null,
+    // el SONIDO de cada nota (con t, desde el de siempre: sostiene 75 %, sin paso bajo, sin altura)
+    sus: lerp(0.75, r.float(...F.sus), t), dec: lerp(0.15, r.float(...F.dec), t),
+    post: Math.exp(lerp(Math.log(16000), Math.log(r.float(...F.post)), t)),
+    pitch: { kind: pitchKind, semis: pitchAmt * t, tau: r.float(...F.pitchTau) },
+    fall: { p: lp('bass.fall', F.fall) * t, semis: r.float(...F.fallSemis), dur: r.float(...F.fallDur) },
+    range: P.bassRange, octaveMax: P.bassOctaveMax,
+    sweep: {
+      oct: r.float(...F.sweep) * t,
+      p1, p2: p1 * r.float(0.31, 0.43), ph1: r.next(), ph2: r.next(),
+    },
+    seed: Math.floor(r.next() * 4294967296),
+    // la CELDA de alturas y el REMATE de final de frase (dirección y cada cuántos compases)
+    cell: P.bassCells[r.weighted(Object.keys(F.cells), lw('bass.cells', Object.values(F.cells)))],
+    walk: r.pick(['up', 'down', 'down']),
+    walkEvery: +r.weighted(Object.keys(P.bassWalkEvery), Object.values(P.bassWalkEvery)),
+  };
+}
+
+// el FILTRO LENTO del bajo en el compás `x` (con decimales): cuántas octavas se mueve el corte
+export function bassSweep(F, x) {
+  const S = F.sweep;
+  return S.oct * (0.65 * Math.sin(2 * Math.PI * (x / S.p1 + S.ph1)) + 0.35 * Math.sin(2 * Math.PI * (x / S.p2 + S.ph2)));
+}
+
 // para enseñarlo: «ROMINIMAL 70 % · RODANTE»
-export const styleName = (sty) => (sty.t > 0 ? `${sty.label} ${Math.round(sty.t * 100)} % · ${sty.archLabel}` : 'NORMAL');
+// (con PUREZA por debajo del 100 %, también la pureza)
+export const styleName = (sty) => (sty.t > 0
+  ? `${sty.label} ${Math.round(sty.t * 100)} % · ${sty.archLabel}${sty.purity < 1 ? ` · PUREZA ${Math.round(sty.purity * 100)} %` : ''}`
+  : 'NORMAL');

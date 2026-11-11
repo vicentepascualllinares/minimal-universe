@@ -64,6 +64,32 @@ node groove.mjs ../src
 En 2000 universos ROMINIMAL: el swing de cada instrumento (%), el retraso de la semicorchea (ms), su
 entero adelantado o atrasado y lo que se mueve su dibujo.
 
+## Bajo (`bass.mjs`)
+
+```bash
+node bass.mjs ../src 1 400
+```
+
+Por modo del bajo (pluck, sub, redondo, ácido; con t = 0, «normal»): notas por compás, cuánto del
+compás suena, % de notas ligadas, deslizamientos y notas largas por compás, alturas distintas, % de
+compases de **respuesta** (distinto del anterior e igual al de 2 antes), % igual al de 4 antes y
+cuántas octavas recorre el filtro lento en 64 compases. Debajo, por nivel de alturas de la complejidad
+(root = baja, few = media, all = alta), el % de saltos entre notas seguidas que no son de octava y
+los saltos más usados (en grados del modo: 7 = octava, 4 = quinta, 3 = cuarta…). Al final, «TODOS»: la
+frecuencia de las notas (Hz, con el registro del estilo; 125 BPM, tónica E1–A1, eólico), su duración (ms),
+el pico del filtro de cada nota (con el paso bajo fijo detrás) y cuántas pasan de 150 Hz, 600 ms y 1 kHz. Sirve también con un `src` anterior (el de
+antes del bajo nuevo da 0 en lo que no existía) para comparar.
+
+## Universo parecido (`similar.mjs`)
+
+```bash
+node similar.mjs ../src 150
+```
+
+Para varios pares (mantener SONIDO / MÚSICA): % de notas del bajo y golpes de percusión iguales al
+original (32 compases), % de timbres de percusión y de sonidos de hat iguales y distancia de color.
+100/100 tiene que salir **idéntico** en todos. `CURVA=1` recorre MÚSICA de 0 a 100 % (para calibrar).
+
 ## En el navegador
 
 Lo que depende del audio (niveles, compresión, tiempos reales) se midió en la app con la consola

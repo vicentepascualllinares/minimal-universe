@@ -186,6 +186,40 @@ export class Engine {
     this.mixVersion = (this.mixVersion || 0) + 1; // las vistas del MIXER y el fader de FX lo siguen
   }
 
+  // la MEZCLA con la que nacería un universo de estilo `sty` (como styleMix; para el PARECIDO,
+  // similar.js). NORMAL no toca el MIXER: null
+  bornMix(sty) {
+    if (!(sty.t > 0)) return null;
+    const P = MIX_PRESETS[this.mixPreset].db;
+    const lerpDb = (k) => P[k] + (sty.mix[k] - P[k]) * sty.t;
+    return {
+      inst: Object.fromEntries(MIX_CHANNELS.map((k) => [k, dbGain(lerpDb(k))])),
+      mute: [...sty.mutes], fxPos: dbFader(lerpDb('fx')), fxGain: dbGain(lerpDb('fx')),
+    };
+  }
+
+  // UNIVERSO GUARDADO (Deck.loadUniverse, universe.js): al entrar, su MIXER (faders, MUTE de sus
+  // instrumentos, FX) en el 1 de su compás. Tempo, tónica y modo, aparte (applyGlobals)
+  universeLoaded(deck, u, at) {
+    const i = this.decks.indexOf(deck);
+    if (i < 0) return;
+    const M = u.mix;
+    if (M) {
+      for (const k of INSTRUMENTS) this.mute[i][M.mute?.includes(k) ? 'add' : 'delete'](k);
+      for (const k of MIX_CHANNELS) if (M.inst?.[k] !== undefined) this.setInst(i, k, M.inst[k], at);
+      if (M.fxPos !== undefined) this.fxPos[i] = M.fxPos;
+      if (M.fxGain !== undefined) this.setFxGain(i, M.fxGain, at);
+      this.mixVersion = (this.mixVersion || 0) + 1;
+    }
+  }
+  // TEMPO, TÓNICA y MODO de un universo traído (solo si se pidió: Deck.loadUniverse). Al entrar, en el
+  // 1 de su compás: el modo cambia ya (no en el compás siguiente). En DJ cambian para los dos
+  applyGlobals(G) {
+    if (G.bpm) this.bpm = G.bpm;
+    if (G.rootMidi !== undefined) this.rootMidi = G.rootMidi;
+    if (G.scaleI !== undefined) { this.scaleI = G.scaleI; this.scaleNext = null; }
+  }
+
   // MUTE y SOLO del MIXER, por universo e instrumento (`k` = un instrumento o 'fx'). Solo "en su
   // sitio": si hay alguno en SOLO, se oyen solo esos (de los dos universos). Actúan después del
   // fader (no lo mueven) y con una rampa corta: sin clics. No se guardan

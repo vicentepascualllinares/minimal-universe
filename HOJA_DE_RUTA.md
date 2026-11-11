@@ -5,9 +5,10 @@ cerrado, y ninguna se empieza hasta decidirlo. Antes de las que tocan samples, c
 que releer [RENDIMIENTO.md](RENDIMIENTO.md) §4: hay decisiones que tomar primero (sampler,
 tope de voces, AudioWorklet).
 
-**Lo siguiente acordado (2026-11-11): el BAJO de ROMINIMAL** (deslizamientos, notas largas, filtro
-que se mueve despacio a lo largo de muchos compases y frase de 2–4 compases), y después el resto del
-plan: movimiento lento, sonido, arreglo y mezcla. Orden, estado y detalle en
+**Lo siguiente acordado (2026-11-11):** el BAJO de ROMINIMAL ya está hecho (deslizamientos, notas
+largas, filtro lento de muchos compases, frase de pregunta y respuesta y celdas de alturas) y la
+perilla **PUREZA** (cuánto respeta su estilo un universo, para cualquier estilo) **y falta escucharlos**;
+después, el resto del plan: movimiento lento (automatización), sonido, arreglo y mezcla. Orden, estado y detalle en
 [ROMINIMAL.md](ROMINIMAL.md) §7 «Plan acordado al escucharlo»; herramientas para medir y comprobar
 que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
 
@@ -280,6 +281,21 @@ que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
    antes o después, percusión con su propio swing), cuantización al 70–80 %, curvas tipo MPC por
    encima del 58 %, un empuje-tirón «de batería de jazz» (no funk programado). Cada estilo con su
    groove.
+17. **FAMILIAS DE UNIVERSOS: tocarlas, fusionarlas, exportarlas** (apuntado 2026-11-11, al crear las
+   CARPETAS de GUARDADOS). El uso que pide el usuario: partir de una semilla, iterar con PARECIDO y
+   guardar las versiones que gustan juntas, en una carpeta. Lo que quiere después (solo comentado, sin
+   decidir):
+   - **Soltarlas una detrás de otra**: la carpeta como lista; un SIGUIENTE (a mano) o un relevo cada
+     N compases, que entra como NUEVO UNIVERSO. Lo más directo: ya existe traer un universo en el 1
+     del compás.
+   - **Fusionarlas** (funciones que aún no existen): el PARECIDO ya mezcla DOS universos pieza a pieza
+     (similar.js, sonido y música aparte); fusionar N de una carpeta sería generalizarlo (la música
+     de uno con el sonido de otro, o pieza a pieza entre todos). Cada archivo guarda ya cada pieza por
+     separado, y de qué universo salió (`similar.of`): se podrá enseñar el árbol de versiones.
+   - **Exportar por STEMS** (lo quiere seguro): cada instrumento ya tiene su canal; grabar cada canal
+     aparte, mejor en un render sin conexión (más rápido que el tiempo real y sin cortes). La carpeta
+     sería la unidad de exportación («los stems de toda la familia»). Encaja con la sesión 4 (mezcla y
+     máster) y con GRABAR.
 
 ## Arreglos pendientes
 

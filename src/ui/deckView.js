@@ -11,6 +11,9 @@ import { faderDb, snapMix, setFxFader, presetPos, fmtDb } from './instMixer.js';
 import { Knob } from './knob.js';
 import { KIT_GROUPS, varietyShown } from '../music/kit.js';
 import { STYLES, DEFAULT_STYLE, styleName } from '../music/styles.js';
+import { multiverseHTML, bindMultiverse, currentCode } from './universeIO.js';
+import { SCALES } from '../music/emotion.js';
+import { NOTES } from '../music/universe.js';
 import { describeSpace } from '../music/space.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
@@ -30,7 +33,53 @@ const sceneBtn = (name) => {
   return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span></button>`;
 };
 
-function template(label) {
+// GENERACIÓN: las piezas (las mismas clases en la cabecera de DJ y en el panel de UN UNIVERSO)
+const GEN = {
+  sty: `<div class="sty">
+        <span class="sty-lab lo">NORMAL</span>
+        <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><i class="sty-now"></i><div class="h-handle"></div></div>
+        <span class="sty-lab hi">${STYLES[DEFAULT_STYLE].label}</span>
+      </div>
+      <div class="sty-k"><div class="sty-knob"></div><span class="sty-klab">RO</span></div>`,
+  pur: '<div class="pur"><div class="pur-knob"></div><span class="pur-lab">PUREZA</span></div>',
+  seed: '<button class="seed">NUEVO UNIVERSO</button>',
+  sim: `<div class="sim">
+        <div class="sim-k sim-s"><div class="sim-knob"></div><span class="sim-lab">SONIDO</span></div>
+        <div class="sim-k sim-m"><div class="sim-knob"></div><span class="sim-lab">MÚSICA</span></div>
+        <button class="simbtn">PARECIDO</button>
+      </div>`,
+  code: '<button class="ucode" title="SEMILLA del universo que suena (con su tempo y escala): clic para copiarla"></button>',
+};
+// UN UNIVERSO: el panel de la derecha, en dos bloques.
+//  GENERAR UNIVERSO: NUEVO (grande) y, a su lado, PARECIDO con cuánto se mantiene del SONIDO y de la
+//    MÚSICA; debajo, el ESTILO (con su PUREZA) y la ESCALA (tónica y modo globales, como en la cabecera).
+//  MULTIVERSO: SONANDO (el que suena: nombre y GUARDAR), lo que está EN COLA para IMPORTAR y la
+//    BIBLIOTECA (carpetas → la lista de cada una; doble clic = a la cola). Ver universeIO.js
+const genPanel = () => `
+  <section class="col genp">
+    <div class="col-title">GENERAR UNIVERSO</div>
+    <div class="gtop">
+      <button class="seed" title="NUEVO UNIVERSO: otra semilla, con el ESTILO y la PUREZA de abajo · entra en el 1 del compás siguiente · N">NUEVO</button>
+      <div class="sim">
+        <button class="simbtn">PARECIDO</button>
+        <div class="sim-ks">
+          <div class="sim-k sim-s"><div class="sim-knob"></div><span class="sim-lab">SONIDO</span></div>
+          <div class="sim-k sim-m"><div class="sim-knob"></div><span class="sim-lab">MÚSICA</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="gp"><div class="gp-t gp-row">ESTILO ${GEN.pur}</div>${GEN.sty}</div>
+    <div class="gp gp-scale"><span class="gp-t">ESCALA</span>
+      <div class="gscale">
+        <span class="gs-key" title="TÓNICA global (la misma que en la cabecera) · arrastrar arriba / abajo o rueda"></span>
+        <button class="gs-mode" title="MODO global (el mismo que en la cabecera) · clic = el siguiente · entra en el compás siguiente"></button>
+      </div>
+    </div>
+    <div class="col-title gp-multi">MULTIVERSO</div>
+    ${multiverseHTML(GEN.code)}
+  </section>`;
+
+function template(label, panel) {
   return `
   <div class="deck-head">
     <span class="deck-name">${label}</span>
@@ -39,15 +88,7 @@ function template(label) {
       <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><div class="h-handle"></div></div>
       <span class="cx-lab hi">COMPLEJO</span>
     </div>
-    <div class="gen">
-      <div class="sty">
-        <span class="sty-lab lo">NORMAL</span>
-        <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><i class="sty-now"></i><div class="h-handle"></div></div>
-        <span class="sty-lab hi">${STYLES[DEFAULT_STYLE].label}</span>
-      </div>
-      <div class="sty-k"><div class="sty-knob"></div><span class="sty-klab">RO</span></div>
-      <button class="seed">NUEVO UNIVERSO</button>
-    </div>
+    ${panel ? '' : `<div class="gen">${GEN.sty}${GEN.pur}${GEN.seed}${GEN.sim}${GEN.code}</div>`}
   </div>
   <div class="rows">
   <div class="row">
@@ -115,6 +156,7 @@ function template(label) {
       </div>
     </section>
   </div>
+  ${panel ? genPanel() : ''}
   </div>
   <div class="strip"></div>`;
 }
@@ -131,8 +173,10 @@ export function emoColor(v, a) {
   return c.map((x) => Math.round(grey + (x - grey) * sat)).join(',');
 }
 
-export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
-  root.innerHTML = template(label);
+// `panel`: UN UNIVERSO (la GENERACIÓN en su panel, a la derecha); si no, en la cabecera (DJ)
+export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = false } = {}) {
+  root.innerHTML = template(label, panel);
+  root.classList.toggle('with-genp', panel);
   const q = (s) => root.querySelector(s);
 
   new HSlider(q('.cx'), { value: deck.cx.global, reset: 0.8, onChange: (v) => (deck.cx.global = v) });
@@ -452,6 +496,61 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   const styFader = new HSlider(styEl, { value: deck.styleNext, reset: 0, onChange: (v) => setStyle(v) });
   const styKnob = new Knob(q('.sty-knob'), { value: deck.styleNext, def: 0, bipolar: false, onChange: (v) => setStyle(v) });
   styK.style.setProperty('--v', deck.styleNext);
+  // PUREZA (styles.js): cuánto respeta su estilo el próximo universo. 100 % = estricto (doble clic);
+  // con menos, cada regla del estilo se afloja algo distinto. Como el estilo: solo al generar
+  const purEl = q('.pur');
+  const setPurity = (v) => {
+    deck.purityNext = v;
+    purKnob.set(v);
+    purEl.style.setProperty('--v', v);
+    if (deck.engine.generated) return;
+    clearTimeout(styWait);
+    styWait = setTimeout(() => deck.styleWaiting(), 200);
+  };
+  const purKnob = new Knob(q('.pur-knob'), { value: deck.purityNext, def: 1, bipolar: false, onChange: (v) => setPurity(v) });
+  purEl.style.setProperty('--v', deck.purityNext);
+  // SEMILLA del universo que suena (en el panel, con su tempo y escala): clic = copiarla
+  const codeBtn = q('.ucode');
+  // (panel) MULTIVERSO: GUARDAR el que suena, la BIBLIOTECA y la COLA para IMPORTAR (universeIO.js)
+  const multi = panel ? bindMultiverse(q('.genp'), deck.engine, () => deck) : null;
+  // (panel) ESCALA: tónica (arrastrar / rueda, E..D#, como la cabecera) y modo (clic = el siguiente)
+  const gsKey = q('.gs-key'), gsMode = q('.gs-mode');
+  if (panel) {
+    const E = deck.engine;
+    const setKey = (v) => { E.rootMidi = Math.round(Math.min(35, Math.max(28, v))); };
+    let kp = null;
+    gsKey.addEventListener('pointerdown', (ev) => { if (kp) return; kp = { id: ev.pointerId, y: ev.clientY, v: E.rootMidi }; gsKey.setPointerCapture(ev.pointerId); });
+    gsKey.addEventListener('pointermove', (ev) => { if (kp && ev.pointerId === kp.id) setKey(kp.v + (kp.y - ev.clientY) / 14); });
+    const kUp = (ev) => { if (kp && ev.pointerId === kp.id) kp = null; };
+    gsKey.addEventListener('pointerup', kUp);
+    gsKey.addEventListener('pointercancel', kUp);
+    gsKey.addEventListener('wheel', (ev) => { ev.preventDefault(); setKey(E.rootMidi - Math.sign(ev.deltaY)); }, { passive: false });
+    gsMode.addEventListener('click', () => E.cycleScale());
+  }
+  codeBtn.addEventListener('click', async () => {
+    const c = codeBtn.textContent;
+    try { await navigator.clipboard.writeText(c); codeBtn.classList.add('copied'); } catch {}
+    setTimeout(() => codeBtn.classList.remove('copied'), 900);
+  });
+  // UNIVERSO PARECIDO (similar.js): cuánto se MANTIENE del SONIDO y de la MÚSICA del que suena
+  // (100 % y 100 % = el mismo; doble clic = 100 %). PARECIDO genera uno nuevo con su mismo estilo y
+  // pureza, que entra como NUEVO UNIVERSO
+  const simEl = q('.sim');
+  const simTip = () => {
+    const s = Math.round(deck.keepSound * 100), m = Math.round(deck.keepMusic * 100);
+    simEl.title = `UNIVERSO PARECIDO: uno nuevo que mantiene el ${s} % del SONIDO y el ${m} % de la MÚSICA del que suena, con su mismo estilo y pureza (100 % y 100 % = el mismo)
+SONIDO = color y timbres, modos del bajo y los acordes, sonidos de hats, percs y foley, espacio, transiciones y mezcla
+MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusión, armonía, groove, MUTE, complejidad, CANT · VAR y osciladores`;
+  };
+  const simKnob = (sel, key) => {
+    const el = q(sel);
+    el.style.setProperty('--v', deck[key]);
+    return new Knob(el.querySelector('.sim-knob'), { value: deck[key], def: 1, bipolar: false, onChange: (v) => { deck[key] = v; el.style.setProperty('--v', v); simTip(); } });
+  };
+  simKnob('.sim-s', 'keepSound');
+  simKnob('.sim-m', 'keepMusic');
+  simTip();
+  q('.simbtn').addEventListener('pointerdown', () => deck.similarUniverse(deck.keepSound, deck.keepMusic));
   const styLabel = STYLES[DEFAULT_STYLE].label;
   let stySeen = '';
 
@@ -603,9 +702,26 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
 
       seedBtn.classList.toggle('pending', deck.pendingSeed !== null);
       // ESTILO: la marca y el cartel siguen al universo que suena (y al que viene, si espera el compás)
-      const sk = `${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
+      const E = deck.engine;
+      multi?.frame();
+      if (panel) {
+        const k = NOTES[E.rootMidi % 12], m = SCALES[E.scaleNext ?? E.scaleI].name.toUpperCase();
+        if (gsKey.textContent !== k) gsKey.textContent = k;
+        if (gsMode.textContent !== m) gsMode.textContent = m;
+        gsMode.classList.toggle('pending', E.scaleNext !== null);
+      }
+      const sk = `${E.bpm}|${E.rootMidi}|${E.scaleNext ?? E.scaleI}|${deck.similarOf?.with ?? ''}|${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.purityNext.toFixed(2)}|${deck.sty.purity}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
       if (sk !== stySeen) {
         stySeen = sk;
+        // un UNIVERSO GUARDADO que se carga pone el fader de ESTILO y la PUREZA en los suyos
+        styFader.set(deck.styleNext);
+        styKnob.set(deck.styleNext);
+        styK.style.setProperty('--v', deck.styleNext);
+        purKnob.set(deck.purityNext);
+        purEl.style.setProperty('--v', deck.purityNext);
+        // la SEMILLA del que suena (universe.js), para copiarla
+        // (un PARECIDO no se rehace con su semilla: se guarda en archivo, OPCIONES → UNIVERSOS)
+        codeBtn.textContent = currentCode(deck, deck.engine, panel);
         styNow.style.left = `${deck.sty.t * 100}%`;
         styNow.hidden = !(deck.sty.t > 0);
         const now = (deck.sty.t > 0 ? `${styleName(deck.sty)}: ${deck.sty.archDesc}` : 'NORMAL (lo de siempre)') + `\nespacio: ${describeSpace(deck.space)}`;
@@ -614,6 +730,10 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         styEl.title = `${tip}\nel que suena (la marca): ${now}`;
         styK.title = `${tip}\nel que suena: ${now}`;
         styK.classList.toggle('on', deck.styleNext > 0);
+        const pur = Math.round(deck.purityNext * 100);
+        purEl.title = `PUREZA del próximo NUEVO UNIVERSO: ${pur} % · cuánto respeta su ESTILO (100 % = estricto; con menos, cada regla se afloja algo distinto: para experimentar) · solo cuenta al generar · doble clic = 100 %
+el que suena: ${deck.sty.t > 0 ? `${Math.round((deck.sty.purity ?? 1) * 100)} %` : 'NORMAL (sin estilo)'}`;
+        purEl.classList.toggle('loose', deck.purityNext < 1);
       }
 
       // instrumentos: destellos sincronizados con el audio

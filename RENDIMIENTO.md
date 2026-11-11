@@ -282,6 +282,15 @@ la cola larga de la convolución a otro hilo, así que el render offline seguram
 hiciera falta bajar: salas más cortas o en mono→estéreo con IR más corta en LIGERA (ya: tope de
 1,2 s), la cinta del delay sin sobremuestreo, o una sala compartida por los dos universos.
 
+**FONDO (la reverb de fondo, 2026-11-11).** Primero se hizo como la sala: convolución con una cola
+sintetizada de 4–9 s. En directo (DJ, búfer ESTABLE ~50 ms, los dos sonando) **no aguanta**: con
+UNA cola así sonando en cada universo, **~1 CORTE por segundo sin tocar nada** (25–28 en 25 s; sin
+ellas, 0), y **cargar** una de 9 s en un convolver bloquea ~100 ms y da cortes aunque ese
+convolver no reciba nada. Un convolver conectado gasta lo mismo con la entrada a 0. Se cambió por
+una **reverb algorítmica** (8 líneas de retardo realimentadas + un difusor de convolución de
+0,15 s): **0 CORTES y 0 TARDE** en la misma prueba (25 s quieto + 4 universos nuevos). Lecciones:
+convolución solo para colas cortas (≤ 3 s, la sala); lo largo, algorítmico.
+
 (Resuelto: el README decía que el perfil móvil creaba "la mitad de nodos por segundo"; contar
 nodos engaña, porque no todos cuestan lo mismo. La medida buena es el coste de render de arriba:
 LIGERA gasta ~55 % menos que ALTA.)
@@ -303,6 +312,10 @@ LIGERA gasta ~55 % menos que ALTA.)
 - Si algo se programa por adelantado (hasta el MARGEN), cancelarlo debe borrar también lo
   pendiente (`cancelScheduledValues(desde)`), no solo poner el valor "bueno".
 - Filtros rápidos o resonantes, muestra a muestra (no `k-rate`): por bloques hacen cremallera.
+- Convolución solo para colas CORTAS (≤ 3 s): una de 4–9 s sonando por universo da cortes y
+  cargarla bloquea ~100 ms (§5, FONDO). Lo largo, algorítmico (`FdnTail` en `spaceFx.js`).
+- El `Q` de los filtros de Web Audio va en **dB** en paso bajo y paso alto: dentro de una
+  realimentación, por debajo de −3 dB (sin pico), o la cola se dispara (le pasó al FONDO con +0,5).
 - Toda voz se para ya en silencio (≥ 7 constantes de tiempo de su release).
 - Cada voz nueva: ataque y release con rampa, `stop()` con hora de fin, nada que quede
   sonando o conectado para siempre.

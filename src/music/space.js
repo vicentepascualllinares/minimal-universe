@@ -16,6 +16,10 @@
 //           tempranas (el «carácter» de la habitación), anchura y el paso alto del retorno. A quién
 //           y cuánto, instrumento por instrumento, y también a los efectos de transición (platos,
 //           golpes, risers: los que más lo pedían).
+//   FONDO   (2026-11-11) una segunda reverb, de fondo: cola larga (3,5–9 s), oscura (filtrada) y muy
+//           comprimida. No es una sala: es el COLCHÓN sobre el que suena todo. Sobre todo para el
+//           foley, los efectos de transición y el pad; algo de percusión, hats y acordes; el clap,
+//           nunca. Con su propio dado (otra sal más): no mueve ninguna tirada del DELAY ni de la sala.
 // Kick y bajo, siempre secos: los graves del club, limpios.
 //
 // Con su propio dado (la semilla con otra sal): no toca ninguna tirada de las de siempre, así un
@@ -85,22 +89,57 @@ export function makeSpace(seed, sty) {
   for (const k of [...SENDS, 'fx']) rev[k] = amt * f(`rev.${k}`, ...REV0[k]);
   const irSeed = r.int(1, 2 ** 30);
 
-  return {
+  const S = {
     amt,
+    bg: makeBg(seed, sty, amt),
     dly: {
       on: dlyOn, div, steps: DIVS[div], pingpong, fb, tone, thin, drive, wow, wowHz, toRev, focus,
       send: dly, throwP: dlyOn ? throwP : 0, throwAmt: amt * throwAmt, throwEvery,
     },
     rev: { decay, pre, damp, early, width, low, send: rev, irSeed },
   };
+  // ENVÍOS del estilo (`sendTrim` en styles.js; rollStyle los da en ganancia): al final, sobre lo
+  // sorteado, sin tirar nada (NORMAL no los tiene: sale idéntico). Los THROWS del protagonista del eco
+  // se abren en proporción a su envío
+  const T = sty.sends;
+  if (T) {
+    for (const [fx, ks] of Object.entries(T)) for (const [k, g] of Object.entries(ks)) if (k in S[fx].send) S[fx].send[k] *= g;
+    S.dly.throwAmt *= T.dly?.[focus] ?? 1;
+  }
+  return S;
 }
 
-// para enseñarlo: «DELAY 1/8 con puntillo, ping-pong, protagonista CHORD · REVERB 0,6 s»
+// ── FONDO: quién manda (el clap no: nunca a una cola larga) y cuánto, en NORMAL. Ganancia lineal,
+// antes del `amt` del universo. El foley y las transiciones, los que más: son los que hacen colchón
+export const BG_SENDS = ['hat', 'perc', 'ohat', 'foley', 'chord', 'pad', 'fx'];
+const BG0 = { hat: [0, 0.05], perc: [0, 0.1], ohat: [0, 0.08], foley: [0.2, 0.5], chord: [0, 0.12], pad: [0.12, 0.35], fx: [0.25, 0.6] };
+
+// quién manda a cada efecto (para las perillas de ENVÍOS del MIXER): al delay, los instrumentos que
+// usan efectos; a la sala, también las transiciones; al fondo, BG_SENDS
+export const FX_SENDS = { dly: SENDS, rev: [...SENDS, 'fx'], bg: BG_SENDS };
+
+function makeBg(seed, sty, amt) {
+  const r = new Rng((seed ^ 0x1f83d9ab) >>> 0);
+  const f = (key, a, b) => sFloat(r, sty, key, a, b);
+  const on = sChance(r, sty, 'bg.on', 0.85);
+  const decay = f('bg.decay', 3.5, 6.5);  // la cola hasta −60 dB (s): larga
+  const pre = f('bg.pre', 0.02, 0.06);    // predelay (s): el fondo empieza algo después
+  const damp = f('bg.damp', 1800, 4000);  // paso bajo en cada vuelta de la cola (Hz): se oscurece al apagarse
+  const lp = f('bg.lp', 2500, 5500);      // paso bajo del retorno: cuánto de oscura
+  const low = f('bg.hp', 220, 420);       // paso alto del retorno: sin barro en los graves
+  const comp = f('bg.comp', 0.55, 0.9);   // cuánto se comprime (0..1): umbral y ratio
+  const send = {};
+  for (const k of BG_SENDS) send[k] = on ? amt * f(`bg.${k}`, ...BG0[k]) : 0;
+  return { on, decay, pre, damp, lp, low, comp, send };
+}
+
+// para enseñarlo: «DELAY 1/8 con puntillo, ping-pong, protagonista CHORD · REVERB 0,6 s · FONDO 5,2 s»
 const NAME = { chord: 'CHORD', perc: 'PERC', clap: 'CLAP', hat: 'HAT', foley: 'FOLEY' };
 export function describeSpace(S) {
   const D = S.dly;
   const d = D.on
     ? `DELAY ${DIV_LABEL[D.div]}${D.pingpong ? ', ping-pong' : ''}, ${Math.round(D.fb * 100)} % de repetición, protagonista ${NAME[D.focus]}`
     : 'sin DELAY';
-  return `${d} · REVERB ${S.rev.decay.toFixed(1).replace('.', ',')} s`;
+  const s = (x) => x.toFixed(1).replace('.', ',');
+  return `${d} · REVERB ${s(S.rev.decay)} s · ${S.bg.on ? `FONDO ${s(S.bg.decay)} s` : 'sin FONDO'}`;
 }

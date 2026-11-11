@@ -34,7 +34,6 @@ export class EmotionState {
     this.tv = v; this.ta = a; // objetivo (donde está el ratón)
     this.v = v; this.a = a;   // valor real (con inercia, como un sistema analógico)
     this.inertia = 2.2;       // segundos (constante de tiempo)
-    this.ramp = null;
     // ESTILO del color (ver styleColor en styles.js): [cuánto, lo0, hi0, lo1, hi1...]. Viaja con la
     // misma inercia que el color: un universo nuevo llega a su estilo a la vez que a su color.
     // null = nunca ha habido estilo (todo como siempre)
@@ -52,31 +51,13 @@ export class EmotionState {
     if (!this.sx) { this.sx = Float64Array.from(x); this.sx[0] = 0; } // venía sin estilo: solo sube el cuánto
     this.tsx = Float64Array.from(x);
   }
+  // al objetivo de golpe, sin inercia (el primer universo, antes de que suene nada)
   snap() {
-    this.v = this.tv; this.a = this.ta; this.ramp = null;
+    this.v = this.tv; this.a = this.ta;
     if (this.tsx) this.sx = Float64Array.from(this.tsx);
     this.sxMoving = false;
   }
-  // rampa suave hacia el objetivo durante `dur` segundos, empezando dentro de `delay`
-  rampTo(dur, delay = 0) {
-    this.ramp = { fv: this.v, fa: this.a, fsx: this.sx && Float64Array.from(this.sx), t: -Math.max(0, delay), dur: Math.max(0.01, dur) };
-  }
   update(dt) {
-    const R = this.ramp;
-    if (R) {
-      R.t += dt;
-      if (R.t < 0) return;
-      const k = Math.min(1, R.t / R.dur);
-      const s = k * k * (3 - 2 * k);
-      this.v = R.fv + (this.tv - R.fv) * s;
-      this.a = R.fa + (this.ta - R.fa) * s;
-      if (this.tsx && R.fsx) {
-        for (let i = 0; i < this.sx.length; i++) this.sx[i] = R.fsx[i] + (this.tsx[i] - R.fsx[i]) * s;
-        this.sxMoving = k < 1;
-      }
-      if (k >= 1) this.ramp = null;
-      return;
-    }
     const k = 1 - Math.exp(-dt / this.inertia);
     this.v += (this.tv - this.v) * k;
     this.a += (this.ta - this.a) * k;

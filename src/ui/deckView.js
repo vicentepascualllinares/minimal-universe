@@ -1,4 +1,4 @@
-// Vista de un UNIVERSO: estructura, transición, complejidad, loop, nuevo universo e instrumentos.
+// Vista de un UNIVERSO: estructura, transición, complejidad, nuevo universo e instrumentos.
 // Se instancia dos veces (izquierda y derecha) sobre el mismo Deck API.
 
 import { VSlider, HSlider } from './slider.js';
@@ -55,7 +55,7 @@ function template(label) {
       <div class="pad-title">ESTRUCTURA<span class="ph-ticks" title="la frase: un trazo por compás. Los viajes aterrizan al empezar la frase"></span><span class="p-status"></span></div>
       <div class="pad-box scenes">
         <div class="vers">
-          <button class="ver ver-now" title="AHORA: versión de la parte que suena (1 = menos elementos, 2 = más) · cambia en el siguiente compás · no en un viaje progresivo en marcha ni en LOOP"><span class="ver-lab">AHORA</span><b data-v="0">1</b><b data-v="1">2</b></button>
+          <button class="ver ver-now" title="AHORA: versión de la parte que suena (1 = menos elementos, 2 = más) · cambia en el siguiente compás · no en un viaje progresivo en marcha"><span class="ver-lab">AHORA</span><b data-v="0">1</b><b data-v="1">2</b></button>
           <button class="ver ver-next" title="LUEGO: versión del destino del viaje; quieto, la de la próxima parte que pulses · al llegar, AHORA pasa a ser esta"><span class="ver-lab">LUEGO</span><b data-v="0">1</b><b data-v="1">2</b></button>
         </div>
         ${GRID.flat().map(sceneBtn).join('')}
@@ -113,17 +113,6 @@ function template(label) {
           <div class="ed-help">el 2 multiplica al 1: decide cuánto del 1 suena<br>clic = llenar / vaciar · de lado = pintar<br>arriba / abajo o rueda = nivel intermedio</div>
         </div>
       </div>
-    </section>
-    <section class="col loopcol">
-      <div class="col-title">LOOP</div>
-      <button class="loop-btn"><span class="lb-text">LOOP</span><span class="lb-ticks"></span></button>
-      <div class="unit">LONGITUD</div>
-      ${opts('o-len', nums([1, 2, 4, 8]), '2')}
-      <div class="spacer"></div>
-      <div class="unit">SALIDA</div>
-      ${opts('o-mode stack', [['instant', 'INSTANTÁNEA'], ['prog', 'PROGRESIVA']], 'prog')}
-      ${opts('o-bars', nums([1, 2, 4, 8, 16]), '4')}
-      <div class="unit">COMPASES</div>
     </section>
   </div>
   </div>
@@ -438,16 +427,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   q('.t-form').addEventListener('pointerdown', () => { deck.form = deck.form === 'golpe' ? 'prog' : 'golpe'; showForm(); });
   q('.t-flow').addEventListener('pointerdown', () => { deck.flow = deck.flow === 'suave' ? 'escalonado' : 'suave'; showForm(); });
   showForm();
-  options('.o-len', (v) => (deck.loopLen = Number(v)));
-  options('.o-bars', (v) => (deck.releaseBars = Number(v)));
-  options('.o-mode', (v) => {
-    deck.releaseMode = v;
-    q('.o-bars').classList.toggle('off', v === 'instant');
-  });
 
-  const loopBtn = q('.loop-btn');
-  const loopTicks = q('.lb-ticks');
-  loopBtn.addEventListener('pointerdown', () => deck.toggleLoop());
   const seedBtn = q('.seed');
   seedBtn.addEventListener('pointerdown', () => deck.reseed());
   // ESTILO de la próxima generación (styles.js): NORMAL (izquierda, lo de siempre) ↔ el género
@@ -457,11 +437,17 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
   const styEl = q('.sty');
   const styK = q('.sty-k');
   const styNow = q('.sty-now');
+  // Antes del primer GENERAR, el universo que espera se vuelve a sortear con el estilo nuevo (al
+  // parar de mover: sortear cuesta), así el primero ya nace como marca el fader
+  let styWait = 0;
   const setStyle = (v) => {
     deck.styleNext = v;
     styFader.set(v);
     styKnob.set(v);
     styK.style.setProperty('--v', v);
+    if (deck.engine.generated) return;
+    clearTimeout(styWait);
+    styWait = setTimeout(() => deck.styleWaiting(), 200);
   };
   const styFader = new HSlider(styEl, { value: deck.styleNext, reset: 0, onChange: (v) => setStyle(v) });
   const styKnob = new Knob(q('.sty-knob'), { value: deck.styleNext, def: 0, bipolar: false, onChange: (v) => setStyle(v) });
@@ -554,7 +540,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         for (const x of kitK) { x.k.set(deck.kit[x.g][x.p]); x.show(deck.kit[x.g][x.p]); }
       }
       // lo que suena ahora (con su oscilador × global): número y línea fina
-      const p = deck.loop ? null : deck.pos();
+      const p = deck.pos();
       const step = p === null ? null : Math.max(0, Math.floor(p));
       for (const g of GROUPS) {
         const v = step === null ? deck.cx[g] : deck.cxNow(g, step);
@@ -570,9 +556,8 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
 
       const AR = deck.arr;
       const T = AR.travel;
-      const L = deck.loop;
       // VERSIONES: AHORA y LUEGO, cada una con la suya encendida. AHORA se apaga cuando no se puede
-      // tocar (viaje progresivo en marcha, LOOP); LUEGO se marca si, quieto, ya está elegida otra
+      // tocar (viaje progresivo en marcha); LUEGO se marca si, quieto, ya está elegida otra
       // para la próxima parte
       const canNow = deck.canNow();
       const vk = `${AR.vNow}${AR.vNext}${canNow ? 1 : 0}${AR.travel ? 1 : 0}`;
@@ -595,7 +580,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         el.classList.toggle('paused', dest && T.paused);
         el.classList.toggle('home', AR.home === name);
         el.classList.toggle('held', deck.held.includes(name));
-        el.classList.toggle('pend', !!L && AR.target === name); // LOOP: entrará al soltar
       }
       let st = '';
       const ti = deck.travelInfo();
@@ -617,17 +601,6 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
       [...phTicks.children].forEach((t, i) => t.classList.toggle('now', i === pv.bar));
       root.querySelector('.p-struct').classList.toggle('traveling', !!T && !T.paused);
 
-      // loop
-      const heardBar = Math.floor(Math.max(0, engine.step - 1) / 16);
-      const armed = !!L && heardBar < L.startBar;
-      loopBtn.classList.toggle('on', !!L);
-      loopBtn.classList.toggle('armed', armed && !L.releasing);
-      loopBtn.classList.toggle('releasing', !!L && L.releasing);
-      root.classList.toggle('looping', !!L);
-      const n = L ? L.n : deck.loopLen;
-      if (loopTicks.childElementCount !== n) loopTicks.innerHTML = '<i></i>'.repeat(n);
-      const cur = L && !armed ? (heardBar - L.startBar) % L.n : -1;
-      [...loopTicks.children].forEach((t, i) => t.classList.toggle('now', i === cur));
       seedBtn.classList.toggle('pending', deck.pendingSeed !== null);
       // ESTILO: la marca y el cartel siguen al universo que suena (y al que viene, si espera el compás)
       const sk = `${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
@@ -653,13 +626,16 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`) {
         }
         deck.events = keep;
       }
+      // en MUTE (o callado por el SOLO de otro) no se enciende: el blanco decía que sonaba
       for (const k of INSTRUMENTS) {
         const c = cells[k];
         const s = deck.arr.state[k];
+        const heard = !!engine.heard(di, k);
+        if (!heard) c.flash = 0;
         c.bar.style.transform = `scaleX(${s.progress})`;
         c.mark.style.left = `${Math.min(100, s.presence * 100)}%`;
         c.el.classList.toggle('on', s.target);
-        c.el.classList.toggle('pend', !!L && s.pending !== s.target);
+        c.el.classList.toggle('muted', !heard);
         c.dot.style.opacity = 0.08 + 0.92 * c.flash;
         c.flash *= 0.86;
       }

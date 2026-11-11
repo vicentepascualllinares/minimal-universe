@@ -14,12 +14,12 @@
   --mixer: 210px;
   --vh: 1vh;
   /* DJ en ordenador: dos universos apilados + mezcla */
-  --pad: max(140px, min(calc((100vh - 236px) / 2), calc((100vw - 2 * var(--col) - var(--mixer) - 150px) / 2)));
+  --pad: max(140px, min(calc((100vh - 236px) / 2), calc((100vw - var(--col) - var(--mixer) - 150px) / 2)));
 }
 @supports (height: 100dvh) { :root { --vh: 1dvh; } }
 
-/* un universo en ordenador: estructura · transición · emoción · loop en una fila */
-body.mode-solo { --pad: max(160px, min(calc(100vh - 220px), calc((100vw - 2 * var(--col) - 160px) / 2))); }
+/* un universo en ordenador: estructura · transición · complejidad en una fila */
+body.mode-solo { --pad: max(160px, min(calc(100vh - 220px), calc((100vw - var(--col) - 160px) / 2))); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -141,20 +141,28 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .im-title { color: var(--fg); letter-spacing: 0.5em; }
 .im-sub { color: var(--dim); font-size: 9px; letter-spacing: 0.12em; }
-.im-row { display: flex; gap: clamp(8px, 1.1vw, 40px); height: min(340px, calc(100 * var(--vh) - 260px)); min-height: 160px; }
+.im-row { display: flex; gap: clamp(8px, 1.1vw, 40px); height: min(440px, calc(100 * var(--vh) - 230px)); min-height: 160px; }
 /* si aun así no cabe (móvil en vertical), se desplaza en horizontal en vez de salirse */
 .im-row { max-width: calc(100vw - 16px); overflow-x: auto; overflow-y: hidden; }
 .im-ch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 60px; }
 /* DJ: cada instrumento en su caja (A y B juntos), con aire entre cajas y el nombre más marcado */
 .instmix.dj .im-row { gap: clamp(6px, 1vw, 26px); }
 /* 13 columnas (9 instrumentos, DELAY, REVERB, FX y máster): se estrechan para caber en la pantalla, hasta 100 px */
-.instmix.dj .im-ch { width: clamp(64px, calc((100vw - 180px) / 13 - 8px), 100px); padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
+.instmix.dj .im-ch { width: clamp(62px, calc((100vw - 200px) / 15 - 10px), 100px); padding: 12px 0 10px; border: 1px solid #26262b; background: rgba(255, 255, 255, 0.025); }
 .instmix.dj .im-name { font-size: 10px; letter-spacing: 0.26em; margin-right: -0.26em; }
 .im-dbs { display: flex; gap: 10px; }
 .im-db { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
 .instmix.dj .im-dbs { gap: 4px; }
 .instmix.dj .im-db { font-size: 9px; width: 34px; text-align: center; letter-spacing: 0; }
 .im-db.moved { color: var(--fg); }
+/* ENVÍOS: tres filas de perillas arriba de cada canal (DELAY, REVERB, FONDO); donde un canal no
+   manda, el hueco vacío del mismo alto, así los faders quedan alineados */
+.im-send + .im-send { margin-top: -6px; }
+.im-send { height: 24px; flex: none; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.im-sk { width: 22px; height: 22px; cursor: ns-resize; touch-action: none; }
+.im-sv { width: 28px; color: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; letter-spacing: 0; text-align: left; }
+.im-sv.moved { color: var(--fg); }
+.im-slab { color: var(--faint); font-size: 8px; letter-spacing: 0.12em; }
 /* cada fader con su medidor al lado (lo que suena ahora); en DJ, A y B */
 /* A y B de un instrumento algo separados; los instrumentos, más (.im-row) */
 .im-pair { flex: 1; min-height: 0; display: flex; gap: 14px; justify-content: center; }
@@ -295,7 +303,6 @@ body.mode-dj .gen { gap: 8px; }
   transition: border-color 0.3s;
 }
 .pad.active .pad-box, .pad-box:hover { border-color: #26262b; }
-.deck.looping .pad-box { border-color: rgba(var(--glow), 0.3); }
 /* ESTRUCTURA: 8 escenas en 2×4, arriba sin kick, abajo con kick (como los pads de un controlador) */
 .scenes {
   display: grid;
@@ -327,7 +334,6 @@ body.mode-dj .gen { gap: 8px; }
 .scene.paused { border-color: var(--fg); border-style: dashed; }
 .scene.press { background: rgba(var(--glow, 200, 200, 205), 0.3); }
 .scene.held { border-color: rgba(var(--glow, 200, 200, 205), 0.95); }  /* CORTE mantenido */
-.scene.pend { border-color: rgba(var(--glow, 200, 200, 205), 0.85); border-style: dashed; } /* LOOP: entrará al soltar */
 /* VERSIONES: AHORA (la parte que suena) y LUEGO (el destino), a la derecha de las partes */
 .vers { grid-column: 5; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ver {
@@ -461,7 +467,7 @@ body.mode-dj .gen { gap: 8px; }
 .t-vol-db { color: var(--dim); font-size: 9px; font-variant-numeric: tabular-nums; }
 .t-vol-db.moved { color: var(--fg); }
 
-/* ───────── columnas (transición / loop) */
+/* ───────── columna TRANSICIÓN */
 .col {
   width: var(--col);
   height: calc(var(--pad) + 21px);
@@ -493,28 +499,6 @@ body.mode-dj .gen { gap: 8px; }
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
-/* ───────── loop */
-.loop-btn {
-  width: 100%;
-  height: 40px;
-  border: 1px solid var(--faint);
-  color: var(--dim);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px;
-  margin-bottom: 4px;
-  touch-action: none;
-  transition: border-color 0.2s, color 0.2s, box-shadow 0.4s;
-}
-.loop-btn .lb-text { letter-spacing: 0.45em; margin-right: -0.45em; }
-.lb-ticks { display: flex; gap: 3px; height: 2px; }
-.lb-ticks i { width: 8px; height: 2px; background: var(--faint); }
-.lb-ticks i.now { background: var(--fg); }
-.loop-btn.on {
-  color: var(--fg);
-  border-color: rgba(var(--glow), 0.9);
-  box-shadow: 0 0 22px rgba(var(--glow), 0.18), inset 0 0 12px rgba(var(--glow), 0.12);
-}
-.loop-btn.armed .lb-text, .loop-btn.releasing .lb-text { animation: blink 0.5s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0.25; } }
 
 /* ───────── instrumentos */
@@ -524,7 +508,9 @@ body.mode-dj .gen { gap: 8px; }
 .inst .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--fg); opacity: 0.08; flex: none; }
 .inst .name { color: var(--dim); font-size: 9px; letter-spacing: 0.16em; transition: color 0.4s; overflow: hidden; text-overflow: clip; white-space: nowrap; }
 .inst.on .name { color: var(--fg); }
-.inst.pend .name { animation: blink 0.8s steps(2) infinite; }
+/* en MUTE: ni el nombre ni la barra en blanco (no suena) */
+.inst.muted .name { color: var(--dim); opacity: 0.6; }
+.inst.muted .bar i { background: var(--dim); opacity: 0.35; }
 /* DJ: nueve instrumentos en media pantalla: menos hueco y menos espaciado para que quepan los nombres */
 body.mode-dj .strip { gap: 4px; }
 body.mode-dj .inst .irow { gap: 3px; }
@@ -699,7 +685,6 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   .opts { gap: 2px; flex-wrap: wrap; justify-content: center; }
   .opts button { font-size: 11px; padding: 6px 4px; min-width: 22px; }
   .opts.stack button { font-size: 9px; padding: 5px 2px; }
-  .loop-btn { height: 46px; }
   .t-track { width: 64px; }
   .t-handle { width: 34px; height: 3px; }
   .strip { gap: 6px; }
@@ -759,9 +744,9 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
 /* móvil en horizontal: todo en una fila, como en el ordenador */
 @media (max-height: 520px) and (orientation: landscape) {
   :root, body.mode-solo, body.mode-dj {
-    --pad: max(110px, min(calc(100 * var(--vh) - 150px), calc((100vw - 2 * var(--col) - 80px) / 2)));
+    --pad: max(110px, min(calc(100 * var(--vh) - 150px), calc((100vw - var(--col) - 80px) / 2)));
   }
-  body.mode-dj { --pad: max(100px, min(calc(100 * var(--vh) - 186px), calc((100vw - 2 * var(--col) - 80px) / 2))); }
+  body.mode-dj { --pad: max(100px, min(calc(100 * var(--vh) - 186px), calc((100vw - var(--col) - 80px) / 2))); }
   header { flex-wrap: nowrap; }
   main { align-items: center; }
   .rows, body.mode-solo .rows { flex-direction: row; gap: 18px; }

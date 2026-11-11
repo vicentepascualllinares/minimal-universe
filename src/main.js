@@ -81,8 +81,8 @@ $('#optbtn').addEventListener('click', () => setPanel(optPanel, optPanel.hidden)
 
 const [A, B] = engine.decks;
 const KEYS = {
-  solo: { Space: toggle, KeyR: toggleRec, KeyM: toggleMixer, Escape: closePanels, KeyL: () => A.toggleLoop(), KeyN: () => A.reseed(), KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed() },
-  dj: { Space: toggle, KeyR: toggleRec, KeyM: toggleMixer, Escape: closePanels, KeyQ: () => A.toggleLoop(), KeyW: () => A.reseed(), KeyO: () => B.reseed(), KeyP: () => B.toggleLoop() },
+  solo: { Space: toggle, KeyR: toggleRec, KeyM: toggleMixer, Escape: closePanels, KeyN: () => A.reseed(), KeyW: () => A.reseed() },
+  dj: { Space: toggle, KeyR: toggleRec, KeyM: toggleMixer, Escape: closePanels, KeyW: () => A.reseed(), KeyO: () => B.reseed() },
 };
 window.addEventListener('keydown', (ev) => {
   const k = KEYS[engine.mode][ev.code];

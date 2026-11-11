@@ -2,7 +2,7 @@
 // En UN UNIVERSO, una fila; en DJ, A y B en cada instrumento y VINCULADOS por defecto: mover
 // un instrumento en un universo lo mueve igual en el otro (conservando la diferencia que
 // tuvieran, como un grupo de faders). El botón VINCULADOS los separa.
-// 0 dB = el pico máximo del instrumento en 0 dBFS. Arriba, el PRESET de mezcla (MINIMAL por
+// 0 dB = el pico máximo del instrumento en 0 dBFS. Arriba, el PRESET de mezcla (ROMINIMAL por
 // defecto, PLANO = todo a 0 dB; ver mix.js): elegirlo mueve todos los faders, y si luego se
 // toca alguno, marca RETOCADA. Doble clic en un fader = el valor del preset; RESTABLECER = el
 // preset entero (y el máster a 0 dB).
@@ -13,6 +13,8 @@ import { INSTRUMENTS, MIX_CHANNELS } from '../music/arrangement.js';
 import { toDb, fmtDb as fmt, paintMaster } from './meters.js';
 import { FADER_ZERO as DEF, faderDb, dbFader, dbGain } from '../core/fader.js';
 import { MIX_PRESETS } from '../audio/mix.js';
+import { Knob } from './knob.js';
+import { FX_SENDS } from '../music/space.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
 const MASTER_TOP = 12; // el MÁSTER sube hasta +12 dB (para empujar contra el limitador)
@@ -22,7 +24,7 @@ const posOf = (g) => (g <= 0 ? 0 : dbFader(20 * Math.log10(g)));
 export const presetPos = (engine, k) => dbFader(MIX_PRESETS[engine.mixPreset].db[k]);
 export { faderDb };
 // medidor de un instrumento o de FX: el pico (lineal) puesto en la escala del fader (0 dB a 3/4,
-// +6 arriba, −48 abajo). Un NaN cuenta como silencio
+// +6 arriba, −70 abajo, como en Ableton: un canal muy bajo sigue viéndose). Un NaN cuenta como silencio
 const levelPos = (p) => (!(p > 1e-4) ? 0 : Math.min(1, dbFader(toDb(p))));
 // IMÁN: al soltar a menos de 0,75 dB de 0 dB, el fader se va a 0 dB (+0,12 o −0,5 no tienen sentido)
 const MAGNET_DB = 0.75;
@@ -41,17 +43,27 @@ export function setFxFader(engine, i, v) {
   engine.setFxGain(i, dbGain(faderDb(v)));
 }
 
-// las columnas del MIXER: los instrumentos, los RETORNOS del espacio de cada universo (DELAY y
-// REVERB: van como un instrumento más, también vinculados) y, aparte, los EFECTOS DE TRANSICIÓN
+// las columnas del MIXER: los instrumentos, los RETORNOS del espacio de cada universo (DELAY, REVERB
+// y FONDO: van como un instrumento más, también vinculados) y, aparte, los EFECTOS DE TRANSICIÓN
 const COLS = [...MIX_CHANNELS, 'fx'];
 LABEL.fx = 'FX';
 LABEL.dly = 'DELAY';
 LABEL.rev = 'REVERB';
+LABEL.bg = 'FONDO';
 const TIP = {
   fx: 'EFECTOS DE TRANSICIÓN de cada universo: riser, redoble, golpes, platos, reverse, caída · nunca vinculados · también en la columna TRANSICIÓN de cada universo',
   dly: 'DELAY: los ecos del universo (cada universo nace con los suyos: división, repeticiones, a quién) · 0 dB = como los generó',
   rev: 'REVERB: la sala del universo (cada universo nace con la suya: largo, color, a quién) · 0 dB = como la generó',
+  bg: 'FONDO: la reverb de fondo, el colchón (cola larga, oscura y comprimida; sobre todo foley, transiciones y pad) · cada universo nace con la suya · 0 dB = como la generó',
 };
+
+// las tres filas de ENVÍOS (arriba de cada canal) y cómo se llaman
+const SEND_ROWS = [['dly', 'DLY'], ['rev', 'REV'], ['bg', 'FONDO']];
+const SEND_NAME = { dly: 'DELAY', rev: 'REVERB', bg: 'FONDO' };
+// perilla de ENVÍO: posición 0..1 ↔ dB (lineal de −30 a +12; abajo del todo, nada)
+const SEND_ZERO = 30 / 42;
+const sendDb = (v) => (v <= 0.005 ? -Infinity : -30 + 42 * v);
+const sendPos = (d) => (d === -Infinity ? 0 : (d + 30) / 42);
 
 export function instMixer(root, engine, onClose) {
   let linked = true;
@@ -90,7 +102,7 @@ export function instMixer(root, engine, onClose) {
     root.innerHTML = `
       <div class="im-head">
         <span class="im-title">MIXER</span>
-        <span class="im-sub">volumen de cada instrumento${dj ? ' · A y B' : ''} · y del máster</span>
+        <span class="im-sub">volumen de cada instrumento${dj ? ' · A y B' : ''} · y del máster · arriba, sus envíos al DELAY, la REVERB y el FONDO</span>
         <div class="im-presets">
           <span class="im-plab">MEZCLA</span>
           ${Object.entries(MIX_PRESETS).map(([p, P]) => `<button class="im-preset" data-p="${p}" title="${P.desc}">${P.label}</button>`).join('')}
@@ -100,11 +112,15 @@ export function instMixer(root, engine, onClose) {
       </div>
       <div class="im-row">${COLS.map((k) => `
         <div class="im-ch${k === 'fx' ? ' im-fx' : k === 'dly' ? ' im-ret' : ''}" data-k="${k}"${TIP[k] ? ` title="${TIP[k]}"` : ''}>
+          ${SEND_ROWS.map(([fx]) => (FX_SENDS[fx].includes(k)
+    ? `<div class="im-send" data-fx="${fx}" data-k="${k}" title="ENVÍO al ${SEND_NAME[fx]} de ${LABEL[k]}: sobre lo que generó cada universo (0 dB = como salió) · los dos universos y los que vengan · doble clic = 0 dB"><div class="im-sk"></div><span class="im-sv">0.0</span></div>`
+    : '<div class="im-send"></div>')).join('')}
           <div class="im-dbs">${decks.map((i) => `<span class="im-db" data-i="${i}">0.0</span>`).join('')}</div>
           <div class="im-pair">${decks.map((i) => fader(i, dj)).join('')}</div>
           <span class="im-name">${LABEL[k]}</span>
         </div>`).join('')}
         <div class="im-ch im-master" title="MÁSTER: la ganancia empuja la mezcla contra el limitador · medidores: pico de L y R de lo que sale · LIM: lo que quita el limitador">
+          ${SEND_ROWS.map(([, lab]) => `<div class="im-send"><span class="im-slab">${lab}</span></div>`).join('')}
           <div class="im-dbs"><span class="im-db">0.0</span></div>
           <div class="im-pair">
             <div class="im-fd">
@@ -147,12 +163,13 @@ export function instMixer(root, engine, onClose) {
           else engine.setInst(i, k, dbGain(faderDb(v)));
           showPresets();
         };
-        // vinculados: el otro se mueve lo mismo (conserva la diferencia). Los FX, nunca
-        const pair = dj && linked && !fx;
+        // vinculados: el otro se mueve lo mismo (conserva la diferencia). Los FX, nunca. Se mira
+        // VINCULADOS en cada gesto (antes se fijaba al dibujar el panel y apagarlo no hacía nada)
+        const group = () => (dj && linked && !fx ? [c, find(1 - i, k)] : [c]);
         const move = (v) => {
           const delta = v - val[i][k];
           c.apply(v);
-          const o = pair ? find(1 - i, k) : null;
+          const o = group()[1];
           if (!o) return;
           const ov = Math.min(1, Math.max(0, val[o.i][k] + delta));
           o.s.set(ov);
@@ -160,7 +177,7 @@ export function instMixer(root, engine, onClose) {
         };
         // IMÁN al soltar: el sonido va a 0 dB ya; el mando se desliza unas milésimas
         const release = () => {
-          for (const x of pair ? [c, find(1 - i, k)] : [c]) {
+          for (const x of group()) {
             const v = snapMix(engine, k, val[x.i][k]);
             if (v === val[x.i][k]) continue;
             x.apply(v);
@@ -172,18 +189,34 @@ export function instMixer(root, engine, onClose) {
         for (const which of ['mute', 'solo']) {
           el.querySelector(`.im-${which}`).addEventListener('click', () => {
             const on = !engine[which][i].has(k);
-            for (const x of pair ? [c, find(1 - i, k)] : [c]) engine.setMuteSolo(which, x.i, k, on);
+            for (const x of group()) engine.setMuteSolo(which, x.i, k, on);
             showMS();
           });
         }
         // doble clic: vuelve a lo que dice el preset (vinculados, los dos)
         el.querySelector('.t-track').addEventListener('dblclick', () => {
           const v = presetPos(engine, k);
-          for (const x of pair ? [c, find(1 - i, k)] : [c]) { x.s.set(v); x.apply(v); }
+          for (const x of group()) { x.s.set(v); x.apply(v); }
         });
         c.apply(val[i][k]);
         chans.push(c);
       }
+    }
+    // ENVÍOS: una perilla por elemento y efecto (DELAY, REVERB, FONDO): recorte en dB sobre lo que
+    // generó cada universo; los dos universos a la vez. Abajo del todo = nada; 0 dB a 5/7; arriba +12
+    for (const el of root.querySelectorAll('.im-send[data-k]')) {
+      const k = el.dataset.k, fx = el.dataset.fx;
+      const out = el.querySelector('.im-sv');
+      const show = (d) => { out.textContent = fmt(d); out.classList.toggle('moved', d !== 0); };
+      new Knob(el.querySelector('.im-sk'), {
+        value: sendPos(engine.sendTrim[fx][k]), def: SEND_ZERO, bipolar: false,
+        onChange: (v) => {
+          const d = Math.abs(v - SEND_ZERO) < 0.012 ? 0 : sendDb(v); // imán a 0 dB
+          engine.setSendTrim(fx, k, d);
+          show(d);
+        },
+      });
+      show(engine.sendTrim[fx][k]);
     }
     // MÁSTER: mismo fader (imán, doble clic = 0 dB) pero hasta +12 dB y nunca vinculado
     {

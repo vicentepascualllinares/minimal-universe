@@ -1,5 +1,5 @@
 // UNIVERSO — un mundo musical completo: sus instrumentos, su emoción, su
-// estructura, su loop y su ESPACIO (delay y reverb propios, ver music/space.js). El reloj, el BPM
+// estructura y su ESPACIO (delay y reverb propios, ver music/space.js). El reloj, el BPM
 // y la tonalidad los pone el Engine (globales), así dos universos siempre encajan.
 
 import * as V from './voices.js';
@@ -19,6 +19,7 @@ import { NORMAL, rollStyle, styleColor, sValue } from '../music/styles.js';
 import { makeSpace, SENDS } from '../music/space.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
+import { dbGain } from '../core/fader.js';
 
 const glideAll = glide;
 
@@ -76,6 +77,7 @@ export class Deck {
     this.styleNext = 0;
     this.sty = NORMAL;
     this.pendingSty = null;
+    this.waitStyle = 0; // el estilo con el que se sorteó el universo que espera al primer GENERAR (ver styleWaiting)
     this.emotion = new EmotionState(v, a);
     this.arr = new Arrangement(scene);
     this.events = [];
@@ -87,14 +89,6 @@ export class Deck {
     // HATS Y PERCS: una ranura por sonido, con su grabación en el banco y sus colas (drumSlots.js)
     this.drums = new DrumSlots(this);
     this.soundsAt = -1; // cuándo se actualizaron las recetas por última vez (ver updateSound)
-    // LOOP: repite los últimos compases que han sonado con el estado congelado;
-    // por debajo puedes mover todo y no se oye hasta que lo sueltas.
-    this.loopLen = 2;            // compases
-    this.releaseMode = 'prog';   // 'instant' | 'prog'
-    this.releaseBars = 4;        // duración de la salida progresiva
-    this.loop = null;
-    this.history = [];
-    this.lastPrepared = -1;
     this.drift = makeDrift(new Rng(this.seed ^ 0x5bd1e995));
     this.e = mapEmotion(v, a);
     this.newFxPalette(this.seed);
@@ -191,6 +185,8 @@ export class Deck {
     // ESPACIO: delay y reverb, con un envío de cada instrumento que los usa (tras su fader) y de
     // los efectos de transición (solo a la reverb). Los retornos, en el MIXER como un canal más
     this.spaceFx = new SpaceFx(ctx, this.sum, Q);
+    // las perillas de ENVÍOS del MIXER
+    for (const fx in this.engine.sendTrim) for (const k in this.engine.sendTrim[fx]) this.spaceFx.trim[fx][k] = dbGain(this.engine.sendTrim[fx][k]);
     for (const k of SENDS) this.spaceFx.wire(k, this.ch[k].out);
     this.spaceFx.wire('fx', this.fx.bus);
     for (const k in this.spaceFx.ret) this.spaceFx.ret[k].user.gain.value = this.engine.instGain(this, k);
@@ -215,9 +211,9 @@ export class Deck {
   refreshSounds(gen = this.gen, warm = false) {
     const e = this.e;
     const root = this.engine.rootHz;
-    const scale = this.loop ? this.loop.scale : this.engine.scale;
+    const scale = this.engine.scale;
     const em = this.emotion;
-    const gap = em.ramp || em.sxMoving || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
+    const gap = em.sxMoving || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
     const put = (id, ch, rec, src) => {
       if (warm) this.engine.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p, true); // urgente: sonará en el próximo compás
       else this.drums.set(id, ch, rec, gap, src);
@@ -244,12 +240,53 @@ export class Deck {
   // NUEVO UNIVERSO: entra en el siguiente compás, con el ESTILO que marca ahora el fader. Sus hats y
   // percs se graban ya, así suenan desde el primer golpe
   reseed() {
+    this.rollPending();
+    if (this.ctx) this.refreshSounds(this.pendingGen, true);
+  }
+  // el universo que viene: semilla, ESTILO (el del fader ahora), generadores y espacio
+  rollPending() {
     this.pendingSeed = newSeed();
     this.pendingSty = rollStyle(this.pendingSeed, this.styleNext);
     this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
     this.pendingSpace = makeSpace(this.pendingSeed, this.pendingSty);
-    this.spaceFx?.prepare(this.pendingSpace.rev); // su sala se calcula ya (fuera del reloj)
-    if (this.ctx) this.refreshSounds(this.pendingGen, true);
+    this.spaceFx?.prepare(this.pendingSpace); // su sala y su fondo se calculan ya (fuera del reloj)
+  }
+
+  // ANTES DEL PRIMER GENERAR: el universo que espera nace ya con el ESTILO que marca el fader (NORMAL,
+  // ROMINIMAL o lo de en medio). Antes el primero salía siempre NORMAL y había que pulsar NUEVO
+  // UNIVERSO para que el fader contara. Parado no suena nada: entra al momento y con su color ya
+  // puesto (sin la inercia de ~2 s). Lo llama la vista al mover el fader y el motor al pulsar GENERAR
+  // (por si no dio tiempo). Devuelve si ha cambiado algo
+  styleWaiting() {
+    if (this.engine.generated || !this.ctx || this.waitStyle === this.styleNext) return false;
+    this.waitStyle = this.styleNext;
+    this.rollPending();
+    const now = this.ctx.currentTime;
+    this.enterPending(now);
+    this.emotion.snap();
+    this.e = this.colorAt(now);
+    this.refreshSounds(this.gen, true); // sus hats y percs, a grabar ya (urgente)
+    return true;
+  }
+
+  // entra el universo que esperaba (NUEVO UNIVERSO), en `t0`: el 1 de un compás
+  enterPending(t0) {
+    this.seed = this.pendingSeed;
+    this.pendingSeed = null;
+    this.sty = this.pendingSty ?? NORMAL; // el ESTILO con el que nace (el fader al pulsar)
+    this.pendingSty = null;
+    this.gen = this.pendingGen ?? makeGenerators(this.seed, this.sty); // (ya creados en reseed: sus sonidos están grabados)
+    this.pendingGen = null;
+    this.newCharacter(this.seed);
+    this.newFxPalette(this.seed);
+    this.newSpace(this.seed, this.pendingSpace ?? undefined); // y su ESPACIO, desde el 1 de este compás
+    this.pendingSpace = null;
+    this.spaceFx?.set(this.space, t0, this.engine.stepDur);
+    // con estilo, nace también con su MEZCLA (faders y MUTE), en el 1 de este compás. En NORMAL el
+    // MIXER no se toca, como siempre, salvo para devolver la mezcla de antes si el universo que se
+    // va la traía de un estilo (ver Engine.styleMix)
+    this.engine.styleMix(this, this.sty, t0);
+    this.setBus(this.sty, t0);
   }
 
   // CARÁCTER del universo (sale de la semilla y de su ESTILO): color del sonido y complejidad
@@ -343,11 +380,6 @@ export class Deck {
   // Devuelve 'pause' si la pulsación solo pausó o reanudó (entonces no hay corte).
   press(name) {
     const A = this.arr;
-    if (this.loop) { // LOOP: solo se deja pendiente
-      A.setTarget(name);
-      A.home = name;
-      return 'loop';
-    }
     const T = A.travel;
     if (T && T.name === name && T.bars > 0 && !this.held.length && this.engine.playing) {
       this.toggleTravelPause();
@@ -362,7 +394,6 @@ export class Deck {
   // el dedo sigue apoyado: era un CORTE. La escena elegida no cambia y, si el CORTE
   // tiene otros compases u otro FX que el CLIC, el viaje se rehace con los suyos
   hold(name) {
-    if (this.loop) return;
     if (this.arr.home === name && this.pressHome !== null) this.arr.home = this.pressHome;
     this.held.push(name);
     const c = this.gesture.click, k = this.gesture.cut;
@@ -383,7 +414,6 @@ export class Deck {
   // ir a una escena con un gesto { bars, fx }. `force`: rehacer aunque ya vaya ahí
   goScene(name, g, force = false) {
     const A = this.arr;
-    if (this.loop) return A.setTarget(name);
     // parado (antes del primer GENERAR o en PAUSA) no hay nada que viajar: se salta directo
     // y la música empieza (o sigue) desde ahí
     // (la misma parte con LUEGO en otra versión no es «ya está»: se va a esa versión)
@@ -412,8 +442,8 @@ export class Deck {
   // llama a toggleNow / toggleNext.
 
   // ¿se puede tocar AHORA? Quieto, sí; en un viaje, mientras aún suena entera la parte de
-  // origen (esperando la frase, o DE GOLPE). No en LOOP ni a mitad de un viaje progresivo
-  canNow() { return !this.loop && this.arr.canMorph(); }
+  // origen (esperando la frase, o DE GOLPE). No a mitad de un viaje progresivo
+  canNow() { return this.arr.canMorph(); }
 
   // AHORA: la parte que suena cambia de versión en el SIGUIENTE COMPÁS: DE GOLPE, de golpe en ese
   // 1; PROGRESIVA, en 1 compás (SUAVE o ESCALONADA). Sin FX: es la misma parte de otra forma.
@@ -437,11 +467,11 @@ export class Deck {
 
   // LUEGO: en un viaje (esperando la frase o a medias), el viaje sigue igual y llega a la otra
   // versión, sin saltos (ver Arrangement.retarget). Quieto, elige la versión de la próxima parte
-  // que pulses (lo que suena no cambia). En LOOP, la de lo que entrará al soltar
+  // que pulses (lo que suena no cambia)
   toggleNext() {
     const A = this.arr;
     A.vNext = 1 - A.vNext;
-    if (!this.loop && A.travel) A.retarget();
+    if (A.travel) A.retarget();
     A.compute();
   }
 
@@ -490,57 +520,15 @@ export class Deck {
     };
   }
 
-  toggleLoop() {
-    if (this.loop) this.loop.releasing = !this.loop.releasing; // segundo clic antes del compás: cancela
-    else this.engageLoop();
-  }
-
-  engageLoop() {
-    if (!this.ctx || !this.history.length) return;
-    const n = Math.min(this.loopLen, this.history.length);
-    this.emotion.ramp = null;
-    this.loop = {
-      n,
-      bars: this.history.slice(-n).map((h) => h.bars),
-      startBar: this.lastPrepared + 1,
-      scale: this.engine.scale,
-      frozen: { cur: { ...this.arr.cur }, v: this.emotion.v, a: this.emotion.a },
-      releasing: false,
-    };
-    this.arr.frozen = true;
-    this.arr.morph = null; // un cambio de AHORA pendiente tampoco entra
-    this.fx.cancel(this.ctx.currentTime); // el loop congela: la transición en curso se apaga
-  }
-
-  // se ejecuta en el primer paso del compás b siguiente a soltar el loop (t0 = su tiempo)
-  finishLoop(t0, b) {
-    this.loop = null;
-    this.arr.frozen = false;
-    const now = this.ctx.currentTime;
-    if (this.releaseMode === 'instant') {
-      this.emotion.snap();
-      this.e = this.colorAt(now);
-      this.arr.snap();
-      for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], t0);
-    } else {
-      this.emotion.rampTo(this.releaseBars * this.engine.barDur, t0 - now);
-      this.arr.travelToTarget(this.releaseBars, b * 16);
-    }
-  }
-
   // control (≈50 Hz): emoción, estructura, transiciones y sonido
   update(now, dt) {
     const pos = this.pos(now);
-    if (this.loop) {
-      this.arr.update(pos); // congelado: solo se previsualiza lo pendiente
-    } else {
-      this.emotion.update(dt);
-      this.e = this.colorAt(now);
-      this.arr.update(pos);
-      this.fx.update(now, pos);
-      for (const k of INSTRUMENTS) {
-        this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], now);
-      }
+    this.emotion.update(dt);
+    this.e = this.colorAt(now);
+    this.arr.update(pos);
+    this.fx.update(now, pos);
+    for (const k of INSTRUMENTS) {
+      this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], now);
     }
     this.updateSound(now);
     this.spaceFx?.tempo(this.engine.stepDur, now); // el delay sigue al BPM
@@ -579,34 +567,7 @@ export class Deck {
   }
 
   prepareBar(b, absStep, t0) {
-    this.lastPrepared = b;
-    const L = this.loop;
-    if (L) {
-      if (L.releasing) this.finishLoop(t0, b);
-      else {
-        const i = (((b - L.startBar) % L.n) + L.n) % L.n;
-        this.bars = L.bars[i];
-        return;
-      }
-    }
-    if (this.pendingSeed !== null) {
-      this.seed = this.pendingSeed;
-      this.pendingSeed = null;
-      this.sty = this.pendingSty ?? NORMAL; // el ESTILO con el que nace (el fader al pulsar)
-      this.pendingSty = null;
-      this.gen = this.pendingGen ?? makeGenerators(this.seed, this.sty); // (ya creados en reseed: sus sonidos están grabados)
-      this.pendingGen = null;
-      this.newCharacter(this.seed);
-      this.newFxPalette(this.seed);
-      this.newSpace(this.seed, this.pendingSpace ?? undefined); // y su ESPACIO, desde el 1 de este compás
-      this.pendingSpace = null;
-      this.spaceFx?.set(this.space, t0, this.engine.stepDur);
-      // con estilo, nace también con su MEZCLA (faders y MUTE), en el 1 de este compás. En NORMAL el
-      // MIXER no se toca, como siempre, salvo para devolver la mezcla de antes si el universo que se
-      // va la traía de un estilo (ver Engine.styleMix)
-      this.engine.styleMix(this, this.sty, t0);
-      this.setBus(this.sty, t0);
-    }
+    if (this.pendingSeed !== null) this.enterPending(t0);
     const G = this.gen;
     // la complejidad de los faders (A): manda en la mutación, la armonía y el protagonismo.
     // Lo que se toca sale de los OSCILADORES (ver byPulse, abajo)
@@ -673,8 +634,6 @@ export class Deck {
     this.kickDrop(b);
     this.dubThrow(b, t0);
     this.refreshSounds(); // un carril que mutó (u otro universo) pide ya su sonido nuevo
-    this.history.push({ b, bars: this.bars });
-    if (this.history.length > 16) this.history.shift();
   }
 
   // BUS DE PERCUSIÓN con el ESTILO del universo (`bus` en styles.js; sin él, el camino directo de
@@ -724,7 +683,7 @@ export class Deck {
 
   // THROW (el gesto dub del ESPACIO): en el último compás de algunas frases, el envío al delay del
   // PROTAGONISTA del eco se abre para su último golpe del compás (desde el 2º tiempo) y los ecos
-  // caen sobre el 1 de la frase siguiente. No en LOOP (se repite lo que sonó)
+  // caen sobre el 1 de la frase siguiente
   dubThrow(b, t0) {
     const D = this.space.dly;
     if (!D.throwP || !this.spaceFx || b % D.throwEvery !== D.throwEvery - 1) return;
@@ -767,7 +726,7 @@ export class Deck {
   // AUTO-ARREGLOS · CAÍDA DEL KICK AL FINAL DE FRASE: en el último compás de cada tramo de
   // `kickDropBars` compases (16 = cada dos frases de 8) el kick calla el último tiempo (el paso
   // 12; los fantasmas de después se quedan). Siempre en el mismo sitio: es un gesto de
-  // arreglo, no de complejidad. Queda en el historial, así el LOOP repite lo que sonó
+  // arreglo, no de complejidad
   kickDrop(b) {
     const O = this.engine.auto;
     if (!O.kickDrop || b % O.kickDropBars !== O.kickDropBars - 1 || !this.bars.kick[12]) return;
@@ -804,13 +763,13 @@ export class Deck {
     this.fx.step(n, gridT); // antes que las notas: en la llegada de un viaje DE GOLPE, el DROP
     // AHORA DE GOLPE: la parte que suena cambia de versión exacta en el 1 del compás
     const M = this.arr.morph;
-    if (M && !M.len && n >= M.startStep && !this.loop) {
+    if (M && !M.len && n >= M.startStep) {
       this.arr.endMorph();
       for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], gridT, 0.006);
     }
     if (s === 0 || !this.bars.kick) this.prepareBar(b, n - s, gridT);
     // ¿ENTRA EL KICK DE GOLPE? En el paso anterior no sonaba y ahora está entero: un DROP DE
-    // GOLPE, un cambio INSTANTÁNEO, un CORTE o soltar el LOOP de golpe. Si entra poco a poco
+    // GOLPE, un cambio INSTANTÁNEO o un CORTE. Si entra poco a poco
     // (PROGRESIVA) no hay una entrada que marcar
     const kp = this.arr.state.kick.progress;
     const entered = this.kickWas <= 0.001 && kp >= 0.9;
@@ -828,7 +787,7 @@ export class Deck {
     const C = this.ch;
     const B = this.bars;
     const root = this.engine.rootHz;
-    const scale = this.loop ? this.loop.scale : this.engine.scale;
+    const scale = this.engine.scale;
     const emit = (k, time, vel) => this.events.push({ k, t: time, vel });
     // GROOVE por instrumento (solo con ESTILO: ver grooveTime). Sin estilo, todos en `t`, como siempre
     const tg = this.sty.t ? (k) => this.grooveTime(k, s, gridT) : () => t;
@@ -951,7 +910,7 @@ export class Deck {
   // CORTE) no se puede anticipar, y en un viaje progresivo el kick ya suena antes de llegar
   dropStep() {
     const T = this.arr.travel;
-    if (!T || !T.drop || !T.bars || T.paused || this.loop) return null;
+    if (!T || !T.drop || !T.bars || T.paused) return null;
     if (this.arr.state.kick.progress > 0.001 || T.to.kick < 0.5) return null;
     return T.startStep + T.bars * 16;
   }

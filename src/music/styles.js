@@ -341,6 +341,15 @@ export const ROMINIMAL = {
     // bus y del sidechain, sonaba lejos y grande; ahora un poco de sala, nada de eco)
     'rev.hat': [0, 0.06], 'rev.perc': [0.1, 0.26], 'rev.clap': [0.03, 0.1], 'rev.ohat': [0, 0.1],
     'rev.foley': [0.2, 0.4], 'rev.chord': [0.06, 0.2], 'rev.pad': [0.12, 0.3], 'rev.fx': [0.1, 0.25],
+    // FONDO (2026-11-11): el colchón. Casi siempre; más largo y más oscuro que en NORMAL. El foley y
+    // las transiciones se funden en él (el «faint room ambience» que no se sabe de dónde sale);
+    // percusión y hats apenas lo tocan (nítidos delante). (Los envíos salen tras el fader: el pad, a
+    // −40, aporta poco; sube si se sube su fader)
+    'bg.on': 0.95,
+    'bg.decay': [5, 9], 'bg.pre': [0.03, 0.08], 'bg.damp': [1000, 2200], 'bg.lp': [1800, 3600],
+    'bg.hp': [250, 450], 'bg.comp': [0.7, 1],
+    'bg.hat': [0, 0.03], 'bg.perc': [0.02, 0.1], 'bg.ohat': [0.02, 0.1], 'bg.foley': [0.35, 0.7],
+    'bg.chord': [0.03, 0.15], 'bg.pad': [0.25, 0.5], 'bg.fx': [0.4, 0.75],
   },
   // el «salto» del kick (fantasma en la 1ª mitad) y el golpe «en medio de un loop de 4 compases»
   // [XLR8R]: probabilidad por compás de cada universo
@@ -382,7 +391,22 @@ export const ROMINIMAL = {
   // (2026-11-11: percusión −9 → −11 y foley −10,5 → −14 → −17. Con 3 o 4 carriles a la vez, la
   // percusión sumaba casi lo que el kick; el foley es «faint», ear candy que se descubre: medido, a
   // −14 sus gestos picaban como la percusión)
-  mix: { kick: -4.5, bass: -9.5, hat: -14, perc: -11, clap: -14.5, ohat: -17, foley: -17, chord: -15, pad: -17, dly: 0, rev: 0, fx: -11 },
+  // (2026-11-11: pad −17 → −40. En este género el pad es solo un colchón: se nota si falta, no se
+  // oye. Igual irán los elementos de atmósfera que vengan)
+  // (2026-11-11, al escucharlo: percusión −11 → −22, por detrás, y el open −17 → −10)
+  // (2026-11-11, después: LA MEZCLA DEL USUARIO, la que dejó a oído en el navegador con un universo
+  // ROMINIMAL a tope (DUB). Es también el preset ROMINIMAL del MIXER (mix.js), el de por defecto)
+  mix: { kick: -4.4, bass: -9.2, hat: -13.9, perc: -23.4, clap: -14, ohat: -10.1, foley: -14.1, chord: -22.2, pad: -54.7, dly: 0, rev: 0, bg: -6.4, fx: -11.8 },
+
+  // ENVÍOS: el recorte del usuario (dB) sobre lo que sortea cada universo, por efecto e instrumento.
+  // Lo ajustó a oído con las perillas de ENVÍOS del MIXER (2026-11-11, mismo universo DUB). Se
+  // aplica al final de makeSpace (space.js), así sirve para cualquier arquetipo y también al
+  // protagonista del eco y a sus throws. Con el fader a medias, a medias (en ganancia); en NORMAL, nada
+  sendTrim: {
+    dly: { perc: -2.8, chord: -14.6, ohat: -Infinity },
+    rev: { perc: -6.5, chord: -5.5 },
+    bg: { hat: -26.6, perc: -24.9, ohat: -25.9, foley: -4.4, chord: -22.6 },
+  },
 
   // ARQUETIPOS: `w` = probabilidad · `mute` = probabilidad de nacer en MUTE (× t; kick y bajo nunca) ·
   // `mix` = dB sobre la mezcla del estilo · `k` = sustituye datos de arriba · `mul` = multiplica pesos ·
@@ -557,7 +581,13 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
     color[1 + 2 * n] = C[p][0];
     color[2 + 2 * n] = C[p][1];
   });
-  return { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a };
+  // ENVÍOS: el recorte del estilo (`sendTrim`) en ganancia, a medias con el fader (1 = como siempre)
+  const sends = {};
+  for (const [fx, ks] of Object.entries(P.sendTrim || {})) {
+    sends[fx] = {};
+    for (const [kk, d] of Object.entries(ks)) sends[fx][kk] = 1 + ((d === -Infinity ? 0 : Math.pow(10, d / 20)) - 1) * t;
+  }
+  return { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a, sends };
 }
 
 // GROOVE de un universo (ver `groove` en ROMINIMAL): por instrumento, su swing de más (`sw`) y su

@@ -4,7 +4,11 @@
 //
 //   canales ── envío (tras el fader del MIXER) ──► DELAY ──► retorno DELAY ─┐
 //                                                    └──► (un poco) ──►     │
-//   canales y transiciones ── envío ───────────────► REVERB ─► retorno REVERB ─┴─► suma del universo
+//   canales y transiciones ── envío ───────────────► REVERB ─► retorno REVERB ─┤
+//   (sin clap)             ── envío ───────────────► FONDO ──► retorno FONDO ──┴─► suma del universo
+//
+// FONDO (2026-11-11): una segunda reverb, el colchón: cola ALGORÍTMICA larga y oscura (FdnTail), paso alto y
+// paso bajo en el retorno, y un compresor que la aplasta (ver el constructor).
 //
 // Los retornos van a la suma del universo ANTES de su saturación y de los filtros de tensión: los
 // ecos y la sala son parte de la música (un build también los filtra; el hueco antes del kick
@@ -24,6 +28,7 @@
 
 import { fixChannels, satCurveShared } from './dsp.js';
 import { Rng } from '../core/rng.js';
+import { BG_SENDS } from '../music/space.js';
 
 const MAX_DELAY = 2.5; // s (negra con puntillo a 100 BPM = 0,9 s)
 const HAAS = 0.011;    // s: el lado derecho del eco centrado
@@ -32,7 +37,14 @@ const HAAS = 0.011;    // s: el lado derecho del eco centrado
 // percusión quedaba ~17 dB por debajo de ella y ~39 dB bajo la suma del universo (casi no se oía).
 // +6 dB a la reverb y +3 dB al delay: presentes sin lavar. El primer eco de un THROW nunca pasa del
 // golpe seco (ver throwHit)
-const RET_GAIN = { dly: 1.41, rev: 2 };
+// FONDO (medido 2026-11-11, ROMINIMAL, MAIN, con foley, acordes y una transición): la cola llega al
+// compresor muy baja (una cola larga reparte la energía de cada golpe en segundos): `BG_PRE` la sube
+// +29,5 dB a la zona donde trabaja y luego se baja lo mismo. La compensación automática del compresor
+// SÍ se queda: es la que levanta lo flojo de la cola (el colchón). Con la cola algorítmica: ~8 dB de
+// reducción de media y ~14 en los picos (bastante comprimido) y, con ×2,8, el retorno ~24 dB bajo la
+// suma del universo: se nota como fondo sin tapar. El fader FONDO del MIXER hace el resto
+const RET_GAIN = { dly: 1.41, rev: 2, bg: 2.8 };
+const BG_PRE = 30;
 
 // ───────────────────────── LA SALA: respuesta al impulso sintetizada (estéreo)
 // Ruido blanco por un paso bajo que se cierra con el tiempo (de ~15 kHz a `damp`), envolvente
@@ -73,11 +85,16 @@ export function makeIR(R, sr, maxDecay = 3) {
       }
     }
   }
-  // anchura (M/S) y energía 1
+  return finishIR(out, R.width, sr);
+}
+
+// anchura (M/S), energía 1 y las últimas muestras fundidas a 0
+function finishIR(out, width, sr) {
   const [L, Rt] = out;
+  const len = L.length;
   let E = 0;
   for (let i = 0; i < len; i++) {
-    const m = (L[i] + Rt[i]) / 2, s = ((L[i] - Rt[i]) / 2) * R.width;
+    const m = (L[i] + Rt[i]) / 2, s = ((L[i] - Rt[i]) / 2) * width;
     L[i] = m + s;
     Rt[i] = m - s;
     E += L[i] * L[i] + Rt[i] * Rt[i];
@@ -92,11 +109,187 @@ export function makeIR(R, sr, maxDecay = 3) {
   return out;
 }
 
+// ───────────────────────── EL FONDO: una cola ALGORÍTMICA, larga y oscura
+// Primero se probó como la sala (convolución con una cola sintetizada de 4–9 s) y no aguanta: medido
+// (2026-11-11, DJ, búfer ESTABLE), UNA cola así sonando en cada universo daba ~1 CORTE por segundo
+// sin tocar nada (sin ella, 0), y cargar una de 9 s bloqueaba ~100 ms. Así que el fondo es una RED
+// DE RETARDOS REALIMENTADA (FDN), lo de las reverbs de hardware: casi no gasta, su largo cambia en
+// vivo (sin cargar nada al cambiar de universo) y se oscurece sola al apagarse.
+//
+//   entrada ─► DIFUSOR (convolución de ~0,15 s: convierte cada golpe en un soplo de ruido, así un
+//              clic del foley no hace sonar la red como un muelle) ─► predelay ─► 8 LÍNEAS:
+//   cada línea: retardo (37–109 ms, sin divisores comunes) ─► paso bajo (`damp`) ─► realimentación
+//   (lo que pierde en cada vuelta para caer −60 dB en `decay`) ─► vuelve a su línea y a la MEZCLA de
+//   Householder (todas le dan a todas: −2/8 de la suma), que reparte la energía sin perderla.
+//   Las pares salen por la izquierda y las impares por la derecha. Un vaivén lento de los retardos
+//   (dos LFO, ±0,6 ms) evita que las resonancias se queden fijas.
+
+const FDN_MS = [37, 43, 53, 61, 71, 83, 97, 109];
+
+// el DIFUSOR: ruido que cae −60 dB en 0,15 s, estéreo (cada lado su ruido), energía 1. Igual para
+// todos los universos: se calcula una vez por frecuencia de muestreo
+const diffCache = new Map();
+function diffuserIR(ctx) {
+  const sr = ctx.sampleRate;
+  if (diffCache.has(sr)) return diffCache.get(sr);
+  const len = Math.round(0.15 * sr), rng = new Rng(0x2f1d7b);
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const x = new Float32Array(len);
+    let e = 0, env = 1, lp = 0;
+    const dk = Math.exp(-6.91 / (0.15 * sr));
+    for (let i = 0; i < len; i++) {
+      lp += 0.5 * (rng.next() * 2 - 1 - lp); // algo de paso bajo: un soplo, no un siseo
+      x[i] = lp * env * Math.min(1, i / (0.002 * sr));
+      env *= dk;
+      e += x[i] * x[i];
+    }
+    const n = 1 / Math.sqrt(e);
+    for (let i = 0; i < len; i++) x[i] *= n;
+    buf.copyToChannel(x, ch);
+  }
+  diffCache.set(sr, buf);
+  return buf;
+}
+
+class FdnTail {
+  constructor(ctx, input, output) {
+    this.ctx = ctx;
+    const g = (v, ch) => { const n = ctx.createGain(); n.gain.value = v; return ch ? fixChannels(n, ch) : n; };
+    const diff = fixChannels(ctx.createConvolver(), 2);
+    diff.normalize = false;
+    diff.buffer = diffuserIR(ctx);
+    this.pre = fixChannels(ctx.createDelay(0.2), 2);
+    input.connect(diff).connect(this.pre);
+    const split = ctx.createChannelSplitter(2);
+    this.pre.connect(split);
+    const merge = ctx.createChannelMerger(2);
+    this.out = g(1, 2);
+    merge.connect(this.out).connect(output);
+    const N = FDN_MS.length;
+    const mix = g(-2 / N, 1); // Householder: −2/N de la suma vuelve a todas
+    this.lines = FDN_MS.map((ms, i) => {
+      const d = fixChannels(ctx.createDelay(0.2), 1);
+      d.delayTime.value = ms / 1000;
+      const lp = fixChannels(ctx.createBiquadFilter(), 1);
+      lp.type = 'lowpass';
+      lp.Q.value = -4; // en dB (Web Audio): por debajo de −3 no hay pico, la vuelta nunca gana (con +0,5 la cola se disparaba)
+      const fb = g(0, 1);
+      split.connect(d, i % 2); // pares desde la izquierda, impares desde la derecha
+      d.connect(lp).connect(fb);
+      fb.connect(d);   // a su línea
+      fb.connect(mix); // y a la mezcla
+      mix.connect(d);
+      lp.connect(merge, 0, i % 2);
+      return { d, lp, fb, s: ms / 1000 };
+    });
+    // vaivén: dos LFO lentos, cada línea con uno y un signo
+    this.lfos = [0.11, 0.17].map((hz) => {
+      const o = ctx.createOscillator();
+      o.frequency.value = hz;
+      o.start();
+      return o;
+    });
+    this.lines.forEach((L, i) => {
+      const m = g(0.0006 * (i % 4 < 2 ? 1 : -1));
+      this.lfos[i % 2].connect(m).connect(L.d.delayTime);
+    });
+  }
+
+  // el fondo de un universo, desde `at`: largo, oscuridad y predelay. Un universo sin fondo deja la
+  // red sin entrada (sus envíos ya están a 0) y la cola que hubiera se apaga sola
+  set(B, at, first) {
+    const put = (p, v, tc = 0.08) => (first ? (p.value = v) : p.setTargetAtTime(v, at, tc));
+    const T = Math.max(0.5, B.decay);
+    let e = 0;
+    for (const L of this.lines) {
+      // −60 dB en T segundos (× 1,25: el paso bajo de cada vuelta ya quita algo; medido, sin esto caía en ~0,8 T)
+      const gi = Math.pow(10, (-3 * L.s) / (T * 1.25));
+      put(L.fb.gain, gi);
+      put(L.lp.frequency, B.damp);
+      e += gi * gi;
+    }
+    put(this.pre.delayTime, B.pre);
+    // nivel parejo entre colas cortas y largas (una cola larga acumula más energía): sin esto, la de
+    // 9 s sonaría ~3 dB más que la de 4 s
+    put(this.out.gain, Math.sqrt(1 - e / this.lines.length) * 1.6);
+  }
+}
+
+// DOS CONVOLVERS QUE SE RELEVAN (la sala): la respuesta nueva entra en el que descansa y,
+// en `at`, la música pasa a ese; el otro se queda sonando su cola. Si el que descansa aún suena (dos
+// universos muy seguidos), se apaga su salida en ~20 ms antes de cambiarle la respuesta (cambiarla
+// con cola la cortaría en seco). `make` = makeIR
+class Relay {
+  constructor(ctx, input, output, make, maxDecay) {
+    this.ctx = ctx;
+    this.make = make;
+    this.maxDecay = maxDecay;
+    this.conv = [0, 1].map(() => {
+      const c = ctx.createConvolver();
+      c.normalize = false;
+      fixChannels(c, 2);
+      const i = fixChannels(ctx.createGain(), 2), o = fixChannels(ctx.createGain(), 2);
+      i.gain.value = 0;
+      input.connect(i).connect(c).connect(o).connect(output);
+      return { c, i, o, len: 0, busyUntil: 0 };
+    });
+    this.cur = 0;
+    this.key = null;
+    this.ready = null;
+  }
+
+  // calcular una respuesta: se hace al pulsar NUEVO UNIVERSO (ver Deck.reseed), no dentro del reloj,
+  // y se guarda hasta que entra
+  prepare(R) {
+    const key = `${R.irSeed}|${R.decay}|${R.pre}|${R.damp}|${R.early}|${R.width}`;
+    if (this.ready?.key === key) return this.ready.buf;
+    const ctx = this.ctx;
+    const [L, Rt] = this.make(R, ctx.sampleRate, this.maxDecay);
+    const buf = ctx.createBuffer(2, L.length, ctx.sampleRate);
+    buf.copyToChannel(L, 0);
+    buf.copyToChannel(Rt, 1);
+    this.ready = { key, buf };
+    return buf;
+  }
+
+  set(R, at, first) {
+    const buf = this.prepare(R);
+    if (this.ready.key === this.key) return;
+    this.key = this.ready.key;
+    const ctx = this.ctx;
+    if (first) {
+      const A = this.conv[this.cur];
+      A.c.buffer = buf;
+      A.len = buf.duration;
+      A.i.gain.value = 1;
+      return;
+    }
+    const now = ctx.currentTime;
+    const A = this.conv[this.cur], B = this.conv[1 - this.cur];
+    this.cur = 1 - this.cur;
+    const load = () => {
+      B.c.buffer = buf;
+      B.len = buf.duration;
+    };
+    if (B.busyUntil > now) {
+      B.o.gain.setTargetAtTime(0, now, 0.005);
+      setTimeout(() => {
+        load();
+        B.o.gain.cancelScheduledValues(0);
+        B.o.gain.setValueAtTime(1, ctx.currentTime);
+      }, 40);
+    } else load();
+    A.i.gain.setTargetAtTime(0, at, 0.006);
+    B.i.gain.setTargetAtTime(1, at, 0.006);
+    A.busyUntil = at + A.len + 0.1;
+  }
+}
+
 export class SpaceFx {
   // `dest` = la suma del universo · `q` = la CALIDAD del motor (en LIGERA, salas de 1,2 s como mucho)
   constructor(ctx, dest, q) {
     this.ctx = ctx;
-    this.maxDecay = q.lean ? 1.2 : 3;
     const g = (v = 1, ch) => {
       const n = ctx.createGain();
       n.gain.value = v;
@@ -115,22 +308,28 @@ export class SpaceFx {
       user.connect(out).connect(dest);
       return { user, out };
     };
-    this.ret = { dly: ret('dly'), rev: ret('rev') };
+    this.ret = { dly: ret('dly'), rev: ret('rev'), bg: ret('bg') };
 
-    // ── REVERB: dos convolvers que se relevan (ver setIR)
+    // ── REVERB: dos convolvers que se relevan (ver Relay)
     this.rIn = g(1, 2);
     this.rHp = bq('highpass', 250, 0.6, 2);
     this.rHp.connect(this.ret.rev.user);
-    this.conv = [0, 1].map(() => {
-      const c = ctx.createConvolver();
-      c.normalize = false;
-      fixChannels(c, 2);
-      const i = g(0, 2), o = g(1, 2);
-      this.rIn.connect(i).connect(c).connect(o).connect(this.rHp);
-      return { c, i, o, len: 0, busyUntil: 0 };
-    });
-    this.cur = 0;
-    this.irKey = null;
+    this.room = new Relay(ctx, this.rIn, this.rHp, makeIR, q.lean ? 1.2 : 3);
+
+    // ── FONDO: la cola algorítmica (FdnTail, larga y oscura) → paso alto y paso bajo → compresor.
+    // `bPre` sube la cola a la zona del compresor y `bPost` deshace esa subida (no la compensación
+    // del compresor): lo fuerte se aplasta y lo flojo sube, la cola queda pareja, un colchón sin picos
+    this.bIn = g(1, 2);
+    this.bHp = bq('highpass', 300, 0.6, 2);
+    this.bLp = bq('lowpass', 4000, 0.6, 2);
+    this.bPre = g(BG_PRE, 2);
+    this.bComp = fixChannels(ctx.createDynamicsCompressor(), 2);
+    this.bComp.knee.value = 8;
+    this.bComp.attack.value = 0.02;
+    this.bComp.release.value = 0.35;
+    this.bPost = g(1 / BG_PRE, 2);
+    this.bHp.connect(this.bLp).connect(this.bPre).connect(this.bComp).connect(this.bPost).connect(this.ret.bg.user);
+    this.bg = new FdnTail(ctx, this.bIn, this.bHp);
 
     // ── DELAY (mono dentro: el eco no hereda el paneo; sale en estéreo)
     this.dIn = g(1, 1);
@@ -173,16 +372,23 @@ export class SpaceFx {
 
     this.sendD = {};
     this.sendR = {};
+    this.sendB = {};
+    // RECORTE de cada envío por elemento y por efecto (ganancia lineal; 1 = como lo generó el
+    // universo). Lo ponen las perillas de ENVÍOS del MIXER (Engine.setSendTrim), iguales para los dos
+    // universos
+    this.trim = { dly: {}, rev: {}, bg: {} };
+    this.sends = { dly: this.sendD, rev: this.sendR, bg: this.sendB };
     this.S = null;
     this.sd = 0;
   }
 
-  // ENVÍOS de un canal (`node` = su salida, tras el fader). 'fx' (las transiciones): solo a la sala
+  // ENVÍOS de un canal (`node` = su salida, tras el fader). 'fx' (las transiciones): a la sala y al
+  // fondo, no al delay. Al FONDO, solo los de BG_SENDS (el clap, nunca)
   wire(k, node) {
     if (k !== 'fx') node.connect((this.sendD[k] = this.ctx.createGain())).connect(this.dIn);
     node.connect((this.sendR[k] = this.ctx.createGain())).connect(this.rIn);
-    this.sendD[k] && (this.sendD[k].gain.value = 0);
-    this.sendR[k].gain.value = 0;
+    if (BG_SENDS.includes(k)) node.connect((this.sendB[k] = this.ctx.createGain())).connect(this.bIn);
+    for (const s of [this.sendD[k], this.sendR[k], this.sendB[k]]) if (s) s.gain.value = 0;
   }
 
   // el ESPACIO de un universo (music/space.js), desde `at` (el 1 del compás en que nace).
@@ -193,8 +399,8 @@ export class SpaceFx {
     this.S = S;
     const put = (p, v, tc = 0.05) => (first ? (p.value = v) : p.setTargetAtTime(v, at, tc));
     const D = S.dly;
-    for (const k in this.sendD) put(this.sendD[k].gain, D.send[k] ?? 0);
-    for (const k in this.sendR) put(this.sendR[k].gain, S.rev.send[k] ?? 0);
+    for (const k in this.sendD) put(this.sendD[k].gain, this.sendLevel('dly', k));
+    for (const k in this.sendR) put(this.sendR[k].gain, this.sendLevel('rev', k));
     put(this.toRev.gain, D.toRev);
     put(this.gLL.gain, D.pingpong ? 0 : D.fb);
     put(this.gLR.gain, D.pingpong ? D.fb : 0);
@@ -209,7 +415,17 @@ export class SpaceFx {
     put(this.wow.frequency, D.wowHz, 0.3);
     this.tempo(stepDur, at, true, first);
     put(this.rHp.frequency, S.rev.low);
-    this.setIR(S.rev, at, first);
+    this.room.set(S.rev, at, first);
+    // FONDO: envíos, filtros y cuánto comprime (umbral −16 a −30 dB y ratio 3 a 8 con la cola
+    // subida BG_PRE; ver el constructor)
+    const B = S.bg;
+    for (const k in this.sendB) put(this.sendB[k].gain, this.sendLevel('bg', k));
+    put(this.bHp.frequency, B.low);
+    put(this.bLp.frequency, B.lp);
+    const thr = -16 - 14 * B.comp, ratio = 3 + 5 * B.comp;
+    put(this.bComp.threshold, thr);
+    put(this.bComp.ratio, ratio);
+    this.bg.set(B, at, first);
   }
 
   // el tiempo del delay sigue al BPM (deslizando, como una cinta). Solo si cambia
@@ -228,13 +444,28 @@ export class SpaceFx {
     this.dR.delayTime.setTargetAtTime(tr, at, 0.06);
   }
 
+  // cuánto manda `k` al efecto `fx` ('dly', 'rev', 'bg'): lo que generó el universo × su perilla
+  sendLevel(fx, k) {
+    const gen = fx === 'dly' ? this.S.dly.send : fx === 'rev' ? this.S.rev.send : this.S.bg.send;
+    return (gen[k] ?? 0) * (this.trim[fx][k] ?? 1);
+  }
+
+  // perilla de ENVÍO del MIXER: el envío de `k` a `fx`, × `g`, ya, con una rampa corta
+  setSendTrim(fx, k, g) {
+    this.trim[fx][k] = g;
+    const s = this.sends[fx][k];
+    if (s && this.S) s.gain.setTargetAtTime(this.sendLevel(fx, k), this.ctx.currentTime, 0.03);
+  }
+
   // THROW: el envío al delay de `k` se abre para el golpe que suena en `t` (durante `hold` s) y
   // vuelve a lo suyo; los ecos se quedan sonando. Rampas de 5 y 30 ms: sin clics
   throwHit(k, t, hold) {
     const s = this.sendD[k];
     if (!s || !this.S) return;
     const D = this.S.dly;
-    const base = D.send[k] ?? 0, top = Math.max(base, Math.min(D.throwAmt, 1 / RET_GAIN.dly));
+    // (con la perilla de envío al delay: a −∞, ni eco ni throw)
+    const base = this.sendLevel('dly', k);
+    const top = Math.max(base, Math.min(D.throwAmt * (this.trim.dly[k] ?? 1), 1 / RET_GAIN.dly));
     const p = s.gain;
     const a = Math.max(this.ctx.currentTime, t - 0.006);
     p.cancelScheduledValues(a);
@@ -244,52 +475,9 @@ export class SpaceFx {
     p.linearRampToValueAtTime(base, t + hold + 0.03);
   }
 
-  // LA SALA: la nueva entra en el convolver que descansa y, en `at`, la música pasa a ese; el otro
-  // se queda sonando su cola. Si el que descansa aún suena (dos universos muy seguidos), se apaga su
-  // salida en ~20 ms antes de cambiarle la sala (cambiarla con cola la cortaría en seco)
-  // calcular una sala (hasta ~30 ms para una de 2 s): se hace al pulsar NUEVO UNIVERSO (ver
-  // Deck.reseed), no dentro del reloj, y se guarda hasta que entra
-  prepare(R) {
-    const key = `${R.irSeed}|${R.decay}|${R.pre}|${R.damp}|${R.early}|${R.width}`;
-    if (this.ready?.key === key) return this.ready.buf;
-    const ctx = this.ctx;
-    const [L, Rt] = makeIR(R, ctx.sampleRate, this.maxDecay);
-    const buf = ctx.createBuffer(2, L.length, ctx.sampleRate);
-    buf.copyToChannel(L, 0);
-    buf.copyToChannel(Rt, 1);
-    this.ready = { key, buf };
-    return buf;
-  }
-
-  setIR(R, at, first) {
-    const buf = this.prepare(R);
-    if (this.ready.key === this.irKey) return;
-    this.irKey = this.ready.key;
-    const ctx = this.ctx;
-    if (first) {
-      const A = this.conv[this.cur];
-      A.c.buffer = buf;
-      A.len = buf.duration;
-      A.i.gain.value = 1;
-      return;
-    }
-    const now = ctx.currentTime;
-    const A = this.conv[this.cur], B = this.conv[1 - this.cur];
-    this.cur = 1 - this.cur;
-    const load = () => {
-      B.c.buffer = buf;
-      B.len = buf.duration;
-    };
-    if (B.busyUntil > now) {
-      B.o.gain.setTargetAtTime(0, now, 0.005);
-      setTimeout(() => {
-        load();
-        B.o.gain.cancelScheduledValues(0);
-        B.o.gain.setValueAtTime(1, ctx.currentTime);
-      }, 40);
-    } else load();
-    A.i.gain.setTargetAtTime(0, at, 0.006);
-    B.i.gain.setTargetAtTime(1, at, 0.006);
-    A.busyUntil = at + A.len + 0.1;
+  // calcular la sala de un universo (hasta ~30 ms la de 2 s): se hace al pulsar NUEVO UNIVERSO
+  // (ver Deck.reseed), no dentro del reloj, y se guarda hasta que entra. (El fondo no carga nada)
+  prepare(S) {
+    this.room.prepare(S.rev);
   }
 }

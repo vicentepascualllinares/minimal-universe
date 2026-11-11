@@ -6,40 +6,31 @@
 // PLANO: todo a 0 dB. Cada canal con su pico en 0 dBFS: suena mucho más fuerte y la saturación
 // del universo y el limitador trabajan bastante más. Es el punto de partida neutro.
 //
-// MINIMAL (por defecto): minimal, deep house y rominimal. Parte de la mezcla que había (que ya
-// seguía esas reglas, y que en estos dB es exactamente el `PEAK` de dsp.js) y la retoca:
-//   kick   −4    el ancla. Por debajo de 0 a propósito: deja margen a la suma, como al
-//                mezclar a mano (canal del kick entre −6 y −3 dBFS)
-//   bass   −9    rodando justo bajo el kick (5 dB de pico menos: el bajo de onda pura tiene
-//                más cuerpo con menos pico). Kick y bajo mandan
-//   perc   −10   +1,6 dB: en rominimal la percusión es la protagonista (el groove es la
-//                melodía), por encima de clap y hats
-//   clap   −12   −1,3 dB: en minimal el clap marca, pero queda detrás, no golpea como en tech house
-//   hat    −13   igual: presentes y sin morder
-//   open   −15   −0,6 dB: es largo y se oye más de lo que marca el pico
-//   foley  −12   (nuevo, 2026-11-10) a la altura del clap: detalle de la habitación, por detrás de
-//                la percusión; un rominimal lo subirá cuando la intención lo pida
-//   chord  −14   −1,1 dB: los acordes de deep/minimal acompañan, no tapan el groove
-//   pad    −16   −1,1 dB: es el fondo, se siente más que se oye
-//   FX     −7    −3 dB: en minimal las transiciones se insinúan (riser y plato suaves); sin
-//                retocar, los golpes de llegada sonaban casi como el kick
-//   DELAY · REVERB  0  (2026-11-10) los RETORNOS del espacio del universo (music/space.js). A 0 dB
-//                suenan como el universo los generó: cuánto manda cada instrumento ya viene en
-//                sus envíos. El fader solo los sube o los baja todos a la vez
-// El nivel total (sin FX) queda como antes, así la saturación del universo, el glue y el
-// limitador trabajan igual que siempre.
+// ROMINIMAL (por defecto; 2026-11-11, antes MINIMAL): la mezcla que dejó el usuario a oído en el
+// navegador, con un universo ROMINIMAL a tope (arquetipo DUB). Es también la mezcla de serie del
+// estilo ROMINIMAL (styles.js, `mix`), así un universo ROMINIMAL nace con estos faders (más lo que
+// retoque su arquetipo y ±1 dB):
+//   kick −4,4 · bass −9,2 · hat −13,9 · perc −23,4 · clap −14 · open −10,1 · foley −14,1 ·
+//   chord −22,2 · pad −54,7 (un colchón: se nota si falta, no se oye) · DELAY y REVERB 0 ·
+//   FONDO −6,4 · FX −11,8
+// (Lo que había antes, MINIMAL: kick −4, bass −9, hat −13, perc −10, clap −12, open −15, foley −12,
+// chord −14, pad −16, FX −7: el kick como ancla con margen, kick y bajo mandan, la percusión
+// delante, armonía y pad de fondo, las transiciones insinuadas.)
+//   DELAY · REVERB · FONDO: los RETORNOS del espacio del universo (music/space.js). A 0 dB suenan
+//   como el universo los generó: cuánto manda cada instrumento ya viene en sus envíos. El fader
+//   solo los sube o los baja todos a la vez
 
 export const MIX_PRESETS = {
-  minimal: {
-    label: 'MINIMAL',
-    desc: 'minimal, deep house y rominimal: kick y bajo mandan, la percusión delante, armonía y pad de fondo',
-    db: { kick: -4, bass: -9, hat: -13, perc: -10, clap: -12, ohat: -15, foley: -12, chord: -14, pad: -16, dly: 0, rev: 0, fx: -7 },
+  rominimal: {
+    label: 'ROMINIMAL',
+    desc: 'la mezcla de rominimal: kick y bajo mandan, la percusión por detrás, acordes y pad de fondo, el FONDO como colchón',
+    db: { kick: -4.4, bass: -9.2, hat: -13.9, perc: -23.4, clap: -14, ohat: -10.1, foley: -14.1, chord: -22.2, pad: -54.7, dly: 0, rev: 0, bg: -6.4, fx: -11.8 },
   },
   plano: {
     label: 'PLANO',
     desc: 'todo a 0 dB: cada instrumento con su pico máximo en 0 dBFS',
-    db: { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, foley: 0, chord: 0, pad: 0, dly: 0, rev: 0, fx: 0 },
+    db: { kick: 0, bass: 0, hat: 0, perc: 0, clap: 0, ohat: 0, foley: 0, chord: 0, pad: 0, dly: 0, rev: 0, bg: 0, fx: 0 },
   },
 };
 
-export const DEFAULT_MIX = 'minimal';
+export const DEFAULT_MIX = 'rominimal';

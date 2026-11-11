@@ -32,7 +32,7 @@ import { clamp } from '../core/rng.js';
 export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'foley', 'chord', 'pad'];
 // RETORNOS de los efectos del universo (ver music/space.js): no son partes de la estructura, pero
 // en el MIXER van como un canal más (fader, MUTE, SOLO, presets y mezcla del estilo)
-export const RETURNS = ['dly', 'rev'];
+export const RETURNS = ['dly', 'rev', 'bg'];
 export const MIX_CHANNELS = [...INSTRUMENTS, ...RETURNS];
 
 const ALL_DRUMS = { kick: 1, hat: 1, perc: 1, clap: 1, ohat: 1 };
@@ -134,7 +134,7 @@ export function stagger(from, to, bars, nudge = {}) {
 export class Arrangement {
   constructor(name = 'drop') {
     this.home = name;    // la escena elegida (el último clic); al soltar un CORTE se vuelve aquí
-    this.target = name;  // a dónde va lo que suena (en LOOP: lo que entrará al soltar)
+    this.target = name;  // a dónde va lo que suena
     // VERSIONES (0 = la 1, 1 = la 2), dos botones (ver Deck.toggleNow / toggleNext):
     //   vNow   AHORA: la de la parte que suena
     //   vNext  LUEGO: la del destino del viaje (o, quieto, la de la próxima parte que pulses)
@@ -145,10 +145,9 @@ export class Arrangement {
     this.cur = { ...mixOf(name) }; // presencia que suena ahora
     this.travel = null;
     this.morph = null;   // cambio de versión de la parte que suena (ver startMorph)
-    this.frozen = false; // LOOP: lo que suena no se mueve
     this.state = {};
     for (const k of INSTRUMENTS) {
-      this.state[k] = { progress: 0, density: 0, presence: 0, target: false, pending: false };
+      this.state[k] = { progress: 0, density: 0, presence: 0, target: false };
     }
     this.compute();
   }
@@ -203,7 +202,6 @@ export class Arrangement {
   // hasta el 1). En un viaje progresivo en marcha lo que suena ya es mezcla de las dos partes
   canMorph() {
     const T = this.travel;
-    if (this.frozen) return false;
     if (!T) return true;
     return !!T.fromName && (!T.started || T.drop);
   }
@@ -227,22 +225,6 @@ export class Arrangement {
     this.compute();
   }
 
-  // LOOP: solo cambia lo que entrará al soltar
-  setTarget(name) {
-    this.target = name;
-    this.travel = null;
-    this.morph = null;
-  }
-  // salida progresiva del LOOP
-  travelToTarget(bars, startStep) { this.goTo(this.target, bars, startStep); }
-  // salida instantánea del LOOP
-  snap() {
-    this.travel = null;
-    this.morph = null;
-    this.cur = { ...mixOf(this.target, this.vNext) };
-    this.vNow = this.vNext;
-    this.compute();
-  }
 
   // llegada de golpe al destino del viaje (DROP / instantáneo). Ya solo suena el destino: AHORA
   // pasa a ser su versión
@@ -259,7 +241,7 @@ export class Arrangement {
   // `pos` = paso de la rejilla que suena ahora (null en pausa: los viajes solo avanzan sonando)
   update(pos) {
     const T = this.travel;
-    if (!this.frozen && T) {
+    if (T) {
       if (pos !== null && !T.paused && pos >= T.startStep) {
         if (T.bars === 0) return this.land();
         if (!T.started) { // empieza a moverse: sale de lo que suena justo ahora
@@ -283,7 +265,7 @@ export class Arrangement {
     }
     // AHORA: la parte que suena cambia de versión (los de golpe los hace el universo en su paso)
     const M = this.morph;
-    if (!this.frozen && M && M.len && pos !== null && pos >= M.startStep && this.canMorph()) {
+    if (M && M.len && pos !== null && pos >= M.startStep && this.canMorph()) {
       const u = clamp((pos - M.startStep) / M.len);
       for (const k of INSTRUMENTS) {
         const w = M.steps?.[k];
@@ -296,7 +278,6 @@ export class Arrangement {
   }
 
   compute() {
-    const pt = mixOf(this.target, this.vNext);
     for (const k of INSTRUMENTS) {
       const s = this.state[k];
       const a = amountOf(k, this.cur[k]);
@@ -304,7 +285,6 @@ export class Arrangement {
       s.progress = a;
       s.density = densityOf(a);
       s.target = a > 0.001;
-      s.pending = amountOf(k, pt[k]) > 0.001; // lo que sonará al llegar
     }
   }
 

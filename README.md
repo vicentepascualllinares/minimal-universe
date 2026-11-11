@@ -6,7 +6,7 @@ No se tocan parámetros de sonido: se toca **estructura** (qué suena) y **compl
 
 Al entrar eliges el modo:
 
-- **UN UNIVERSO** — un solo mundo, con los controles grandes (estructura · transición · complejidad · loop en una fila).
+- **UN UNIVERSO** — un solo mundo, con los controles grandes (estructura · transición · complejidad en una fila).
 - **DJ** — dos universos (A y B) a la vez, siempre en fase, mezclados en una mesa central.
 
 En móvil o tablet la interfaz se adapta para que quepa todo sin scroll y se puede tocar
@@ -61,15 +61,13 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 |---|---|
 | **ESTRUCTURA** (8 escenas) | Los momentos de un tema, uno por botón (ver abajo). **Clic** = cambiar a esa escena. **Mantener** = CORTE: suena mientras lo mantienes y al soltar vuelve. |
 | **TRANSICIÓN** | La **forma** de los viajes de CLIC, con dos interruptores (pulsar en cualquier parte de la caja cambia al otro). **DE GOLPE**: la estructura se aguanta y todo cambia a la vez en el 1 de la llegada. **PROGRESIVA**: cambia durante el viaje; entonces el segundo elige **SUAVE** (todos a la vez, a lo largo del viaje) o **ESCALONADA** (uno tras otro, cada uno en su compás). Ver "Formas del viaje". Debajo, cuánto dura el viaje de CLIC (INSTANTÁNEO, 1, 2, 4, 8, 16, 32 compases) y **FX**: si lleva efectos de transición. Por defecto, 4 compases con FX. El CORTE no se ajusta: siempre instantáneo (la forma no le afecta), en la siguiente corchea, sin FX. |
-| **LOOP** | Repite los últimos 1/2/4/8 compases con todo congelado. Por debajo mueves lo que quieras sin que se oiga (fantasma en los pads, instrumentos pendientes parpadean). Al soltarlo entra el cambio en el siguiente compás. |
-| **SALIDA** | INSTANTÁNEA: todo salta a la vez. PROGRESIVA: viaja al nuevo estado durante 1–16 compases. |
 | **COMPLEJIDAD** (4 faders) | KICK · PERCS · BASS · INSTR.: cuánta información dice cada grupo (ver abajo). Se aplica en el siguiente compás. Doble clic = 0,5. |
 | **OSCILADOR** (uno por fader) | La complejidad del grupo va y viene entre el fader (A) y la **marca** ◂ de su derecha (B): arrastrar = ponerla, doble clic = quitarla. El **cuadradito** junto al nombre del grupo = encenderlo / apagarlo. Debajo, el **GESTO** (‹ › o clic en la palabra) y la **línea de la frase**: arrastrar arriba / abajo = más rápido / más lento, de lado = en qué tramo de la frase; doble clic = como el gesto; mantener = editor de casillas. Ver "Osciladores". |
 | **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
 | **CANT · VAR** (bajo HAT, PERC y FOLEY) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
-| **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás; si está en loop, al soltarlo). El GLOBAL no cambia. Nace con el **ESTILO** que marca el fader de al lado. |
-| **ESTILO** (junto a NUEVO UNIVERSO) | **NORMAL ← → ROMINIMAL**: con qué género nace el **próximo** universo. NORMAL (izquierda) = lo de siempre, idéntico; ROMINIMAL (derecha) = el género puro; en medio, los valores intermedios. Solo cuenta al pulsar NUEVO UNIVERSO. En UN UNIVERSO es un fader; en DJ y en el móvil, una perilla (**RO**). Doble clic = NORMAL. La marca del fader = el estilo del universo que suena; al pasar el ratón, su arquetipo. Ver "Estilo: NORMAL ↔ ROMINIMAL". |
+| **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás). El GLOBAL no cambia. Nace con el **ESTILO** que marca el fader de al lado. |
+| **ESTILO** (junto a NUEVO UNIVERSO) | **NORMAL ← → ROMINIMAL**: con qué género nace el **próximo** universo. NORMAL (izquierda) = lo de siempre, idéntico; ROMINIMAL (derecha) = el género puro; en medio, los valores intermedios. Cuenta al pulsar NUEVO UNIVERSO y, antes del primer GENERAR, también para el universo que espera (no hay que generar dos veces). En UN UNIVERSO es un fader; en DJ y en el móvil, una perilla (**RO**). Doble clic = NORMAL. La marca del fader = el estilo del universo que suena; al pasar el ratón, su arquetipo. Ver "Estilo: NORMAL ↔ ROMINIMAL". |
 
 ## Estructura: los momentos de un tema
 
@@ -115,15 +113,14 @@ BREAK 0,5 · 0,8; DRIFT 0,5 · 0,85; INTRO y GROOVE 0,5 · 0,8; KICK-OUT 0,6 · 
   - **En un viaje que espera la frase**, o **DE GOLPE** (el origen se aguanta hasta el 1): cambia
     la versión del origen, igual que quieto; el destino no se toca. Si el viaje empieza en ese
     mismo compás, ya no da tiempo.
-  - **A mitad de un viaje PROGRESIVO**, o con **LOOP**: no se puede (el botón se apaga): lo que
-    suena ya es mezcla de las dos partes, o está congelado.
+  - **A mitad de un viaje PROGRESIVO**: no se puede (el botón se apaga): lo que suena ya es
+    mezcla de las dos partes.
   - Dos pulsaciones antes de que empiece el cambio lo anulan. **Parado**, salta directo.
 - **LUEGO**, al pulsar:
   - **En un viaje** (esperando la frase o a medias): el viaje sigue igual (inicio, duración, FX) y
     **llega a la otra versión**, sin saltos: cada instrumento sigue desde donde está.
   - **Quieto**: elige la versión de la próxima parte, sin tocar lo que suena (el botón se marca
     con borde discontinuo). Pulsar luego una parte (incluso la misma) va a esa versión.
-  - Con **LOOP**, decide en qué versión entra lo pendiente al soltar.
 - **CORTE** (mantener una parte): va en la versión de LUEGO y, al soltarlo, se vuelve a la parte
   elegida en esa misma versión.
 
@@ -160,7 +157,7 @@ el bajo rodando. DRIFT viene del ambient y de los directos modulares: algo que f
 - **Viajar a una escena**: tarda los compases elegidos y
   **aterriza en frase**: la llegada cae en el inicio de una frase (cada 4 compases para
   viajes de 1–2, cada 8 para 4 o más), así que puede esperar unos compases antes de
-  empezar. No hay un loop por universo: es una rejilla de frases común, contada desde el
+  empezar. Es una rejilla de frases común, contada desde el
   primer compás. Junto a ESTRUCTURA, un trazo por compás de la frase (el que suena,
   encendido) y, **antes de pulsar**, "ENTRA YA" o "ENTRA EN N": cuándo empezaría un viaje
   con los compases de CLIC. Después, "→ ESCENA · ENTRA EN N" mientras espera y
@@ -173,14 +170,12 @@ el bajo rodando. DRIFT viene del ambient y de los directos modulares: algo que f
   o en PAUSA), pulsar una escena salta a ella directamente, sin viaje ni FX: es desde donde
   empieza (o sigue) a sonar. Un viaje que quedó a medias al pausar sigue al volver a tocar,
   salvo que pulses una escena antes.
-- Con **LOOP** activo, pulsar una escena la deja pendiente (borde discontinuo); al soltar el
-  loop se aplica según SALIDA (instantánea o progresiva).
 
 ## Transiciones
 
 Al viajar a una escena (con FX), el universo compone solo la transición: sabe de dónde sale, a
 dónde va y cuántos compases dura. Todo sintetizado. Desde 2026-11-10 los platos, golpes y risers
-suenan dentro de la **sala** del universo (ver "Espacio: delay y reverb").
+suenan dentro de la **sala** del universo (ver "Espacio: delay, reverb y fondo").
 
 | Viaje | Qué pasa |
 |---|---|
@@ -217,12 +212,12 @@ suenan dentro de la **sala** del universo (ver "Espacio: delay y reverb").
     tonal y lo propio se suman a ellos; no los sustituyen.
 - **VOLUMEN DE FX** de cada universo: un fader bajo el botón FX de su columna TRANSICIÓN (A a la
   izquierda, B a la derecha) y, el mismo, en el **MIXER** (caja FX, A y B, nunca vinculados, con
-  medidor). 0 dB = el pico más alto de los efectos en 0 dBFS; el preset MINIMAL lo deja en
-  −7 dB (ver MIXER). +6 arriba, −48 y silencio abajo; imán a 0 dB y al valor del preset; doble
+  medidor). 0 dB = el pico más alto de los efectos en 0 dBFS; el preset ROMINIMAL lo deja en
+  −11,8 dB (ver MIXER). +6 arriba, −70 y silencio abajo; imán a 0 dB y al valor del preset; doble
   clic = el valor del preset. Mueve
   solo las voces de transición (riser, redoble, golpes, platos, reverse, caída): los barridos
   de filtro y el silencio antes del drop son la propia música. En el móvil, solo en el MIXER.
-- Pulsar otra escena o activar el LOOP corta la transición en curso.
+- Pulsar otra escena corta la transición en curso.
   Las transiciones suenan por el canal del universo (en DJ, pasan por su EQ y su fader).
 
 ## Instrumentos
@@ -456,11 +451,11 @@ cierra con ✕ o Esc.
   El primer universo al abrir sale con todos apagados. Todavía no se guardan.
 - Pad pequeño (móvil): sin flechas junto al gesto; clic en la palabra = el siguiente.
 
-## Espacio: delay y reverb
+## Espacio: delay, reverb y fondo
 
 (2026-11-10) Los primeros **efectos creativos**. Cada universo **nace con su espacio**, como nace
 con su color: de su semilla y de su ESTILO. El intérprete no toca parámetros de sonido; lo suyo es
-el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Generación en
+el volumen de cada retorno en el MIXER (DELAY, REVERB y FONDO, con MUTE y SOLO). Generación en
 `src/music/space.js`, audio en `src/audio/spaceFx.js`.
 
 - **DELAY, parte del ritmo**: ecos en la rejilla, a lo dub. Cada universo decide la **división**
@@ -475,11 +470,22 @@ el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Genera
   club, limpios). Algunos universos (~15 % en NORMAL) nacen sin delay.
 - **THROWS**, el gesto dub: en el último compás de algunas frases (cada 8 o 16 compases, con una
   probabilidad de cada universo), el envío del protagonista se abre para su último golpe y los
-  ecos caen sobre el 1 de la frase siguiente. No en LOOP.
+  ecos caen sobre el 1 de la frase siguiente.
 - **REVERB, la sala**: una sala **sintetizada para cada universo** (largo de la cola, predelay,
   cuánto se apagan los agudos al final, reflexiones tempranas, anchura y un paso alto en el
   retorno). Cuánto manda cada instrumento (hats y clap casi secos; percusión, foley, acordes y pad
   más) y también los **efectos de transición** (platos, golpes, risers).
+- **FONDO, el colchón** (2026-11-11): una **segunda reverb**, de fondo, que no es una sala: cola
+  **larga** (3,5–6,5 s en NORMAL; 5–9 s en ROMINIMAL), **oscura** (se apaga primero por arriba y
+  lleva paso bajo en el retorno) y **bastante comprimida** (unos 8 dB de reducción de media y 14 en
+  los picos, medido): lo fuerte se aplasta y lo flojo sube, así la cola queda pareja, sin picos. Le
+  mandan sobre todo el **FOLEY**, los **efectos de transición** y el **PAD**; algo los hats, la
+  percusión, el open y los acordes; el **clap, nunca**. Cada universo nace con el suyo (largo,
+  oscuridad, predelay, cuánto comprime y cuánto manda cada uno); ~15 % de los NORMAL, sin fondo.
+  Es una **reverb algorítmica** (8 líneas de retardo realimentadas, con un difusor corto delante
+  para que los clics no suenen metálicos), no una convolución como la sala: medido, una cola de
+  convolución de 4–9 s por universo daba cortes en DJ (ver RENDIMIENTO.md). Así casi no gasta y,
+  al cambiar de universo, la cola que sonaba cambia de largo y color sin cortes.
 - **Los envíos salen tras el fader** de cada instrumento (y tras su MUTE y su presencia en la
   estructura): un instrumento que se va deja sus ecos y su cola sonando, como en una mesa de
   verdad. Los retornos entran en el universo **antes** de su saturación y de los filtros de tensión
@@ -487,7 +493,7 @@ el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Genera
 - **Al cambiar de universo**, su espacio entra en el 1 del compás: la sala nueva recibe desde ahí y
   la vieja se apaga con su propia cola (dos salas que se relevan, sin cortes). Los ecos que ya
   sonaban se deslizan al tiempo nuevo, como una cinta.
-- **MIXER**: dos columnas nuevas, **DELAY** y **REVERB**, como un instrumento más (A y B,
+- **MIXER**: tres columnas, **DELAY**, **REVERB** y **FONDO**, como un instrumento más (A y B,
   vinculados, medidor, MUTE, SOLO). A 0 dB suenan como el universo los generó; los presets los
   dejan a 0 dB. El estilo no toca su MUTE.
 - **ROMINIMAL** (ver [ROMINIMAL.md](ROMINIMAL.md) §6): delay de corchea o corchea con puntillo,
@@ -497,7 +503,7 @@ el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Genera
   ESQUELETO: casi seco; BOSQUE: el foley en su habitación; ORGÁNICO: sala algo mayor con pad y
   teclas; CLICS: ecos cortos de clics y sala mínima; RODANTE: el eco en la percusión).
 - Al pasar el ratón por el fader de ESTILO se ve el espacio del universo que suena
-  («espacio: DELAY 1/8 con puntillo, ping-pong, 45 % de repetición, protagonista CHORD · REVERB 0,6 s»).
+  («espacio: DELAY 1/8 con puntillo, ping-pong, 45 % de repetición, protagonista CHORD · REVERB 0,6 s · FONDO 7,2 s»).
 - **Coste** (render offline, dos universos): sala ~4,5–7 %, delay ~3 % (ver RENDIMIENTO.md §5).
   En CALIDAD LIGERA las salas duran como mucho 1,2 s.
 - **Falta escucharlo** (el oído decide los rangos y el nivel de los retornos).
@@ -537,7 +543,19 @@ próximo universo. Investigación, fuentes, rasgos por dimensión y qué falta: 
   luego nace un universo NORMAL, la recupera (no hereda los MUTE del estilo). Elegir un preset del
   MIXER la olvida: la mezcla vuelve a ser tuya.
 - El color viaja como siempre (~2 s): un universo nuevo llega a la vez a su color y a su estilo.
-- No toca lo que es del intérprete ni lo global: estructura, transición, LOOP, GLOBAL, BPM, tónica
+- **Antes del primer GENERAR**, el universo que espera ya sigue al fader: al soltarlo se vuelve a
+  sortear con ese estilo (mezcla y MUTE incluidos) y con su color puesto, así el primero suena como
+  marca el fader sin pulsar NUEVO UNIVERSO. (2026-11-11; antes el primero salía siempre NORMAL.)
+- **La mezcla y los envíos de ROMINIMAL** (2026-11-11): los que dejó el usuario **a oído**, con un
+  universo ROMINIMAL a tope. La mezcla es la del preset ROMINIMAL del MIXER (ver "Mezcla por
+  defecto"): el pad a −54,7, solo colchón; la percusión por detrás (−23,4); el open a −10,1. Los
+  **envíos** son un recorte sobre lo que sortea cada universo (`sendTrim` en styles.js): al DELAY,
+  la PERC −2,8 dB, el CHORD −14,6 y el OPEN nada; a la REVERB, PERC −6,5 y CHORD −5,5; al FONDO,
+  FOLEY −4,4 y casi nada de hats, percusión, open y acordes (−22 a −27 dB): el fondo es del foley,
+  las transiciones y el pad. Con el fader a medias, a medias; en NORMAL, nada. Cada arquetipo
+  retoca la mezcla unos dB. El colchón lo
+  hace sobre todo el **FONDO** (ver "Espacio: delay, reverb y fondo").
+- No toca lo que es del intérprete ni lo global: estructura, transición, GLOBAL, BPM, tónica
   y modo (en ROMINIMAL.md §9, cómo tocarlo). No se guarda: cada sesión empieza en NORMAL.
 
 ## Mesa de mezcla (centro)
@@ -583,8 +601,7 @@ se guarda (vendrá con las cuentas).
 - **AUTO-ARREGLOS**: trucos que en producción se hacen a mano y aquí el programa hace solo,
   en vivo. Cada uno se enciende o se apaga pulsando su caja.
   - **HUECO ANTES DEL KICK** (encendido por defecto, **30 ms**): cuando el kick **entra de
-    golpe** viniendo de una escena sin kick (DE GOLPE, INSTANTÁNEO, un CORTE o soltar el LOOP
-    de golpe), el universo entero (con sus FX de transición) calla un instante justo antes del
+    golpe** viniendo de una escena sin kick (DE GOLPE, INSTANTÁNEO o un CORTE), el universo entero (con sus FX de transición) calla un instante justo antes del
     primer golpe del kick. Da más pegada a la entrada. Si el kick entra poco a poco
     (PROGRESIVA), no hay entrada que marcar y no se hace. Rampas de 4 ms al bajar y 2 ms al
     volver, entero justo en el ataque del kick: medido sin clics.
@@ -652,24 +669,32 @@ valor del preset). El botón VINCULADOS los separa. En el móvil, en DJ, no se v
 Bajo cada fader, **M** (MUTE) y **S** (SOLO). MUTE silencia ese canal sin mover el fader. SOLO
 "en su sitio": si hay alguno en SOLO, se oyen solo esos, de los dos universos (los demás se ven
 medio apagados). Vinculados, A y B se encienden juntos (los FX, nunca). Rampa corta al entrar y
-salir: sin clics. **RESTABLECER** los quita todos. No se guardan.
+salir: sin clics. **RESTABLECER** los quita todos. No se guardan. En la fila de instrumentos del
+universo, lo que no se oye (en MUTE, o callado por el SOLO de otro) sale en gris, no en blanco.
+
+**ENVÍOS** (2026-11-11, para calibrar): arriba de cada canal, tres filas de perillas, **DLY**, **REV** y
+**FONDO**: cuánto manda ese elemento al delay, a la sala y a la reverb de fondo. Es un recorte en dB
+sobre lo que generó cada universo (0 dB = como salió; abajo del todo, nada; arriba, +12), igual
+para los dos universos y para los que vengan, y no se guarda. Solo salen donde el canal manda (el
+clap no va al fondo; las transiciones no van al delay). Doble clic = 0 dB.
 
 **0 dB = el pico máximo del instrumento en 0 dBFS.** Cada instrumento (y los FX) sale de su
 canal con su pico más alto en 0 dB, y la mezcla es **solo la posición de los faders**. Arriba,
-**MEZCLA** elige el **preset**: **MINIMAL** (por defecto) o **PLANO** (todo a 0 dB). Elegir uno
+**MEZCLA** elige el **preset**: **ROMINIMAL** (por defecto) o **PLANO** (todo a 0 dB). Elegir uno
 mueve los faders de instrumentos y FX de los dos universos (el máster no). Si luego tocas alguno,
 sale **RETOCADA** y el dB de ese fader se enciende. Ver "Mezcla por defecto".
 Los medidores de instrumentos y FX van en la **misma escala que el fader** (0 dB a tres cuartos,
-+6 arriba, −48 abajo): como cada canal tiene su pico en 0 dB antes del fader, el medidor de un
++6 arriba, −70 abajo, como en Ableton: un canal muy bajo, como el pad de ROMINIMAL a −40, sigue
+viéndose): como cada canal tiene su pico en 0 dB antes del fader, el medidor de un
 instrumento llega como mucho a la altura de su fader (según el universo, puede pasarse unas
 décimas). El del máster sigue en dBFS (de −60 a 0, arriba del todo).
 
-Arriba +6 dB, abajo hasta −48 dB y silencio. **Imán** a 0 dB y al valor del preset: mientras lo mueves va libre; si lo sueltas a menos de 0,75 dB de uno de los dos, se va ahí (el sonido al instante; el mando se desliza unas milésimas). En DJ, cada instrumento va en su caja (A y B juntos). Doble clic = el valor del preset. RESTABLECER = el preset entero (y el máster a 0 dB).
+Arriba +6 dB, abajo hasta −70 dB y silencio (hasta 2026-11-11, −48). **Imán** a 0 dB y al valor del preset: mientras lo mueves va libre; si lo sueltas a menos de 0,75 dB de uno de los dos, se va ahí (el sonido al instante; el mando se desliza unas milésimas). En DJ, cada instrumento va en su caja (A y B juntos). Doble clic = el valor del preset. RESTABLECER = el preset entero (y el máster a 0 dB).
 La música sigue sonando mientras está abierto. (Todavía no se guarda: vendrá con las cuentas.)
 
 **MASTER** (a la derecha, aparte): la **ganancia del máster** va **antes del limitador**: subirla
 empuja la mezcla contra él (más nivel, más limitación). 0 dB = como sonaba siempre; arriba +12 dB,
-abajo −48 dB y silencio; mismo imán y doble clic = 0 dB, y nunca va vinculado. Al lado, el
+abajo −70 dB y silencio; mismo imán y doble clic = 0 dB, y nunca va vinculado. Al lado, el
 **medidor del máster** (pico de L y R de lo que sale, tras el techo) y el de **LIM**, en naranja,
 bajando desde arriba: lo que está quitando el limitador (0–12 dB). Abajo, las cifras: el pico en
 dBFS y lo que quita, retenidos 1,5 s para que dé tiempo a leerlos. En **DJ**, la mesa enseña
@@ -692,26 +717,30 @@ universo, el pico real queda entre +0,6 y unos −4 dB (comprobado en 3 universo
 
 **Presets** (`src/audio/mix.js`), solo la posición de los faders:
 
-| Fader | MINIMAL | PLANO | Por qué (MINIMAL) |
+| Fader | ROMINIMAL | PLANO | (antes, MINIMAL) |
 |---|---|---|---|
-| Kick | −4 | 0 | el ancla; por debajo de 0 para dejar margen a la suma |
-| Bass | −9 | 0 | rodando justo bajo el kick; kick y bajo mandan |
-| Perc | −10 | 0 | en rominimal la percusión es la protagonista: por encima de clap y hats |
-| Clap | −12 | 0 | marca, pero detrás (no golpea como en tech house) |
-| Hat | −13 | 0 | presentes y sin morder |
-| Open | −15 | 0 | es largo: se oye más de lo que marca el pico |
-| Foley | −12 | 0 | (nuevo) detalle de la habitación, a la altura del clap y por detrás de la percusión |
-| Chord | −14 | 0 | los acordes de deep/minimal acompañan, no tapan el groove |
-| Pad | −16 | 0 | el fondo: se siente más que se oye |
-| Delay · Reverb | 0 | 0 | (2026-11-10) los retornos del espacio: a 0 dB, como el universo los generó (cuánto manda cada instrumento ya va en sus envíos) |
-| FX | −7 | 0 | las transiciones se insinúan; sin retocar, los golpes de llegada sonaban casi como el kick |
+| Kick | −4,4 | 0 | −4 |
+| Bass | −9,2 | 0 | −9 |
+| Hat | −13,9 | 0 | −13 |
+| Perc | −23,4 | 0 | −10 |
+| Clap | −14 | 0 | −12 |
+| Open | −10,1 | 0 | −15 |
+| Foley | −14,1 | 0 | −12 |
+| Chord | −22,2 | 0 | −14 |
+| Pad | −54,7 | 0 | −16 |
+| Delay · Reverb | 0 | 0 | 0 |
+| Fondo | −6,4 | 0 | — |
+| FX | −11,8 | 0 | −7 |
 
-- **MINIMAL** parte de la mezcla de antes (que ya seguía esas reglas: en estos dB era kick −3,7,
-  bass −9,3, perc −11,6, clap −10,7, hat −12,7, open −14,4, chord −12,9, pad −14,9 y FX −4) y la
-  retoca: percusión +1,6 dB; clap, acordes y pad algo más atrás; FX −3 dB. El nivel total sin FX
-  queda casi igual, así que la saturación del universo, el glue y el limitador trabajan como
-  siempre. Medido: picos de cada canal a ±1,5 dB de su fader (el pad, hasta −4) y el universo
-  entero con picos ≈ −4 dBFS.
+- **ROMINIMAL** (2026-11-11; antes se llamaba MINIMAL y tenía otros valores) es la mezcla que dejó
+  el usuario **a oído**, con un universo ROMINIMAL a tope: kick y bajo mandan, la percusión por
+  detrás, acordes y pad muy al fondo (el pad, solo colchón) y el FONDO como colchón. Es también la
+  mezcla de serie del estilo ROMINIMAL (cada universo ROMINIMAL nace con ella, más lo que retoque su
+  arquetipo y ±1 dB). Con ella el usuario dejó también sus **envíos** (ver "Estilo: NORMAL ↔
+  ROMINIMAL").
+- (MINIMAL partía de la mezcla de antes y la retocaba: percusión +1,6 dB; clap, acordes y pad algo
+  más atrás; FX −3 dB. Medido: picos de cada canal a ±1,5 dB de su fader y el universo entero con
+  picos ≈ −4 dBFS.)
 - **PLANO** pone cada canal con su pico en 0 dBFS: suena mucho más fuerte y la saturación del
   universo y el limitador trabajan bastante más. Es el punto de partida neutro.
 - Esto es solo el balance. Cuánto suena la mezcla al final (RMS, LUFS) es cosa de la futura
@@ -746,8 +775,8 @@ universo, el pico real queda entre +0,6 y unos −4 dB (comprobado en 3 universo
 
 ESPACIO play/pausa (o tocar EN VIVO / PAUSA en la cabecera)
 
-- UN UNIVERSO: L loop · N nuevo universo (también Q / W)
-- DJ: Q loop A · W nuevo universo A · O nuevo universo B · P loop B
+- UN UNIVERSO: N nuevo universo (también W)
+- DJ: W nuevo universo A · O nuevo universo B
 
 ## Cómo está hecho
 
@@ -755,7 +784,7 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 
 - `src/audio/engine.js` — reloj común (Worker + lookahead), BPM, tónica y modo globales, master (ganancia → glue + limitador → techo; medidor L/R y lo que quita el limitador).
 - `src/ui/meters.js` — escala de los medidores y el máster (se lee una vez por fotograma; lo pintan la mesa DJ y el MIXER).
-- `src/audio/deck.js` — un universo: sus canales, loop, secuenciador y su ESPACIO (envíos, retornos y throws).
+- `src/audio/deck.js` — un universo: sus canales, secuenciador y su ESPACIO (envíos, retornos y throws).
 - `src/audio/spaceFx.js` — el delay (eco de cinta, ping-pong) y la reverb (sala sintetizada, dos convolvers que se relevan) de un universo.
 - `src/music/space.js` — el ESPACIO de cada universo (de su semilla y su estilo): división, repeticiones, protagonista del eco, throws, sala y envíos.
 - `src/audio/strip.js` — canal de mezcla: EQ 3 bandas (crossover Linkwitz-Riley, ISOLATOR o EQ; curvas de EASY EQ), filtro DJ, fader, medidor.

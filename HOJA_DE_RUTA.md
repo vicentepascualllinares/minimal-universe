@@ -296,6 +296,15 @@ que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
      aparte, mejor en un render sin conexión (más rápido que el tiempo real y sin cortes). La carpeta
      sería la unidad de exportación («los stems de toda la familia»). Encaja con la sesión 4 (mezcla y
      máster) y con GRABAR.
+18. **MOTORES CONGELADOS** (hecho 2026-11-11, `src/motores/LEEME.md`): el MOTOR 1 está congelado
+   (los universos guardados hasta ese día suenan siempre igual, comprobado con `herramientas/huella.mjs`)
+   y `src/` es el MOTOR 2, en obras. **Regla para todas las sesiones que cambien el sonido**: antes de
+   un cambio que rompa las semillas del motor en obras, mirar si hay universos guardados suyos
+   (`motor: 2` en `universos/`) y, si se quieren conservar, congelarlo primero. Pendiente: ver el selector
+   de MOTOR en el móvil (solo se probó en ordenador, UN UNIVERSO y DJ); y si se congelan
+   muchos motores, cargar los viejos solo cuando hagan falta (hoy se cargan todos al abrir, ~430 KB
+   cada uno). Los cambios de la mesa, el máster o LOW son comunes: afectan también a los universos de
+   motores congelados.
 
 ## Arreglos pendientes
 

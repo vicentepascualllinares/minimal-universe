@@ -1,0 +1,38 @@
+{
+  "src": "C:\\Users\\Vicente\\AppData\\Local\\Temp\\claude\\2d6faa53ad666bfe\\e7b0f4d9-0de9-4881-af79-d9226f8e72a5\\scratchpad\\head\\src",
+  "motor": null,
+  "seg": 96,
+  "total": "22533ebe631ed2ca67cc7824babca6ddeb713df5d038e914edaff5a1076b16ad",
+  "casos": {
+    "dub-968782145-ro100-124-bpm-e-eolico-parecido + dub-968782145-ro100-124-bpm-fs-eolico": {
+      "hash": "f0275bf38b5b9e3c955b6a4d2594db75afea317843210a74ccec4e7505220c5e",
+      "lines": 107432,
+      "compases": 49,
+      "errores": []
+    },
+    "genesis-2 + genesis-3": {
+      "hash": "2142234d2a6af0e006c98d7cfb271d0487df90908d528550aeadc64fd6bca82d",
+      "lines": 133601,
+      "compases": 49,
+      "errores": []
+    },
+    "genesis + semilla": {
+      "hash": "dcfc1af165ef468b612f3d00c67927de86e3084f50a64163102e4fe01a23c39c",
+      "lines": 135373,
+      "compases": 49,
+      "errores": []
+    },
+    "semillas ROMINIMAL 100 + NORMAL": {
+      "hash": "7ae6f442778ba5d3dc6ca1c44513fdedb832c167041330f953702ace8050ff04",
+      "lines": 127380,
+      "compases": 49,
+      "errores": []
+    },
+    "semillas ROMINIMAL 60 P70 + ROMINIMAL 35": {
+      "hash": "c928d9e2d99c9c9cb099b87995b2c6180266d617bd0d20c68b90ebddc9edd555",
+      "lines": 124277,
+      "compases": 49,
+      "errores": []
+    }
+  }
+}

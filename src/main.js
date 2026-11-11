@@ -1,4 +1,5 @@
 import { Engine } from './audio/engine.js';
+import { MOTORS, DEV_MOTOR } from './motores/index.js';
 import { VSlider } from './ui/slider.js';
 import { Knob } from './ui/knob.js';
 import { deckView } from './ui/deckView.js';
@@ -10,7 +11,7 @@ import { SCALES } from './music/emotion.js';
 
 const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-const engine = new Engine();
+const engine = new Engine({ motors: MOTORS, dev: DEV_MOTOR }); // MOTORES: ver src/motores/LEEME.md
 window.MU = engine; // para depurar desde la consola
 // cualquier error del programa queda en el REGISTRO DE INCIDENCIAS (OPCIONES → RENDIMIENTO)
 window.addEventListener('error', (e) => engine.logIncident('error', `${e.message} · ${e.filename?.split('/').pop()}:${e.lineno}`));
@@ -37,14 +38,15 @@ function dragNumber(el, get, set, pxPerUnit) {
   const up = (e) => { if (e.pointerId === pid) pid = null; };
   el.addEventListener('pointerup', up);
   el.addEventListener('pointercancel', up);
-  el.addEventListener('wheel', (ev) => { ev.preventDefault(); set(get() - Math.sign(ev.deltaY) * (6 / pxPerUnit)); }, { passive: false });
+  // rueda: al menos una unidad por paso (con la tónica, 6 / 14 se redondeaba y no se movía)
+  el.addEventListener('wheel', (ev) => { ev.preventDefault(); set(get() - Math.sign(ev.deltaY) * Math.max(1, 6 / pxPerUnit)); }, { passive: false });
 }
 dragNumber($('#bpm'), () => engine.bpm, (v) => {
   engine.bpm = Math.round(Math.min(140, Math.max(100, v)) * 2) / 2;
   $('#bpm').textContent = engine.bpm % 1 ? engine.bpm.toFixed(1) : engine.bpm;
 }, 6);
 dragNumber($('#key'), () => engine.rootMidi, (v) => {
-  engine.rootMidi = Math.round(Math.min(35, Math.max(28, v))); // E1..B1
+  engine.rootMidi = Math.round(Math.min(39, Math.max(28, v))); // E1..B1 y C2..D#2 (las 12 notas; como en el código de semilla)
 }, 14);
 
 // ───────── transporte

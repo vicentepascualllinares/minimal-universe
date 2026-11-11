@@ -579,10 +579,10 @@ Para volver a tener un universo que gusta (2026-11-11; código en `src/music/uni
   SÍ, BORRAR / NO; va a la papelera); en la cabecera de la carpeta, ✎ y ✕ para la carpeta. Traer una
   semilla escrita o un archivo de fuera está en OPCIONES → UNIVERSOS. En DJ todo sigue en la cabecera de cada universo, y traer y guardar en OPCIONES →
   UNIVERSOS (también en móvil, donde el panel es una tira compacta solo con lo de generar).
-- **SEMILLA** — el código del universo, p. ej. `968782145-RO100-124-F#EOL`: la semilla, el estilo y
-  cuánto (RO = ROMINIMAL; `-P60` si la PUREZA no es 100 %) y el **tempo** y la **tónica y el modo** con
-  que sonaba (FRI, EOL, DOR, MIX). Se escribe como se quiera (`968782145 ro 100 124 f# eol`), y tempo y
-  escala son opcionales. Vuelve ese universo **tal como nace** (estilo, generadores, espacio,
+- **SEMILLA** — el código del universo, p. ej. `968782145-RO100-124-F#EOL-M1`: la semilla, el estilo y
+  cuánto (RO = ROMINIMAL; `-P60` si la PUREZA no es 100 %), el **tempo** y la **tónica y el modo** con
+  que sonaba (FRI, EOL, DOR, MIX) y su **MOTOR** (`-M1`; sin nada, el 1: ver «Motores», abajo). Se
+  escribe como se quiera (`968782145 ro 100 124 f# eol m1`), y tempo, escala y motor son opcionales. Vuelve ese universo **tal como nace** (estilo, generadores, espacio,
   transiciones, color, complejidad, osciladores, CANT · VAR). El fader de ESTILO y la PUREZA se ponen
   en los suyos (por eso al generar se redondean a 0,1 %: el código lo rehace exacto).
 - **ARCHIVO** — GUARDAR ARCHIVO descarga `universo-<código>.json` con el universo **tal como
@@ -616,6 +616,27 @@ Para volver a tener un universo que gusta (2026-11-11; código en `src/music/uni
 - Los universos guardados del proyecto están en `universos/`.
 - **Semillas vecinas NO dan universos parecidos** (medido en 500 parejas: se parecen igual que dos al
   azar): cada semilla pasa por un mezclador. Para eso está el PARECIDO.
+
+### Motores (2026-11-11)
+
+Una semilla es una receta: si cambia el código que la convierte en música, la misma semilla da otra
+cosa. Por eso el código que hace sonar los universos se **congela** por épocas (detalle y reglas:
+`src/motores/LEEME.md`):
+
+- **MOTOR 1** — congelado el 2026-11-11: «Génesis» y todo lo guardado hasta ese día. Suena siempre
+  igual (comprobado con la huella: idéntico, nodo a nodo y golpe a golpe, a la app de antes).
+- **MOTOR 2** — **en obras**: el que se sigue cambiando. Sus semillas pueden sonar distinto hasta que
+  se congele. Antes de un cambio que las rompa, si hay universos guardados suyos, se congela primero.
+- Cada universo apunta a su motor (`-M1` en la semilla, `motor` en el archivo; sin nada, el 1) y se
+  trae con él. Al traer (EN COLA, OPCIONES → UNIVERSOS) se puede elegir otro para **comparar**: en
+  otro motor entra **tal como nace** (semilla, estilo, tempo y escala); lo que mutó es del suyo.
+- **MOTOR** en GENERAR UNIVERSO (y en DJ, en la cabecera): con cuál nace el próximo NUEVO UNIVERSO.
+  Como el fader de ESTILO, solo al generar, y traer un universo lo pone en el suyo. Punto = el del que
+  suena; parpadea = el del que espera; el EN OBRAS, subrayado.
+- Cambia en el 1 del compás, como un NUEVO UNIVERSO: lo que estás tocando (la parte, los viajes, el
+  GLOBAL, el ESTILO) sigue; el universo que se va deja sonar sus colas. En DJ, A y B pueden ser de
+  motores distintos.
+- Común a todos (no es del motor): la mesa y el MIXER, el máster, LOW, GRABAR y la interfaz.
 
 ### Universo PARECIDO
 
@@ -854,7 +875,7 @@ universo, el pico real queda entre +0,6 y unos −4 dB (comprobado en 3 universo
 ## Global (cabecera)
 
 - **BPM**: arrastrar o rueda (100–140).
-- **Tónica**: arrastrar o rueda (E–B). El kick de ambos universos se afina a ella.
+- **Tónica**: arrastrar o rueda, las 12 notas: de E a B (E1–B1) y, encima, C, C#, D y D# (C2–D#2, la octava de arriba: el kick y el bajo no bajan de E1). El kick de ambos universos se afina a ella.
 - **Modo** (frigio · eólico · dórico · mixolidio): global, clic = el siguiente. El cambio parpadea y entra al empezar el siguiente compás. Igual para A y B, así nunca chocan armónicamente.
 
 ## Teclado
@@ -888,4 +909,6 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/music/kit.js` — CANTIDAD y VARIEDAD de hats y percs: las curvas de las perillas y los tipos de hat (FINO, OSCURO, TICK, MEDIO).
 - `src/music/styles.js` — los ESTILOS (de momento ROMINIMAL) como datos: rangos, pesos, arquetipos, modos, timbre y mezcla; las tiradas con estilo (con NORMAL, las de siempre) y el color llevado a los rangos del género. Investigación: ROMINIMAL.md.
 - `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).
-- `herramientas/` — scripts de Node para medir lo que genera el motor (densidad, repetición del loop, foley, groove) y comprobar que NORMAL sale idéntico tras un cambio. Cómo usarlos: herramientas/LEEME.md.
+- `src/motor.js` — la entrada de un motor (su Deck y su banco de sonidos). `src/motores/` — los MOTORES congelados (`N/`, copias que no se tocan) y su registro (`index.js`); ver `src/motores/LEEME.md`.
+- `src/audio/slots.js` — los PUESTOS A y B: cada uno con el Deck del motor del universo que suena; cambian de Deck en el 1 del compás.
+- `herramientas/` — scripts de Node para medir lo que genera el motor (densidad, repetición del loop, foley, groove), comprobar que NORMAL sale idéntico tras un cambio y la HUELLA de un motor (todo lo que programa en el audio: que un motor congelado siga igual). Cómo usarlos: herramientas/LEEME.md.

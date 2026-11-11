@@ -113,6 +113,12 @@ export class Deck {
   // un canal del MIXER: un instrumento o un retorno (DELAY, REVERB)
   mixChannel(k) { return this.ch?.[k] ?? this.spaceFx?.ret[k]; }
 
+  // MOTORES (src/motores/LEEME.md): el BANCO DE SONIDOS es el de este motor (sus hats y percs se
+  // graban con su drumsynth); `this.motor` lo pone el Engine al crear el universo
+  get bank() { return this.engine.bankOf(this); }
+  // el universo que suena, para guardarlo (universe.js de este motor)
+  capture() { return captureUniverse(this, this.engine); }
+
   // TRANSICIONES: la paleta (qué riser, redoble, golpes...) sale de la semilla (y del estilo)
   newFxPalette(seed) {
     this.fxPal = makePalette(seed, this.sty);
@@ -220,7 +226,7 @@ export class Deck {
     const em = this.emotion;
     const gap = em.sxMoving || Math.abs(em.tv - em.v) + Math.abs(em.ta - em.a) > 0.03 ? 0.5 : 4;
     const put = (id, ch, rec, src) => {
-      if (warm) this.engine.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p, true); // urgente: sonará en el próximo compás
+      if (warm) this.bank.want(`${this.id}:pre:${id}`, rec.key, rec.p, true); // urgente: sonará en el próximo compás
       else this.drums.set(id, ch, rec, gap, src);
     };
     put('hat', 'hat', hatMain(e, false), []);

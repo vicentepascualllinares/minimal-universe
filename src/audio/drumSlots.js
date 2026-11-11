@@ -64,7 +64,7 @@ export class DrumSlots {
     // suena la más reciente que ya esté grabada (ver hit)
     s.asked.push(rec.key);
     if (s.asked.length > 4) s.asked.shift();
-    const bank = this.deck.engine.bank;
+    const bank = this.deck.bank;
     if (bank.has(rec.key)) s.ready = rec.key;
     else bank.want(`${this.deck.id}:${id}`, rec.key, rec.p, !s.ready || !same);
   }
@@ -91,7 +91,7 @@ export class DrumSlots {
   // un golpe de la ranura `id` en el tiempo `t` con velocidad `vel` (0..1)
   hit(id, t, vel) {
     const s = this.slots.get(id);
-    const bank = this.deck.engine.bank;
+    const bank = this.deck.bank;
     if (s && s.key !== s.ready) this.fresh(s, bank);
     const layers = s?.ready && bank.get(s.ready);
     if (!layers) { this.misses++; return false; } // solo al arrancar, mientras se graba la primera vez

@@ -1,8 +1,9 @@
 // UNIVERSOS GUARDADOS (2026-11-11): volver a tener un universo que gustó.
 //
 // Dos maneras:
-//   CÓDIGO DE SEMILLA  «968782145-RO100-124-F#EOL» (semilla · estilo y cuánto · «-P60» si la PUREZA no
-//                      es 100 % · TEMPO · TÓNICA y MODO con los que sonaba): vuelve a generar el universo
+//   CÓDIGO DE SEMILLA  «968782145-RO100-124-F#EOL-M1» (semilla · estilo y cuánto · «-P60» si la PUREZA no
+//                      es 100 % · TEMPO · TÓNICA y MODO con los que sonaba · MOTOR, ver src/motores/LEEME.md;
+//                      sin «-M», el MOTOR 1: los códigos de antes de los motores): vuelve a generar el universo
 //                      TAL COMO NACE (estilo, generadores, espacio, transiciones, color, complejidad,
 //                      osciladores, CANT · VAR). Corto: se copia, se apunta, se escribe. Tempo y escala
 //                      son opcionales al escribirlo, y al traerlo solo se aplican si se pide
@@ -46,6 +47,7 @@ export function seedCode(u) {
   if (S && S.t > 0 && S.name) c += `-${styleCode(S.name)}${pct(S.t)}${S.purity < 1 ? `-P${pct(S.purity)}` : ''}`;
   if (G?.bpm) c += `-${String(G.bpm)}`;
   if (G?.rootMidi !== undefined && SCALES[G.scaleI]) c += `-${NOTES[G.rootMidi % 12]}${modeCode(G.scaleI)}`;
+  if (u.motor) c += `-M${u.motor}`;
   return c;
 }
 
@@ -63,10 +65,12 @@ export function parseSeedCode(str) {
     let t = toks[i];
     // «RO 100» escrito separado: las letras de un estilo y su número
     if (/^[A-Z]{2,}$/.test(t) && /^\d+(\.\d+)?$/.test(toks[i + 1] ?? '') && Object.keys(STYLES).some((n) => styleCode(n) === t)) t += toks[++i];
-    // y la tónica y el modo separados: «F# EOL»
+    // y la tónica y el modo separados: «F# EOL»; y el motor: «M 1»
     if (/^[A-G]#?$/.test(t) && /^[A-Z]{3,}$/.test(toks[i + 1] ?? '')) t += toks[++i];
+    if (t === 'M' && /^\d{1,3}$/.test(toks[i + 1] ?? '')) t += toks[++i];
     let m;
-    if ((m = /^P(\d+(?:\.\d+)?)$/.exec(t))) { if (!out.style) return null; out.style.purity = Math.min(1, Number(m[1]) / 100); }
+    if ((m = /^M(\d{1,3})$/.exec(t))) out.motor = Number(m[1]);
+    else if ((m = /^P(\d+(?:\.\d+)?)$/.exec(t))) { if (!out.style) return null; out.style.purity = Math.min(1, Number(m[1]) / 100); }
     else if ((m = /^([A-Z]{2,})(\d+(?:\.\d+)?)$/.exec(t))) {
       const name = Object.keys(STYLES).find((n) => styleCode(n) === m[1]);
       if (!name) return null;
@@ -160,13 +164,14 @@ export function applyStyleData(sty, D) {
 // ───────────────────────── EL UNIVERSO QUE SUENA
 // `deck` = el universo; `i` = su número en el motor (0 = A, 1 = B)
 export function captureUniverse(deck, engine) {
-  const i = engine.decks.indexOf(deck);
+  const i = engine.slotOf(deck);
   const S = deck.sty;
   const style = S.t > 0 ? { name: S.name, t: S.t, purity: S.purity ?? 1 } : null;
   const { sty, ...fxPal } = deck.fxPal;
   const u = {
     app: 'MINIMAL UNIVERSE', version: UNIVERSE_VERSION, saved: new Date().toISOString(),
     seed: deck.seed >>> 0, style,
+    motor: deck.motor ?? undefined, // el MOTOR que lo hace sonar (src/motores/LEEME.md)
     global: { bpm: engine.bpm, rootMidi: engine.rootMidi, scaleI: engine.scaleNext ?? engine.scaleI },
     gen: genState(deck.gen),
     cx: clone(deck.cx), osc: clone(deck.osc), kit: clone(deck.kit),

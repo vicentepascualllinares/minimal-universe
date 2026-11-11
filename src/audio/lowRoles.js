@@ -119,7 +119,7 @@ export class LowRoles {
   // cuánto suena el kick de un universo en la mezcla (papel × banda LOW de EASY)
   kickLevel(d) {
     const E = this.E;
-    const i = E.decks.indexOf(d);
+    const i = E.slotOf(d);
     const role = E.mode === 'dj' ? (this.applied?.[i].kick ?? 1) : 1;
     return E.easyOn ? role * easyGains('lo', E.xf.lo)[i] : role;
   }
@@ -141,7 +141,7 @@ export class LowRoles {
     if (!E.easyOn && !this.held.length) {
       from.duckBass(t, depth);
       if (E.mode !== 'dj') return;
-      const i = E.decks.indexOf(from), o = 1 - i;
+      const i = E.slotOf(from), o = 1 - i;
       if (this.soundsIn(i, 'kick') && this.soundsIn(o, 'bass') && !this.soundsIn(o, 'kick')) {
         E.decks[o].duckBass(t, depth * this.mixLow(i));
       }

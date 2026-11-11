@@ -30,7 +30,7 @@ function openBrowser() {
 // universos/papelera/ (de ahí se puede recuperar a mano). Un universo se nombra por su ruta
 // relativa: «archivo.json» o «carpeta/archivo.json».
 //   GET    /api/universos             { folders: [{ name, count }], items: [{ file, folder, name, seed, code,
-//                                      style, global, saved, similar }] }
+//                                      style, global, saved, similar, motor }] }
 //   POST   /api/universos             { name, universe, folder } → lo guarda (nombre repetido: «-2»...)
 //   PATCH  /api/universos/<ruta>      { name?, folder? } → cambia el nombre y/o lo mueve de carpeta
 //   DELETE /api/universos/<ruta>      → a la papelera
@@ -84,7 +84,7 @@ async function listDir(folder) {
     try {
       const u = JSON.parse(await readFile(join(dirOf(folder), f), 'utf8'));
       if (!(u && typeof u === 'object' && u.seed >= 0 && u.gen)) continue; // solo universos (no fotos en bruto)
-      out.push({ file: folder ? `${folder}/${f}` : f, folder, name: u.name || null, seed: u.seed, code: u.code ?? null, style: u.style ?? null, global: u.global ?? null, saved: u.saved ?? null, similar: u.similar ?? null });
+      out.push({ file: folder ? `${folder}/${f}` : f, folder, name: u.name || null, seed: u.seed, code: u.code ?? null, style: u.style ?? null, global: u.global ?? null, saved: u.saved ?? null, similar: u.similar ?? null, motor: u.motor ?? 1 });
     } catch {}
   }
   return out;

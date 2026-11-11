@@ -5,6 +5,7 @@
 import { makeNoise } from './voices.js';
 import { SoundBank } from './soundBank.js';
 import { Deck } from './deck.js';
+import { makeSlot, inSlot } from './slots.js';
 import { Strip, easyGains, easyX, bandGain, bandValue, faderGain } from './strip.js';
 import { LowRoles } from './lowRoles.js';
 import { SCALES } from '../music/emotion.js';
@@ -57,7 +58,14 @@ const store = {
 };
 
 export class Engine {
-  constructor() {
+  // `motors` = el registro de MOTORES (src/motores/index.js): qué Deck y qué banco de sonidos hace
+  // sonar cada universo. Sin él (las herramientas de Node, o la copia congelada de un motor corriendo
+  // sola), un solo motor: el de esta carpeta. `start` = con qué motor nacen los dos primeros (herramientas)
+  constructor({ motors, dev, start } = {}) {
+    this.motors = motors ?? { 0: { Deck, SoundBank } };
+    this.multi = !!motors;
+    this.devMotor = dev ?? Math.max(...Object.keys(this.motors).map(Number)); // el de NUEVO UNIVERSO de partida
+    this.banks = {}; // un BANCO DE SONIDOS por motor (ver bankOf)
     this.ready = false;
     this.playing = false;
     this.bpm = 124;
@@ -97,10 +105,11 @@ export class Engine {
     this.marginMode = MARGIN_MODES[mm] ? mm : 'auto';
     this.lookahead = MARGIN_S[this.marginMode] ?? PROFILE.lookahead; // s programados por adelantado
     this.mode = 'dj'; // 'solo' = un universo | 'dj' = dos universos + mezcla
+    // los dos PUESTOS (slots.js): cada uno con el Deck del motor del universo que suena
     this.decks = [
       // los dos arrancan en INTRO: la entrada natural de un tema (y para mezclar)
-      new Deck(this, 'A', { scene: 'intro', v: -0.3, a: -0.25 }),
-      new Deck(this, 'B', { scene: 'intro', v: 0.2, a: 0.15 }),
+      makeSlot(this, 0, 'A', { scene: 'intro', v: -0.3, a: -0.25 }, start ?? this.devMotor),
+      makeSlot(this, 1, 'B', { scene: 'intro', v: 0.2, a: 0.15 }, start ?? this.devMotor),
     ];
     this.decks[1].newCharacter(this.decks[1].seed); // B arranca con su propio carácter
     this.eqType = 'iso'; // EQ de la mesa DJ: 'iso' (silencia, −∞) | 'eq' (atenúa, −26 dB)
@@ -133,6 +142,31 @@ export class Engine {
     if (!Array.isArray(this.incidents)) this.incidents = [];
   }
 
+  // MOTORES: un Deck del motor `m` (lo crea el puesto: slots.js)
+  newDeck(m, id, opts) {
+    const d = new this.motors[m].Deck(this, id, opts);
+    d.motor = m;
+    return d;
+  }
+  // en qué puesto suena (o espera) un Deck: 0 = A, 1 = B, −1 = ninguno
+  slotOf(deck) { return this.decks.findIndex((p) => inSlot(p, deck)); }
+  // el BANCO DE SONIDOS del motor de un Deck (soundBank.js de ese motor: graba con su drumsynth). Lo
+  // comparten los universos del mismo motor; se crea al primer uso
+  bankOf(deck) {
+    const m = deck.motor ?? this.devMotor;
+    let b = this.banks[m];
+    if (!b) {
+      b = this.banks[m] = new this.motors[m].SoundBank(this.ctx?.sampleRate ?? 48000);
+      b.inUse = (k) => this.decks.some((p) => [p.slot?.inner ?? p, p.slot?.next].some((d) => d && d.motor === m && d.drums.uses(k)));
+    }
+    return b;
+  }
+  // un puesto acaba de cambiar de Deck (otro motor): sus canales, con el MIXER de ahora
+  applySlotMix(i) {
+    for (const k of MIX_CHANNELS) this.setInst(i, k, this.inst[i][k]);
+    this.setFxGain(i, this.fxGain[i]);
+  }
+
   // PRESET DE MEZCLA del MIXER (mix.js): pone los faders de los instrumentos y de FX de los dos
   // universos. El máster no lo toca. `mixVersion` avisa a las vistas para que sigan a los faders
   applyMix(name) {
@@ -162,7 +196,7 @@ export class Engine {
   // y MUTE de los instrumentos), así lo normal suena como siempre y no hereda los MUTE del estilo.
   // Elegir un preset en el MIXER la olvida: la mezcla vuelve a ser tuya (ver applyMix)
   styleMix(deck, sty, at) {
-    const i = this.decks.indexOf(deck);
+    const i = this.slotOf(deck);
     if (i < 0) return;
     const saved = (this.styleSaved ||= [null, null]);
     if (!(sty.t > 0)) {
@@ -201,7 +235,7 @@ export class Engine {
   // UNIVERSO GUARDADO (Deck.loadUniverse, universe.js): al entrar, su MIXER (faders, MUTE de sus
   // instrumentos, FX) en el 1 de su compás. Tempo, tónica y modo, aparte (applyGlobals)
   universeLoaded(deck, u, at) {
-    const i = this.decks.indexOf(deck);
+    const i = this.slotOf(deck);
     if (i < 0) return;
     const M = u.mix;
     if (M) {
@@ -540,12 +574,11 @@ export class Engine {
     this.driftWin = [];
     this.lastWall = 0; // el MARGEN en AUTO no cuenta como atasco el hueco de rehacer el audio
     this.noise = makeNoise(ctx);
-    // BANCO DE SONIDOS de hats y percs (soundBank.js): uno para los dos universos. Sobrevive a
-    // rehacer el audio; solo se rehace si cambia la frecuencia de muestreo
-    if (this.bank?.sr !== ctx.sampleRate) {
-      this.bank?.dispose();
-      this.bank = new SoundBank(ctx.sampleRate);
-      this.bank.inUse = (k) => this.decks.some((d) => d.drums.uses(k));
+    // BANCOS DE SONIDOS de hats y percs (soundBank.js; uno por motor, ver bankOf): para los dos
+    // universos. Sobreviven a rehacer el audio; solo se rehacen si cambia la frecuencia de muestreo
+    if (Object.values(this.banks).some((b) => b.sr !== ctx.sampleRate)) {
+      for (const b of Object.values(this.banks)) b.dispose();
+      this.banks = {};
     }
 
     // master: suma -> graves en mono -> glue -> limitador
@@ -635,11 +668,11 @@ export class Engine {
   }
   // lo que deja pasar el MIXER en un canal: el fader por el MUTE / SOLO
   instGain(deck, k) {
-    const i = this.decks.indexOf(deck);
+    const i = this.slotOf(deck);
     return this.inst[i][k] * this.heard(i, k);
   }
   fxLevel(deck) {
-    const i = this.decks.indexOf(deck);
+    const i = this.slotOf(deck);
     return (this.fxGain[i] ?? 1) * this.heard(i, 'fx');
   }
 

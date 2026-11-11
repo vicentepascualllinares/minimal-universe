@@ -42,6 +42,8 @@ const GEN = {
       </div>
       <div class="sty-k"><div class="sty-knob"></div><span class="sty-klab">RO</span></div>`,
   pur: '<div class="pur"><div class="pur-knob"></div><span class="pur-lab">PUREZA</span></div>',
+  // MOTOR (src/motores/LEEME.md): un botón por motor (los pone deckView)
+  mot: '<div class="mots"></div>',
   seed: '<button class="seed">NUEVO UNIVERSO</button>',
   sim: `<div class="sim">
         <div class="sim-k sim-s"><div class="sim-knob"></div><span class="sim-lab">SONIDO</span></div>
@@ -69,6 +71,7 @@ const genPanel = () => `
       </div>
     </div>
     <div class="gp"><div class="gp-t gp-row">ESTILO ${GEN.pur}</div>${GEN.sty}</div>
+    <div class="gp gp-mot"><span class="gp-t">MOTOR<i class="gp-h mot-h"></i></span>${GEN.mot}</div>
     <div class="gp gp-scale"><span class="gp-t">ESCALA</span>
       <div class="gscale">
         <span class="gs-key" title="TÓNICA global (la misma que en la cabecera) · arrastrar arriba / abajo o rueda"></span>
@@ -88,7 +91,7 @@ function template(label, panel) {
       <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><div class="h-handle"></div></div>
       <span class="cx-lab hi">COMPLEJO</span>
     </div>
-    ${panel ? '' : `<div class="gen">${GEN.sty}${GEN.pur}${GEN.seed}${GEN.sim}${GEN.code}</div>`}
+    ${panel ? '' : `<div class="gen">${GEN.sty}${GEN.pur}${GEN.mot}${GEN.seed}${GEN.sim}${GEN.code}</div>`}
   </div>
   <div class="rows">
   <div class="row">
@@ -509,6 +512,38 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
   };
   const purKnob = new Knob(q('.pur-knob'), { value: deck.purityNext, def: 1, bipolar: false, onChange: (v) => setPurity(v) });
   purEl.style.setProperty('--v', deck.purityNext);
+  // MOTOR (src/motores/LEEME.md): con cuál nace el próximo NUEVO UNIVERSO (como el ESTILO: solo al
+  // generar; antes del primer GENERAR, el que espera se vuelve a sortear con él). Un universo que se trae
+  // lo deja en el suyo. El punto = el motor del que suena; parpadea = el del que espera al compás
+  const E0 = deck.engine;
+  const motEl = q('.mots'), motH = q('.mot-h');
+  const motIds = E0.multi ? Object.keys(E0.motors).map(Number) : [];
+  motEl.innerHTML = motIds.map((m) => `<button data-m="${m}"${E0.motors[m].frozen ? '' : ' class="dev"'}>${m}</button>`).join('');
+  if (!motIds.length) (q('.gp-mot') ?? motEl).hidden = true;
+  motEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    deck.motorNext = Number(b.dataset.m);
+    if (E0.generated) return;
+    clearTimeout(styWait);
+    styWait = setTimeout(() => deck.styleWaiting(), 200);
+  });
+  let motSeen = '';
+  const showMotor = () => {
+    const key = `${deck.motorNext}|${deck.motor}|${deck.nextMotor}`;
+    if (key === motSeen || !motIds.length) return;
+    motSeen = key;
+    const M = E0.motors, nx = M[deck.motorNext];
+    for (const b of motEl.children) {
+      const m = Number(b.dataset.m);
+      b.classList.toggle('on', m === deck.motorNext);
+      b.classList.toggle('now', m === deck.motor);
+      b.classList.toggle('wait', m === deck.nextMotor);
+      b.title = `${M[m].label}: ${M[m].desc}\nclic = el próximo NUEVO UNIVERSO nace con él${m === deck.motor ? '\n(el que suena es de este motor)' : ''}`;
+    }
+    if (motH) motH.textContent = nx ? (nx.frozen ? 'CONGELADO' : 'EN OBRAS') : '';
+    motEl.title = `MOTOR del próximo NUEVO UNIVERSO: ${nx?.label ?? '?'} · el que suena: ${M[deck.motor]?.label ?? '?'}`;
+  };
   // SEMILLA del universo que suena (en el panel, con su tempo y escala): clic = copiarla
   const codeBtn = q('.ucode');
   // (panel) MULTIVERSO: GUARDAR el que suena, la BIBLIOTECA y la COLA para IMPORTAR (universeIO.js)
@@ -517,7 +552,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
   const gsKey = q('.gs-key'), gsMode = q('.gs-mode');
   if (panel) {
     const E = deck.engine;
-    const setKey = (v) => { E.rootMidi = Math.round(Math.min(35, Math.max(28, v))); };
+    const setKey = (v) => { E.rootMidi = Math.round(Math.min(39, Math.max(28, v))); }; // E1..D#2: las 12 notas
     let kp = null;
     gsKey.addEventListener('pointerdown', (ev) => { if (kp) return; kp = { id: ev.pointerId, y: ev.clientY, v: E.rootMidi }; gsKey.setPointerCapture(ev.pointerId); });
     gsKey.addEventListener('pointermove', (ev) => { if (kp && ev.pointerId === kp.id) setKey(kp.v + (kp.y - ev.clientY) / 14); });
@@ -710,7 +745,8 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
         if (gsMode.textContent !== m) gsMode.textContent = m;
         gsMode.classList.toggle('pending', E.scaleNext !== null);
       }
-      const sk = `${E.bpm}|${E.rootMidi}|${E.scaleNext ?? E.scaleI}|${deck.similarOf?.with ?? ''}|${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.purityNext.toFixed(2)}|${deck.sty.purity}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
+      showMotor();
+      const sk = `${deck.motor}|${E.bpm}|${E.rootMidi}|${E.scaleNext ?? E.scaleI}|${deck.similarOf?.with ?? ''}|${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.purityNext.toFixed(2)}|${deck.sty.purity}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
       if (sk !== stySeen) {
         stySeen = sk;
         // un UNIVERSO GUARDADO que se carga pone el fader de ESTILO y la PUREZA en los suyos

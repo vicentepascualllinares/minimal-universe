@@ -15,7 +15,7 @@
 // GUARDAR: el que suena, tal como suena, con el nombre que se escriba (vacío = uno descriptivo) y en
 // la carpeta que se elija (se recuerda la última: para guardar seguidas las versiones de una familia).
 
-import { captureUniverse, seedCode, parseSeedCode, readUniverse, universeFileName, describeGlobal, NOTES } from '../music/universe.js';
+import { seedCode, parseSeedCode, readUniverse, universeFileName, describeGlobal, NOTES } from '../music/universe.js';
 import { STYLES } from '../music/styles.js';
 import { SCALES } from '../music/emotion.js';
 
@@ -64,7 +64,7 @@ export const suggestName = (deck, engine) => [
 // GUARDAR el que suena en la biblioteca, con su nombre y en su carpeta ('' = sin carpeta). Si no hay
 // biblioteca (un servidor antiguo), se descarga el archivo
 export async function saveUniverse(deck, engine, name, folder = '') {
-  const universe = captureUniverse(deck, engine);
+  const universe = deck.capture();
   try {
     const r = await api('/api/universos', send('POST', { name: name || suggestName(deck, engine), universe, folder }));
     shared.lastFolder = r.folder ?? folder;
@@ -128,12 +128,47 @@ export function bindSaver(root, engine, deck) {
   return { frame() { const s = suggestName(deck(), engine); if (name.placeholder !== s) name.placeholder = s; } };
 }
 
+// ───────────────────────── MOTOR AL TRAER (src/motores/LEEME.md)
+// Cada universo apunta a su motor («-M1» en la semilla, `motor` en el archivo; sin nada, el 1, el de
+// antes de los motores) y se trae con él. Se puede elegir otro para comparar: en otro motor se trae
+// TAL COMO NACE (la misma semilla, estilo, tempo y escala), porque lo que mutó o se tocó es de los
+// generadores de su motor y en otro no tiene por qué encajar
+const motorPickHTML = '<div class="ui-line ui-motline"><span class="ui-lab">MOTOR</span><div class="mots ui-mots"></div><span class="ui-motnote"></span></div>';
+function motorPicker(line, engine) {
+  const box = line.querySelector('.ui-mots'), noteEl = line.querySelector('.ui-motnote');
+  const M = engine.motors, ids = engine.multi ? Object.keys(M).map(Number) : [];
+  line.hidden = !ids.length;
+  let own = 1, pick = 1, seedOnly = false;
+  box.innerHTML = ids.map((m) => `<button data-m="${m}"${M[m].frozen ? '' : ' class="dev"'}>${m}</button>`).join('');
+  const paint = () => {
+    for (const b of box.children) {
+      const m = Number(b.dataset.m);
+      b.classList.toggle('on', m === pick);
+      b.classList.toggle('now', m === own);
+      b.title = `${M[m].label}: ${M[m].desc}${m === own ? '\n(el suyo: el punto)' : ''}`;
+    }
+    noteEl.textContent = !M[own] ? `su motor (${own}) no está en esta versión del programa`
+      : pick === own ? 'el suyo' : seedOnly ? 'otro motor: la misma semilla, para comparar' : 'otro motor: tal como nace (lo que mutó es del suyo)';
+  };
+  box.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    pick = Number(b.dataset.m);
+    paint();
+  });
+  return {
+    set(u, onlySeed) { own = u.motor ?? 1; pick = M[own] ? own : engine.devMotor; seedOnly = !!onlySeed; paint(); },
+    get: () => (ids.length ? pick : undefined),
+    note: (u) => (ids.length && pick !== (u.motor ?? 1) ? ` · con el MOTOR ${pick}` : ''),
+  };
+}
+
 // ───────────────────────── TRAER
 export const importerHTML = () => `
   <button class="ui-libbtn" title="los universos guardados en la biblioteca (la carpeta universos/)">GUARDADOS <b class="ui-count"></b><i class="ui-arrow">▾</i></button>
   <div class="ui-lib" hidden></div>
   <div class="ui-line">
-    <input class="ui-in" type="text" spellcheck="false" autocomplete="off" placeholder="o una semilla · 968782145-RO100-124-F#EOL">
+    <input class="ui-in" type="text" spellcheck="false" autocomplete="off" placeholder="o una semilla · 968782145-RO100-124-F#EOL-M1">
     <button class="ui-open" title="abrir un archivo de universo (.json) de fuera de la biblioteca">ARCHIVO</button>
     <input class="ui-file" type="file" accept=".json,application/json" hidden>
   </div>
@@ -144,6 +179,7 @@ export const importerHTML = () => `
       <button class="ui-glob" title="al entrar, poner también su tempo, tónica y modo (si no, siguen los de ahora)">CON SU TEMPO Y ESCALA</button>
       <button class="ui-go">TRAER</button>
     </div>
+    ${motorPickHTML}
   </div>
   <span class="ui-note"></span>`;
 
@@ -154,11 +190,13 @@ export function bindImporter(root, engine, deck) {
   const globTxt = $('.ui-glob-txt'), globBtn = $('.ui-glob'), note = $('.ui-note');
   const libBtn = $('.ui-libbtn'), lib = $('.ui-lib'), count = $('.ui-count');
   let cand = null, candFile = null, withGlobals = false;
+  const mp = motorPicker($('.ui-motline'), engine);
   const say = (t) => { note.textContent = t; };
   const show = (u, from, label) => {
     cand = u;
     found.hidden = !u;
     if (!u) return;
+    mp.set(u, from === 'semilla');
     const how = from === 'semilla' ? 'tal como nace' : 'tal como sonaba';
     what.textContent = `${label ? `«${label}» · ` : ''}${from !== 'semilla' && u.code ? u.code : seedCode(u)} · ${styleTxt(u.style)} · ${how}`;
     const G = u.global;
@@ -340,8 +378,8 @@ export function bindImporter(root, engine, deck) {
   globBtn.addEventListener('click', () => { withGlobals = !withGlobals; globBtn.classList.toggle('on', withGlobals); });
   const go = () => {
     if (!cand) return;
-    deck().loadUniverse(cand, withGlobals);
-    say(`${cand.name ? `«${cand.name}»` : seedCode(cand)}${withGlobals && cand.global ? ' (con su tempo y escala)' : ''}: ${engine.generated ? 'entra en el 1 del compás siguiente' : 'listo: suena al GENERAR'}`);
+    deck().loadUniverse(cand, withGlobals, mp.get());
+    say(`${cand.name ? `«${cand.name}»` : seedCode(cand)}${withGlobals && cand.global ? ' (con su tempo y escala)' : ''}${mp.note(cand)}: ${engine.generated ? 'entra en el 1 del compás siguiente' : 'listo: suena al GENERAR'}`);
   };
   $('.ui-go').addEventListener('click', go);
   // lo de «ahora» cambia si se mueve el tempo o el modo
@@ -365,7 +403,7 @@ const bpmTxt = (G) => (G?.bpm ? String(G.bpm).replace('.', ',') : '—');
 // la semilla (con su estilo, sin tempo ni escala: esos van en sus columnas)
 const seedTxt = (it) => {
   const seed = it.seed ?? parseInt(it.code, 10);
-  return Number.isFinite(seed) ? seedCode({ seed, style: it.style }) : '—';
+  return Number.isFinite(seed) ? seedCode({ seed, style: it.style, motor: it.motor ?? 1 }) : '—';
 };
 export const multiverseHTML = (codeBtn) => `
   <div class="gp mv-now">
@@ -388,6 +426,7 @@ export const multiverseHTML = (codeBtn) => `
         <button class="mv-q-x" title="quitarlo de la cola">✕</button>
         <button class="mv-import" title="lanzarlo: entra en el 1 del compás siguiente (parado, al GENERAR)">IMPORTAR</button>
       </div>
+      ${motorPickHTML}
     </div>
     <span class="ui-note mv-note"></span>
   </div>
@@ -406,6 +445,7 @@ export function bindMultiverse(root, engine, deck) {
   let queued = null;   // EN COLA: { u, it }
   let withGlobals = false;
   let lastTap = { file: null, t: 0 };
+  const mp = motorPicker($('.mv-queue .ui-motline'), engine);
 
   const inFolder = (fo) => L.items.filter((it) => (fo === LOOSE ? !it.folder : it.folder === fo));
   const grid = () => {
@@ -467,6 +507,7 @@ export function bindMultiverse(root, engine, deck) {
     const u = await fetchUniverse(it.file);
     if (!u) { say(`${it.file}: no se pudo leer`); return; }
     queued = { u, it };
+    mp.set(u, false);
     say('');
     showQueue();
     render();
@@ -476,8 +517,8 @@ export function bindMultiverse(root, engine, deck) {
   $('.mv-import').addEventListener('click', () => {
     if (!queued) return;
     const { u, it } = queued;
-    deck().loadUniverse(u, withGlobals);
-    say(`«${it.name || u.name || seedCode(u)}»${withGlobals && u.global ? ' (con su tempo y escala)' : ''}: ${engine.generated ? 'entra en el 1 del compás siguiente' : 'listo: suena al GENERAR'}`);
+    deck().loadUniverse(u, withGlobals, mp.get());
+    say(`«${it.name || u.name || seedCode(u)}»${withGlobals && u.global ? ' (con su tempo y escala)' : ''}${mp.note(u)}: ${engine.generated ? 'entra en el 1 del compás siguiente' : 'listo: suena al GENERAR'}`);
     queued = null;
     showQueue();
     render();
@@ -603,7 +644,7 @@ export function bindMultiverse(root, engine, deck) {
 
 // DESCARGAR: el universo tal como suena, como archivo (para llevarlo a otro sitio)
 export function downloadUniverse(deck, engine) {
-  const u = captureUniverse(deck, engine);
+  const u = deck.capture();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(u, null, 1)], { type: 'application/json' }));
   a.download = universeFileName(u);
@@ -619,4 +660,5 @@ export const currentCode = (deck, engine, withGlobal = true) => seedCode({
   seed: deck.seed,
   style: deck.sty.t > 0 ? { name: deck.sty.name, t: deck.sty.t, purity: deck.sty.purity ?? 1 } : null,
   global: withGlobal ? nowGlobal(engine) : null,
+  motor: deck.motor, // (MOTORES: «-M1»; ver src/motores/LEEME.md)
 }) + (deck.similarOf ? ' · PARECIDO' : '');

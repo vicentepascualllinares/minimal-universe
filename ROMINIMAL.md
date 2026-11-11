@@ -191,6 +191,48 @@ fader, los mismos y alguno más).
 Para que no se pierda. Cada punto dice qué pide el género y en qué sesión de la
 [HOJA_DE_RUTA](HOJA_DE_RUTA.md) entra.
 
+### Plan acordado al escucharlo (2026-11-11) — por dónde seguir
+
+Al compararlo con temas reales, el usuario notó lo mismo que el diagnóstico: sobre todo **exceso de
+percusión y foley**. Se acordó este orden (lo que más acerca a «suena a disco» primero). Estado:
+
+1. ~~**Que el loop se repita**~~ (hecho, 0f6da75): polimetría que cierra cada 2 o 4 compases, golpes
+   fuertes siempre, mutación solo al empezar frase. Ver §6 «Repetición».
+2. **Frases de 2–4 compases (pregunta y respuesta)**: ~~en la percusión~~ (hecho: carriles de 32
+   pasos). **Falta en el BAJO**: hoy su motivo es de 16 pasos con una variante cada 4 compases
+   (generators.js, `BassGen`). Pide un motivo de 32 o 64 pasos donde el 2º compás conteste al 1º.
+3. ~~**Groove**~~ (hecho, a3f9dfe; «de momento aceptable» al oído). Falta: acentos de velocidad con
+   su propio dibujo, y groove en NORMAL (decidirlo: cambia lo de siempre).
+4. **EL BAJO — lo siguiente** (sesión acordada). Hoy (voices.js, `bass`): sierra + cuadrada + seno
+   por un paso bajo que se abre y se cierra en cada nota; correcto pero rígido. Pide:
+   - **deslizamientos** entre notas (glide / portamento; en el modo ácido, el «slide» del 303 con
+     acentos),
+   - **notas largas** que respiran (hoy `bass.len` 1–3 pasos casi siempre),
+   - y sobre todo **un filtro que se mueva despacio a lo largo de muchos compases** (la evolución
+     «por articulación y filtro» [MD]: «zooming, retracting, snaking» [Vid], «elastic» [MD]).
+   - Junto con el punto 2 (frase de 2–4 compases del bajo). Ojo: el bajo ya tiene sidechain del kick
+     y el modo de cada universo (pluck, sub, redondo, ácido: styles.js `bassModes`).
+5. **Movimiento lento (automatización)**: en un disco casi todo se mueve despacio a lo largo de 16–32
+   compases: el filtro de la percusión, la apertura de los hats, el envío al delay, el paneo. Hoy los
+   OSCILADORES mueven la densidad, no el timbre. Ver abajo «Efectos creativos» (filtros lentos, LFO al
+   corte, paneo con LFO aleatorio).
+6. **Sonido** (sesiones 1, 6 y 7, abajo): kick rominimal por capas («woody, dusty»), rim / snap,
+   teclas de verdad, grano y textura (vinilo, bits en buses), y **un gancho**: muchos temas se
+   reconocen por un sample raro que se repite (una voz, un trozo de jazz o folk); hoy nada hace ese
+   papel.
+7. **Arreglo horizontal y mezcla / máster** (sesiones 10, 13 y 4): un elemento entra o sale cada
+   8–16 compases durante 7–10 minutos; mono por debajo de ~200 Hz, máster de vinilo.
+
+Lo que queda abierto de lo hecho en estas sesiones:
+- **Escucharlo todo**: loops, foley como ear candy, bus de percusión con sidechain, groove.
+- La **mezcla ROMINIMAL, los envíos (`sendTrim`) y el preset ROMINIMAL los puso el usuario a oído**
+  (6b66c6a): no retocarlos sin preguntar.
+- El **bus de percusión** es solo con estilo; sus envíos al ESPACIO salen 6 ms antes que su sonido
+  seco (inaudible, apuntado); calibrar canales por **volumen percibido** (K, LUFS) y no solo por pico
+  es de la sesión 4 (HOJA_DE_RUTA).
+- **Cómo comprobar** que NORMAL sigue idéntico y medir densidad, repetición, foley y groove:
+  [herramientas/LEEME.md](herramientas/LEEME.md).
+
 - **Efectos creativos (sesión 5)**:
   - ~~**Delay como ritmo**~~ y ~~**reverb corta y deliberada**~~: **hechos (2026-11-10)**, ver §6
     («Espacio»). Falta escucharlos.
@@ -219,7 +261,8 @@ Para que no se pierda. Cada punto dice qué pide el género y en qué sesión de
     de sierra y cuadrada con otra envolvente.
   - **Una voz de bleeps / micro-melodía** y un **acid** de verdad (303: deslizamientos, acentos).
   - Sub-bajo de seno puro con su propio canal o capa.
-- ~~**Groove**~~: **hecho (2026-11-11)** en ROMINIMAL, ver §6 «Groove». Falta: escucharlo; acentos
+- ~~**Groove**~~: **hecho (2026-11-11)** en ROMINIMAL, ver §6 «Groove»; al oído, «de momento
+  aceptable». Falta: acentos
   de velocidad con su propio dibujo (hoy los da cada carril); y groove para NORMAL (hoy sigue con
   un swing para todo, a propósito: NORMAL no cambia).
 - **Partes que evolucionan solas (sesión 10)**: el rominimal es un **proceso** («horizontal»): un

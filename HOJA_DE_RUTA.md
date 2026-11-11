@@ -5,6 +5,12 @@ cerrado, y ninguna se empieza hasta decidirlo. Antes de las que tocan samples, c
 que releer [RENDIMIENTO.md](RENDIMIENTO.md) §4: hay decisiones que tomar primero (sampler,
 tope de voces, AudioWorklet).
 
+**Lo siguiente acordado (2026-11-11): el BAJO de ROMINIMAL** (deslizamientos, notas largas, filtro
+que se mueve despacio a lo largo de muchos compases y frase de 2–4 compases), y después el resto del
+plan: movimiento lento, sonido, arreglo y mezcla. Orden, estado y detalle en
+[ROMINIMAL.md](ROMINIMAL.md) §7 «Plan acordado al escucharlo»; herramientas para medir y comprobar
+que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
+
 ## Sesiones pendientes
 
 1. **Texturas**: capas de fondo, ruido con vida y movimiento lento. Que el silencio entre

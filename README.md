@@ -805,3 +805,4 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/music/kit.js` — CANTIDAD y VARIEDAD de hats y percs: las curvas de las perillas y los tipos de hat (FINO, OSCURO, TICK, MEDIO).
 - `src/music/styles.js` — los ESTILOS (de momento ROMINIMAL) como datos: rangos, pesos, arquetipos, modos, timbre y mezcla; las tiradas con estilo (con NORMAL, las de siempre) y el color llevado a los rangos del género. Investigación: ROMINIMAL.md.
 - `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).
+- `herramientas/` — scripts de Node para medir lo que genera el motor (densidad, repetición del loop, foley, groove) y comprobar que NORMAL sale idéntico tras un cambio. Cómo usarlos: herramientas/LEEME.md.

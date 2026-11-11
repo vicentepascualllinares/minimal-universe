@@ -4,7 +4,7 @@
 
 import * as V from './voices.js';
 import { DrumSlots } from './drumSlots.js';
-import { Channel, Saturator, glide, fixChannels } from './dsp.js';
+import { Channel, Saturator, glide, fixChannels, compMakeup } from './dsp.js';
 import { makeGenerators, trimLens } from '../music/generators.js';
 import { EmotionState, mapEmotion, degreeToSemis } from '../music/emotion.js';
 import { Arrangement, INSTRUMENTS, mixOf } from '../music/arrangement.js';
@@ -15,12 +15,19 @@ import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
 import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
-import { NORMAL, rollStyle, styleColor } from '../music/styles.js';
+import { NORMAL, rollStyle, styleColor, sValue } from '../music/styles.js';
 import { makeSpace, SENDS } from '../music/space.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
 
 const glideAll = glide;
+
+// BUS DE PERCUSIÓN (ver initAudio y setBus): quién va por él. El clap NO: con el sidechain del kick
+// desaparecería (cae en el mismo tiempo que el kick) y en minimal marca sin esconderse
+export const PERC_BUS = ['hat', 'ohat', 'perc', 'foley'];
+// el retraso del compresor del navegador (6 ms de «lookahead», medido: 264 muestras a 44,1 kHz,
+// 288 a 48 kHz)
+const busLatency = (sr) => Math.floor(0.006 * sr) / sr;
 
 const newSeed = () => (Math.random() * 1e9) | 0;
 
@@ -157,9 +164,24 @@ export class Deck {
     this.sat.output.connect(tHp).connect(tLp).connect(this.lows).connect(gap).connect(this.contrast).connect(this.pre);
     this.fx = new TransitionFx(this, ctx, this.pre, { hp: tHp, lp: tLp, gap });
 
+    // BUS DE PERCUSIÓN (hats, open, percs y foley; NUNCA el clap ni el kick): una compresión de bus
+    // suave que los pega y doma los golpes más puntiagudos, para que se sienten detrás del kick (ver
+    // setBus). Dos caminos al mismo sitio: directo (NORMAL: exactamente como antes) y por el compresor
+    // (con ESTILO). El compresor del navegador mira 6 ms por delante (los retrasa: BUS_LAT): con él
+    // encendido, sus golpes y su sidechain se programan esos ms antes y llegan a tiempo con el kick
+    this.pbIn = fixChannels(ctx.createGain(), 2);
+    this.pbDirect = ctx.createGain();
+    this.pbComp = ctx.createDynamicsCompressor();
+    this.pbWet = ctx.createGain();
+    this.pbWet.gain.value = 0;
+    this.pbIn.connect(this.pbDirect).connect(this.sum);
+    this.pbIn.connect(this.pbComp).connect(this.pbWet).connect(this.sum);
+    this.busLat = 0;
+    this.busOn = false;
+
     this.ch = {};
     for (const k of INSTRUMENTS) {
-      this.ch[k] = new Channel(ctx, k, this.sum, Q.oversample ? '2x' : 'none');
+      this.ch[k] = new Channel(ctx, k, PERC_BUS.includes(k) ? this.pbIn : this.sum, Q.oversample ? '2x' : 'none');
       this.ch[k].user.gain.value = this.engine.instGain(this, k); // MIXER (fader, MUTE y SOLO)
     }
 
@@ -170,6 +192,7 @@ export class Deck {
     this.spaceFx.wire('fx', this.fx.bus);
     for (const k in this.spaceFx.ret) this.spaceFx.ret[k].user.gain.value = this.engine.instGain(this, k);
     this.spaceFx.set(this.space, ctx.currentTime, this.engine.stepDur, true);
+    this.setBus(this.sty ?? NORMAL, ctx.currentTime, true); // (audio rehecho: el bus como estaba)
 
     // hats y percs: ranuras nuevas sobre los canales nuevos (las grabaciones siguen en el banco)
     this.drums.init(ctx);
@@ -579,6 +602,7 @@ export class Deck {
       // MIXER no se toca, como siempre, salvo para devolver la mezcla de antes si el universo que se
       // va la traía de un estilo (ver Engine.styleMix)
       this.engine.styleMix(this, this.sty, t0);
+      this.setBus(this.sty, t0);
     }
     const G = this.gen;
     // la complejidad de los faders (A): manda en la mutación, la armonía y el protagonismo.
@@ -591,17 +615,22 @@ export class Deck {
     const eI = { ...this.e, gen: cx.inst.gen, cx: cx.inst.cx };
     const r = G.rng;
     const muP = eP.gen.mutation;
-    if (b > 0 && b % 4 === 0) {
-      if (r.chance(muP)) G.perc.mutate(1);
-      if (r.chance(muP * 0.5)) G.hat.mutate();
-      if (r.chance(muP * 0.6)) G.foley.mutate(1);
+    // ESTILO: cada cuántos compases puede mutar la percusión (en ROMINIMAL, solo al empezar frase:
+    // el loop aguanta) y cuánto (× la mutación de siempre). Sin estilo, lo de siempre
+    const Sy = this.sty;
+    const mutEvery = Sy.t ? Sy.k['mut.every'] ?? 4 : 4;
+    if (b > 0 && b % mutEvery === 0) {
+      if (r.chance(muP * sValue(Sy, 'mut.perc', 1))) G.perc.mutate(1);
+      if (r.chance(muP * 0.5 * sValue(Sy, 'mut.hat', 1))) G.hat.mutate();
+      if (r.chance(muP * 0.6 * sValue(Sy, 'mut.foley', 1))) G.foley.mutate(1);
     }
     if (b > 0 && b % 8 === 0) {
       if (r.chance(eB.gen.mutation * 0.7)) G.bass.mutate();
       if (r.chance(muP * 0.35)) G.clap.mutate();
       if (r.chance(muP * 0.4)) G.ohat.mutate();
     }
-    if (b > 0 && b % 32 === 0 && cx.eff.perc > 0.3) G.perc.mutate(2);
+    // la mutación fuerte de cada 32 compases; con estilo, solo a veces (sin estilo, sin tirada)
+    if (b > 0 && b % 32 === 0 && cx.eff.perc > 0.3 && !(Sy.t && !r.chance(sValue(Sy, 'mut.force', 1)))) G.perc.mutate(2);
     if (b > 0 && b % 16 === 0 && r.chance(eI.gen.mutation * 0.6)) G.harmony.mutate();
 
     // protagonismo: si hay más instrumentos de los que la complejidad admite, ceden densidad
@@ -645,6 +674,38 @@ export class Deck {
     if (this.history.length > 16) this.history.shift();
   }
 
+  // BUS DE PERCUSIÓN con el ESTILO del universo (`bus` en styles.js; sin él, el camino directo de
+  // siempre). Cambia justo antes del 1 del compás en que entra el universo (`t`), con un fundido
+  // corto entre los dos caminos: sin clic, y los golpes de ese 1 (que se programan BUS_LAT antes)
+  // ya van por el camino nuevo. `now` = ya, sin fundido (audio recién montado)
+  setBus(sty, t, now = false) {
+    const B = sty.t ? sty.k['bus'] : null;
+    const on = !!B;
+    const c = this.pbComp;
+    const at = now ? t : Math.max(this.ctx.currentTime, t - 0.012);
+    // salida del compresor: sin su ganancia de compensación (compMakeup), comprime y NO sube
+    let wet = 0;
+    if (on) {
+      const u = sty.t;
+      const thr = lerp(0, B.thr, u), ratio = lerp(1, B.ratio, u);
+      c.threshold.setValueAtTime(thr, at);
+      c.ratio.setValueAtTime(ratio, at);
+      c.knee.setValueAtTime(B.knee, at);
+      c.attack.setValueAtTime(B.attack, at);
+      c.release.setValueAtTime(B.release, at);
+      wet = 1 / compMakeup(thr, B.knee, ratio);
+    }
+    if (now) {
+      this.pbDirect.gain.value = on ? 0 : 1;
+      this.pbWet.gain.value = wet;
+    } else if (on !== this.busOn || on) {
+      this.pbDirect.gain.setTargetAtTime(on ? 0 : 1, at, 0.003);
+      this.pbWet.gain.setTargetAtTime(wet, at, 0.003);
+    }
+    this.busOn = on;
+    this.busLat = on ? busLatency(this.ctx.sampleRate) : 0;
+  }
+
   // THROW (el gesto dub del ESPACIO): en el último compás de algunas frases, el envío al delay del
   // PROTAGONISTA del eco se abre para su último golpe del compás (desde el 2º tiempo) y los ecos
   // caen sobre el 1 de la frase siguiente. No en LOOP (se repite lo que sonó)
@@ -658,7 +719,9 @@ export class Deck {
     if (s < 4) return;
     const sd = this.engine.stepDur;
     const t = t0 + s * sd + (s % 2 === 1 ? (this.e.groove.swing - 0.5) * 2 * sd : 0);
-    this.spaceFx.throwHit(D.focus, t, Math.min(0.2, sd * 1.5));
+    // (el envío sale del canal, antes del BUS: para los del bus, el golpe sale `busLat` antes)
+    const lat = PERC_BUS.includes(D.focus) ? this.busLat : 0;
+    this.spaceFx.throwHit(D.focus, t - lat, Math.min(0.2, sd * 1.5));
   }
 
   // OSCILADOR: genera los pasos de un grupo con la complejidad de cada pulso y los cose.
@@ -772,6 +835,20 @@ export class Deck {
         C[k].duck.gain.setTargetAtTime(1 - dk, t, 0.004);
         C[k].duck.gain.setTargetAtTime(1, t + 0.05, 0.09);
       }
+      // ESTILO: SIDECHAIN del kick a hats, percs y foley (`duck.*` en styles.js; el clap NO): el
+      // kick asoma y la percusión se sienta detrás, entre golpe y golpe. Van por el BUS: su
+      // bajada se programa BUS_LAT antes, como sus golpes
+      const Sy = this.sty;
+      if (Sy.t) {
+        const td = t - this.busLat;
+        for (const k of PERC_BUS) {
+          const amt = Sy.k[`duck.${k}`];
+          const dk = amt ? Math.min(0.6, depth * lv * amt * Sy.t * A.state[k].progress) : 0;
+          if (dk < 0.01) continue;
+          C[k].duck.gain.setTargetAtTime(1 - dk, td, 0.003);
+          C[k].duck.gain.setTargetAtTime(1, td + 0.06, 0.07);
+        }
+      }
       emit('kick', t, ev.vel);
     }
     if ((ev = B.clap[s]) && A.audible('clap', t)) {
@@ -780,25 +857,27 @@ export class Deck {
       emit('clap', tc, ev.vel);
     }
     // HATS Y PERCS: cada golpe va a su ranura (drumSlots.js), que sabe su sonido y sus colas.
-    // `ty` = tipo de hat de la VARIEDAD (1..4); sin él, el hat del universo
+    // `ty` = tipo de hat de la VARIEDAD (1..4); sin él, el hat del universo.
+    // Van por el BUS DE PERCUSIÓN: con su compresor encendido salen `lat` antes (llegan a tiempo)
+    const lat = this.busLat;
     if ((ev = B.hat[s]) && A.audible('hat', t)) {
-      const th = Math.max(t + hum(), ctx.currentTime);
-      if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'hat', th, ev.vel)) emit('hat', th, ev.vel);
+      const th = Math.max(t + hum() - lat, ctx.currentTime);
+      if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'hat', th, ev.vel)) emit('hat', th + lat, ev.vel);
     }
     if ((ev = B.ohat[s]) && A.audible('ohat', t)) {
-      const th = Math.max(t + hum() * 0.5, ctx.currentTime);
-      if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'ohat', th, ev.vel)) emit('ohat', th, ev.vel);
+      const th = Math.max(t + hum() * 0.5 - lat, ctx.currentTime);
+      if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'ohat', th, ev.vel)) emit('ohat', th + lat, ev.vel);
     }
     if ((ev = B.perc[s]) && A.audible('perc', t)) {
       for (const h of ev) {
-        const tp = Math.max(t + hum(), ctx.currentTime);
-        if (this.drums.hit(`p${h.n}`, tp, h.vel)) emit('perc', tp, h.vel);
+        const tp = Math.max(t + hum() - lat, ctx.currentTime);
+        if (this.drums.hit(`p${h.n}`, tp, h.vel)) emit('perc', tp + lat, h.vel);
       }
     }
     // FOLEY: en su paso, sin humanizar (el gesto ya lleva su tiempo dentro del sonido)
     if ((ev = B.foley[s]) && A.audible('foley', t)) {
-      const tf = Math.max(t, ctx.currentTime);
-      for (const h of ev) if (this.drums.hit(`f${h.n}`, tf, h.vel)) emit('foley', tf, h.vel);
+      const tf = Math.max(t - lat, ctx.currentTime);
+      for (const h of ev) if (this.drums.hit(`f${h.n}`, tf, h.vel)) emit('foley', tf + lat, h.vel);
     }
     if ((ev = B.bass[s]) && A.audible('bass', t)) {
       const semis = degreeToSemis(ev.deg, scale) + 12;

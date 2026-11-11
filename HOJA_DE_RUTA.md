@@ -28,6 +28,13 @@ tope de voces, AudioWorklet).
      no ve el glue ni el techo (`ceiling` en dsp.js), y con varias etapas habrá que decidir
      qué se enseña: la suma, cada etapa o la del último limitador.
    - Hoy A, B y los canales no tienen limitador: solo medidor de nivel.
+   - **Ya hecho (2026-11-11, solo con ESTILO)**: BUS DE PERCUSIÓN por universo (hats, open, percs y
+     foley; nunca clap ni kick) con compresión suave y SIDECHAIN del kick (deck.js, `setBus`). El
+     compresor del navegador sube la salida solo (`compMakeup` en dsp.js la anula) y retrasa 6 ms
+     (los golpes del bus se programan antes). Pendiente aquí: que NORMAL lo use también (cambia el
+     sonido de siempre: decidirlo), sus envíos al ESPACIO salen 6 ms antes que su sonido seco
+     (inaudible, pero apuntado), y calibrar los canales por VOLUMEN PERCIBIDO (K, LUFS) además de por
+     pico: medido, la percusión con el mismo pico se oye más que el kick.
 5. **Efectos creativos**: reverb, delay y compañía. Los risers y los platos de las transiciones
    son los que más lo piden.
    - **EMPEZADA (2026-11-10)**: **ESPACIO** de cada universo (README → "Espacio: delay y

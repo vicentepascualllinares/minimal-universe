@@ -252,9 +252,27 @@ function makePercSound(r, lead = false, sty = NORMAL) {
 
 const leadMinK = (l) => (l.lead ? Math.ceil(l.len / 4) : 1);
 
+// dónde va cada carril (percusión y foley). Sin estilo, el paso absoluto: la polimetría gira sin fin.
+// Con ESTILO (`loop.bars`), la POLIMETRÍA CIERRA: todos los carriles vuelven a empezar cada 2 o 4
+// compases, como el «master length» de una caja de ritmos. Dentro de la frase el 3 contra 4 sigue
+// tirando; la frase entera se repite y el loop se reconoce. Y `sure`: con estilo, los golpes fuertes
+// (acento ≥ `loop.sure`) salen siempre; solo los flojos (los fantasmas) a veces sí y a veces no
+function loopPos(sty, abs) {
+  const L = sty.t ? sty.k['loop.bars'] : 0;
+  const S = sty.t ? sty.k['loop.sure'] : undefined;
+  // (el umbral va de «ninguno» —por encima del acento máximo, 1— al del estilo según el fader)
+  return { pos: L ? abs % (16 * L) : abs, sure: S === undefined ? Infinity : lerp(1.01, S, sty.t) };
+}
+
 function makeLane(r, lead = false, sty = NORMAL) {
-  const len = lead ? sWeighted(r, sty, 'lead.len', [16, 12, 8, 6], [3, 2, 1.5, 1])
+  let len = lead ? sWeighted(r, sty, 'lead.len', [16, 12, 8, 6], [3, 2, 1.5, 1])
     : sWeighted(r, sty, 'perc.len', [16, 12, 10, 7, 6, 5, 3], [4, 2, 1, 2, 1, 1.5, 0.8]);
+  // ESTILO: un carril de compás puede ser una FRASE DE DOS COMPASES (32 pasos): el 2º compás
+  // contesta al 1º (pregunta y respuesta) y el loop se repite cada dos. Sin estilo, ninguna tirada
+  if (sty.t && len === 16) {
+    const p = sty.k[lead ? 'lead.phrase' : 'perc.phrase'];
+    if (p && r.chance(p * sty.t)) len = 32;
+  }
   const k = lead ? r.int(Math.ceil(len / 4), Math.ceil(len / 2)) : clamp(r.int(1, Math.ceil(len / 2)), 1, len);
   return {
     lead, len, k, rot: lead ? 2 * r.int(0, len / 2 - 1) : r.int(0, len - 1),
@@ -328,15 +346,19 @@ export class PercGen {
       return x < 0.25 ? 0 : clamp(Math.round(x), 1, Math.ceil(l.len * 0.75));
     });
     const f = e.cx.fast;
+    const { pos, sure } = loopPos(this.sty, abs);
+    // JERARQUÍA (solo con ESTILO, `perc.back`): la percusión principal delante y las demás detrás,
+    // acompañando (sin estilo, todas iguales: ×1)
+    const back = this.sty.t && this.sty.k['perc.back'] ? lerp(1, this.sty.k['perc.back'], this.sty.t) : 1;
     for (let s = 0; s < 16; s++) {
       const evs = [];
       for (let n = 0; n < this.lanes.length; n++) {
         const l = this.lanes[n];
         if (!ks[n]) continue;
-        const i = (abs + s) % l.len;
+        const i = (pos + s) % l.len;
         if (s % 2 === 1 && l.acc[i] < 0.4 + 0.6 * f) continue; // menos semicorcheas
         const hit = l.rank[i] < ks[n] || (fill && s >= 12 && n === 0 && this.rng.chance(0.6));
-        if (hit && this.rng.chance(l.prob)) evs.push({ lane: l, n, vel: l.acc[i] }); // n = su ranura de sonido (p0..p4)
+        if (hit && (l.acc[i] >= sure || this.rng.chance(l.prob))) evs.push({ lane: l, n, vel: n ? l.acc[i] * back : l.acc[i] }); // n = su ranura de sonido (p0..p4)
       }
       if (evs.length) st[s] = evs;
     }
@@ -354,14 +376,15 @@ export class PercGen {
 function foleyObject(r, mat) {
   return { mat, timbre: r.int(1, 2 ** 30), pan: r.float(-0.8, 0.8) };
 }
-function makeFoleyLane(r, kind) {
-  // largos (hasta dos compases): cada objeto aparece de vez en cuando, no en cada compás
-  const len = r.weighted([32, 24, 20, 16, 12, 10, 7], [1.5, 1.5, 1, 3, 2, 1, 0.8]);
+function makeFoleyLane(r, kind, sty = NORMAL) {
+  // largos (hasta dos compases): cada objeto aparece de vez en cuando, no en cada compás.
+  // Con ESTILO, sus pesos (en ROMINIMAL, los que encajan en el loop de 1, 2 o 4 compases)
+  const len = sWeighted(r, sty, 'foley.len', [32, 24, 20, 16, 12, 10, 7], [1.5, 1.5, 1, 3, 2, 1, 0.8]);
   return {
     // pocos golpes: cada gesto dura de medio a un compás entero y se solaparían
     len, k: r.int(1, Math.ceil(len / 8)), rot: r.int(0, len - 1), rank: null,
     acc: Array.from({ length: len }, () => r.float(0.45, 1)),
-    prob: r.float(0.7, 1),
+    prob: sFloat(r, sty, 'foley.prob', 0.7, 1),
     sound: foleyObject(r, kind),
   };
 }
@@ -382,7 +405,7 @@ export class FoleyGen {
     this.rng = rng;
     this.sty = sty;
     const kinds = foleyOrder(rng, sty);
-    this.lanes = [0, 1, 2, 3, 4].map((n) => makeFoleyLane(rng, kinds[n]));
+    this.lanes = [0, 1, 2, 3, 4].map((n) => makeFoleyLane(rng, kinds[n], sty));
     this.lanes.forEach(laneRank);
   }
   mutate(strength = 1) {
@@ -399,6 +422,7 @@ export class FoleyGen {
   }
   // como PercGen.bar; `perc` = los pasos de la percusión de este compás (para no pisarla)
   bar(b, d, e, abs, perc) {
+    if (this.sty.t && this.sty.k['candy.rate']) return this.candyBar(b, d, e);
     const st = new Array(16).fill(null);
     const mul = amountMul(e.kit.amt) * (0.35 + 0.65 * d);
     const ks = this.lanes.map((l, n) => {
@@ -406,22 +430,55 @@ export class FoleyGen {
       return x < 0.25 ? 0 : clamp(Math.round(x), 1, Math.ceil(l.len * 0.75));
     });
     const f = e.cx.fast;
+    const { pos, sure } = loopPos(this.sty, abs);
     for (let s = 0; s < 16; s++) {
       const evs = [];
       for (let n = 0; n < this.lanes.length; n++) {
         const l = this.lanes[n];
         if (!ks[n]) continue;
-        const i = (abs + s) % l.len;
+        const i = (pos + s) % l.len;
         if (l.rank[i] >= ks[n]) continue;
         if (s % 2 === 1 && l.acc[i] < 0.4 + 0.6 * f) continue; // menos semicorcheas
         if (perc?.[s] && l.acc[i] < 0.85) continue;           // ahí ya suena una perc
-        if (this.rng.chance(l.prob)) evs.push({ n, vel: l.acc[i] }); // n = su ranura de sonido (f0..f4)
+        if (l.acc[i] >= sure || this.rng.chance(l.prob)) evs.push({ n, vel: l.acc[i] }); // n = su ranura de sonido (f0..f4)
       }
       if (evs.length) st[s] = evs;
     }
     return st;
   }
+
+  // EAR CANDY (solo con ESTILO, `candy.*`): el foley deja de ser un carril del loop y pasa a ser
+  // un detalle que APARECE de vez en cuando: un objeto suelto, casi siempre al final de una frase,
+  // en un sitio débil del compás (nunca encima del kick), y no vuelve en el mismo sitio. «Ear candy»
+  // = sorpresa, no ritmo (2026-11-11: como carril sonaba en el 77 % de los compases y ocupaba la
+  // mitad de cada uno). CANTIDAD = cuántas veces aparece; VARIEDAD = cuántos objetos se turnan.
+  // Los carriles (y sus objetos y sonidos) siguen ahí: de ellos sale QUÉ suena
+  candyBar(b, d, e) {
+    const st = new Array(16).fill(null);
+    const r = this.rng, K = this.sty.k;
+    // probabilidad de este compás: la del universo × CANTIDAD × presencia de la escena; la frase
+    // la reparte (final de frase arriba, su primer compás casi nunca)
+    const ph = b % 8;
+    const where = ph === 7 ? 2.4 : ph === 3 ? 1.6 : ph === 0 ? 0.3 : 0.8;
+    const p = K['candy.rate'] * amountMul(e.kit.amt) * (0.4 + 0.6 * d) * where;
+    if (!r.chance(Math.min(0.9, p))) return st;
+    // qué objeto: uno de los que deja la VARIEDAD (el que entra, menos)
+    const ws = this.lanes.map((_, n) => presence(e.kit.vary, n));
+    const n = r.weighted(ws.map((_, i) => i), ws);
+    // dónde: pasos débiles (contratiempos y semicorcheas), más al final del compás
+    const s = r.weighted(CANDY_STEPS, CANDY_W);
+    const vel = r.float(0.55, 0.95);
+    st[s] = [{ n, vel }];
+    // a veces, un segundo golpe del mismo objeto (una respuesta), más flojo
+    if (r.chance(K['candy.pair'] ?? 0)) {
+      const s2 = s + r.pick([2, 3, 4, 6]);
+      if (s2 < 16 && s2 % 4) st[s2] = [{ n, vel: vel * r.float(0.5, 0.8) }]; // (nunca en un tiempo: ahí va el kick)
+    }
+    return st;
+  }
 }
+const CANDY_STEPS = [2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15];
+const CANDY_W = [1, 0.8, 0.5, 1, 1, 0.5, 1.2, 1, 0.8, 1.6, 1.2];
 
 // ───────────────────────── BASS
 // El motivo guarda GRADOS de escala, no notas: si la emoción cambia el modo

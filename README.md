@@ -469,15 +469,16 @@ el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Genera
   adelgaza** cada repetición (filtros en la realimentación, como un eco de cinta: el primer eco
   sale entero), un poco de **cinta** (saturación que redondea sin subir el nivel, y un vaivén lento
   del tiempo) y cuánto de los ecos pasa a la sala. Sigue al BPM (deslizándose, como una cinta).
-- **A quién**: un instrumento **PROTAGONISTA** del eco (los stabs de CHORD, la PERC, el CLAP, los
-  HATS o el FOLEY) y los demás con poco o nada. **Kick y bajo, siempre secos** (los graves del
+- **A quién**: un instrumento **PROTAGONISTA** del eco (los stabs de CHORD, la PERC, los HATS o el
+  FOLEY) y los demás con poco o nada. El **CLAP, casi seco** (2026-11-11: nunca protagonista, un
+  poco de sala y casi nada de eco; antes era lo más mojado de la batería). **Kick y bajo, siempre secos** (los graves del
   club, limpios). Algunos universos (~15 % en NORMAL) nacen sin delay.
 - **THROWS**, el gesto dub: en el último compás de algunas frases (cada 8 o 16 compases, con una
   probabilidad de cada universo), el envío del protagonista se abre para su último golpe y los
   ecos caen sobre el 1 de la frase siguiente. No en LOOP.
 - **REVERB, la sala**: una sala **sintetizada para cada universo** (largo de la cola, predelay,
   cuánto se apagan los agudos al final, reflexiones tempranas, anchura y un paso alto en el
-  retorno). Cuánto manda cada instrumento (hats casi secos; percusión, clap, foley, acordes y pad
+  retorno). Cuánto manda cada instrumento (hats y clap casi secos; percusión, foley, acordes y pad
   más) y también los **efectos de transición** (platos, golpes, risers).
 - **Los envíos salen tras el fader** de cada instrumento (y tras su MUTE y su presencia en la
   estructura): un instrumento que se va deja sus ecos y su cola sonando, como en una mesa de
@@ -492,7 +493,7 @@ el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Genera
 - **ROMINIMAL** (ver [ROMINIMAL.md](ROMINIMAL.md) §6): delay de corchea o corchea con puntillo,
   más ping-pong, repeticiones largas, oscuras y finas, protagonistas los stabs y la percusión,
   hats casi secos, más throws; salas **cortas** (0,3–0,9 s), cálidas y con carácter de habitación,
-  con la percusión, el clap y el foley dentro. Cada arquetipo lo mueve (DUB: el eco manda;
+  con la percusión y el foley dentro (el clap, casi seco). Cada arquetipo lo mueve (DUB: el eco manda;
   ESQUELETO: casi seco; BOSQUE: el foley en su habitación; ORGÁNICO: sala algo mayor con pad y
   teclas; CLICS: ecos cortos de clics y sala mínima; RODANTE: el eco en la percusión).
 - Al pasar el ratón por el fader de ESTILO se ve el espacio del universo que suena

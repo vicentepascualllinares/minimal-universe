@@ -150,7 +150,8 @@ export const ROMINIMAL = {
     'perc.harmonic': [0.55, 0.95], 'perc.decayMul': [0.5, 0.95], 'perc.pitchMul': [0.9, 1.15],
     'perc.fmIndex': [0.6, 1.8], 'perc.drive': [0.05, 0.25],
     // FOLEY: «found sounds» [RMC], «faint room ambiences, foley» [MD]
-    'foley.bright': [0.85, 1.2], 'foley.decayMul': [0.8, 1.3], 'foley.drive': [0.02, 0.12],
+    // (gestos más cortos desde 2026-11-11: un detalle, no media frase; el gesto dura × √decayMul)
+    'foley.bright': [0.85, 1.2], 'foley.decayMul': [0.4, 0.75], 'foley.drive': [0.02, 0.12],
     // BASS: subgrave y con poca nota, que «empuja» sin «muro de subgrave» [RMC], «elastic, subby» [MD]
     // (los MODOS lo afinan: pluck, sub, redondo, ácido)
     'bass.cutoff': [110, 420], 'bass.env': [1.5, 4.5], 'bass.res': [1, 4], 'bass.filtDecay': [0.04, 0.12],
@@ -231,18 +232,39 @@ export const ROMINIMAL = {
     'perc.lead': { tone: 2.5, fm: 2, reso: 4, modal: 3.5, ks: 3 },
     // alturas: tónica, 5ª, 7ª y octava, y también 2ª, 4ª y 6ª: las «micro-melodies» modales [EB]
     'perc.deg': { 0: 3, 2: 1, 4: 2, 6: 1.5, 7: 1.5, 9: 0.6, 11: 0.6, 1: 0.7, 3: 0.9, 5: 0.5 },
-    // polimetría con más carriles impares (7, 5, 3): «loops that never repeat exactly»
-    'perc.len': { 16: 2, 12: 2, 10: 1.5, 7: 3, 6: 1.5, 5: 2.5, 3: 1.5 },
-    'lead.len': { 16: 2, 12: 2.5, 8: 1, 6: 1.5 },
+    // LOOPS que se repiten (2026-11-11, al escucharlo): el disco real aguanta el mismo loop 16, 32 o
+    // 64 compases y lo que se mueve es pequeño. Antes: carriles impares por todas partes (7, 5, 3) y
+    // un 3–32 % de golpes que no salían al azar en cada compás → ni un compás igual al de 4 antes
+    // (0,1 %): sonaba a «generativo», no a groove. Ahora: carriles de compás y FRASES DE DOS
+    // COMPASES (pregunta y respuesta), alguna polimetría que cierra pronto (12, 6, 3) y casi ningún
+    // golpe al azar
+    'perc.len': { 16: 4, 12: 2, 10: 0.4, 7: 0.8, 6: 2, 5: 0.6, 3: 1.2 },
+    'lead.len': { 16: 4, 12: 1.2, 8: 1.5, 6: 0.6 },
+    'perc.phrase': 0.4,  // un carril de 16 pasa a ser una frase de 2 compases (32)
+    'lead.phrase': 0.6,  // la percusión principal, casi siempre: es el gancho
     'perc.decay': [0.03, 0.14],   // cortas y secas
     'perc.pan': [-0.85, 0.85],    // más abiertas: cada una en su sitio
     'perc.acc': [0.3, 1],         // más diferencia entre golpes: micro-dinámica
-    'perc.prob': [0.68, 0.97],    // más golpes que a veces no salen: nunca igual [RMC]
+    'perc.prob': [0.93, 1],       // casi todos los golpes salen: el loop se reconoce
+    'loop.sure': 0.6,             // y los fuertes (acento ≥ 0,6), siempre: solo varían los fantasmas
+    // (`loop.bars`, cada cuántos compases vuelven a empezar los carriles, lo sortea cada universo:
+    // ver loopBars, abajo)
     // al mutar: girar y quitar/poner golpes (micro-variación), casi nunca otro sonido
     'perc.mut': { rot: 5, k: 4, sound: 0.5, len: 0.3 },
+    // MUTACIÓN (deck.js): solo al empezar frase (cada 8 compases) y menos; la fuerte de cada 32, a veces
+    'mut.every': 8, 'mut.perc': 0.7, 'mut.hat': 0.6, 'mut.foley': 0.5, 'mut.force': 0.5,
     // FOLEY: «creak, click, croak, pitter-patter and tock» [EB, Barac]: madera, arena, agua, papel
     'foley.mat': { papel: 1.2, plastico: 0.8, aluminio: 0.6, tela: 1, madera: 1.6, metal: 0.9, vidrio: 1, arena: 1.3, agua: 1.2 },
     'foley.mut': { rot: 4, k: 3, sound: 0.6 },
+    // EAR CANDY (generators.js, FoleyGen.candyBar; 2026-11-11, al escucharlo): el foley NO es un
+    // carril del loop sino un detalle que aparece de vez en cuando («faint room ambiences, foley» [MD],
+    // ear candy que se deja caer en una reverb o un eco [Audient, KVR]): por compás, esta probabilidad
+    // × CANTIDAD (más al final de frase); a veces con una respuesta. Como carril sonaba en el 77 % de
+    // los compases y ocupaba la mitad de cada uno: hacía de ritmo
+    'candy.rate': 0.15, 'candy.pair': 0.3,
+    // (los carriles siguen existiendo: de ellos sale qué objeto suena)
+    'foley.len': { 32: 3, 24: 0.5, 20: 0.3, 16: 3, 12: 0.8, 10: 0.2, 7: 0.2 },
+    'foley.prob': [0.85, 1],
     // BASS: en los huecos del kick (el 1 y los tiempos pesan más), semicorcheas que ruedan [MD, PML];
     // una o dos alturas: «one or two core tones» [MD]
     'bass.cat': [0.28, 0.4, 1.15, 0.95], // corchea en contratiempo · semicorchea · el 1 · los otros tiempos
@@ -256,17 +278,20 @@ export const ROMINIMAL = {
     'harm.padEvery': { 2: 0.3, 4: 2, 8: 0.6 },
     'harm.mut': { rhythm: 5, alt: 1.5, prog: 0.8, voicing: 0.4 },
     // COMPLEJIDAD (NUEVO UNIVERSO): kick quieto, percusión rica, bajo que rueda, armonía escasa
-    'cx.kick': [0.05, 0.45], 'cx.perc': [0.45, 0.85], 'cx.bass': [0.3, 0.7], 'cx.inst': [0.1, 0.45],
+    // (PERCS más bajo desde 2026-11-11: con 0,45–0,85 la percusión llenaba casi todas las semicorcheas)
+    'cx.kick': [0.05, 0.45], 'cx.perc': [0.35, 0.7], 'cx.bass': [0.3, 0.7], 'cx.inst': [0.1, 0.45],
     // OSCILADORES: más encendidos (micro-variación) pero cortos y lentos: «peaks and troughs barely
     // perceptible» [RA Mihigh]
     'oscOn.kick': 0.15, 'oscOn.perc': 0.75, 'oscOn.bass': 0.5, 'oscOn.inst': 0.35,
     'osc.b': [0.08, 0.25],
     'osc.gest': [0, 1, 3.5, 1.5, 1, 2.5, 3], // — · REMATE · RESPIRA · PREGUNTA · BAILA · CRECE · OLA
     'osc.slow': { bar2: 2.2, bar: 1.6, half: 0.6, beat: 0.35 }, // variantes: las lentas
-    // CANT · VAR: muchos hats y percs distintos («cycle four or five samples» [RMC]) y foley
-    'kit.hat.amt': [0.45, 0.72], 'kit.hat.vary': [0.55, 0.95],
-    'kit.perc.amt': [0.45, 0.75], 'kit.perc.vary': [0.5, 0.95],
-    'kit.foley.amt': [0.45, 0.75], 'kit.foley.vary': [0.45, 0.85],
+    // CANT · VAR: hats que ciclan sus 4 o 5 sonidos («cycle four or five samples» [RMC]) pero sin
+    // llenar todos los pasos; percusión y foley con POCOS golpes (2026-11-11: antes ~13 golpes de
+    // percusión y 16 de hats por compás, una pared): «only what is essential»
+    'kit.hat.amt': [0.35, 0.6], 'kit.hat.vary': [0.5, 0.9],
+    'kit.perc.amt': [0.3, 0.55], 'kit.perc.vary': [0.3, 0.7],
+    'kit.foley.amt': [0.25, 0.5], 'kit.foley.vary': [0.25, 0.6],
     // TRANSICIONES sobrias: «It's not about moments or big drops» [Livio & Roby, XLR8R]
     'fx.amount': [0.25, 0.55], 'fx.riser': { noise: 4, tone: 1, both: 1.5 }, 'fx.wobble': 0.12,
     'fx.boom': 0.55, 'fx.thud': 0.65, 'fx.gapP': 0.12, 'fx.down': 0.8,
@@ -274,6 +299,16 @@ export const ROMINIMAL = {
     'fx.vRiser': { noise: 3, tone: 0.6, both: 1, tonal: 1.2 },
     'fx.vRoll': { snare: 0.6, clap: 0.6, rim: 2.5, tom: 1.2, self: 2 },
     'fx.vPattern': { acelera: 1.2, recto: 1.5, tresillo: 1.5, fantasma: 4 },
+
+    // MEZCLA DE LA PERCUSIÓN (deck.js; 2026-11-11, al escucharlo: percs y foley con demasiado
+    // protagonismo). Como en un estudio: hats, percs y foley en un BUS sin el kick, comprimido
+    // suave (lo pega y doma los golpes puntiagudos) y con SIDECHAIN del kick, para que el kick
+    // asome entre ellos [Attack bus, MusicRadar mix]. El CLAP fuera de los dos: cae con el kick y
+    // con el sidechain desaparecería
+    bus: { thr: -26, ratio: 3, knee: 8, attack: 0.003, release: 0.12 },
+    // cuánto baja cada uno con cada kick (× el sidechain del universo, kick.duck ≈ 0,18–0,32): la
+    // percusión ≈ −3…−5 dB, los hats algo, el foley como la percusión
+    'duck.perc': 1.6, 'duck.foley': 1.4, 'duck.hat': 0.8, 'duck.ohat': 0.9,
 
     // ESPACIO (space.js): los efectos creativos. En minimal el delay es PARTE DEL RITMO, no un
     // adorno [MusicRadar]: ecos dub de corchea en stabs y percusión, ping-pong [Attack]; la reverb,
@@ -289,10 +324,11 @@ export const ROMINIMAL = {
     'dly.drive': [0.15, 0.45], 'dly.wow': [0.0004, 0.0018], 'dly.wowHz': [0.2, 0.6],
     'dly.rev': [0.12, 0.35],
     // a quién: los stabs (dub) y la percusión (rims que rebotan); hats casi secos (nítidos)
-    'dly.focus': { chord: 4, perc: 3.5, clap: 1, hat: 0.4, foley: 1.2 },
+    // (el CLAP nunca, desde 2026-11-11: al escucharlo, demasiado clap en el eco y en la sala)
+    'dly.focus': { chord: 4, perc: 3.5, clap: 0, hat: 0.4, foley: 1.2 },
     'dly.focusSend': [0.25, 0.45],
-    'dly.hat': [0, 0.03], 'dly.ohat': [0, 0.04], 'dly.perc': [0.02, 0.14], 'dly.clap': [0, 0.12],
-    'dly.foley': [0.02, 0.14], 'dly.chord': [0.05, 0.22], 'dly.pad': [0, 0.06],
+    'dly.hat': [0, 0.03], 'dly.ohat': [0, 0.04], 'dly.perc': [0.02, 0.14], 'dly.clap': [0, 0.03],
+    'dly.foley': [0.06, 0.18], 'dly.chord': [0.05, 0.22], 'dly.pad': [0, 0.06],
     // THROWS: al final de frase, mejor un eco que un riser (ROMINIMAL.md §7)
     'dly.throw': [0.3, 0.65], 'dly.throwAmt': [0.55, 0.9], 'dly.throwEvery': { 8: 2, 16: 1.2 },
     // la SALA: corta, cálida, con carácter de habitación (reflexiones tempranas)
@@ -300,18 +336,32 @@ export const ROMINIMAL = {
     'rev.width': [0.7, 1], 'rev.hp': [250, 450],
     // a quién: la percusión, el clap y el foley en la misma habitación («faint room ambiences,
     // foley» [MD]); hats secos; armonía y pad algo; las transiciones, poco (sobrias)
-    'rev.hat': [0, 0.06], 'rev.perc': [0.1, 0.26], 'rev.clap': [0.14, 0.3], 'rev.ohat': [0, 0.1],
-    'rev.foley': [0.14, 0.34], 'rev.chord': [0.06, 0.2], 'rev.pad': [0.12, 0.3], 'rev.fx': [0.1, 0.25],
+    // (el CLAP casi seco desde 2026-11-11: con 0,14–0,3 era lo más mojado de la batería y, fuera del
+    // bus y del sidechain, sonaba lejos y grande; ahora un poco de sala, nada de eco)
+    'rev.hat': [0, 0.06], 'rev.perc': [0.1, 0.26], 'rev.clap': [0.03, 0.1], 'rev.ohat': [0, 0.1],
+    'rev.foley': [0.2, 0.4], 'rev.chord': [0.06, 0.2], 'rev.pad': [0.12, 0.3], 'rev.fx': [0.1, 0.25],
   },
   // el «salto» del kick (fantasma en la 1ª mitad) y el golpe «en medio de un loop de 4 compases»
   // [XLR8R]: probabilidad por compás de cada universo
   kickSkip: [0.1, 0.35],
   kickPickup: [0, 0.25],
+  // la POLIMETRÍA CIERRA (generators.js, loopPos): los carriles de percusión y foley vuelven a empezar
+  // cada 2 o 4 compases (el «master length» de una caja de ritmos). Antes giraban sin fin y ningún
+  // compás era igual al de 4 antes: sonaba a azar, no a loop
+  loopBars: { 2: 1, 4: 2 },
+  // JERARQUÍA de la percusión (generators.js, PercGen.bar): la principal delante y las otras detrás,
+  // de −4 a −8 dB (× velocidad: los golpes flojos usan además la capa floja de su sonido). Antes
+  // sonaban todas igual y competían: «enough to give the impression of ambience, but not so much
+  // that they bury your core drum sounds» [MusicRadar mix]
+  percBack: [0.4, 0.63],
 
   // MEZCLA con la que nace (dB del fader, como los presets de mix.js): la percusión delante, los hats
   // presentes sin morder, el kick «sin dominar» [RMC], armonía y pad al fondo, transiciones apenas
   // (DELAY y REVERB a 0 dB: cuánto efecto lleva ya está en sus envíos)
-  mix: { kick: -4.5, bass: -9.5, hat: -14, perc: -9, clap: -14.5, ohat: -17, foley: -10.5, chord: -15, pad: -17, dly: 0, rev: 0, fx: -11 },
+  // (2026-11-11: percusión −9 → −11 y foley −10,5 → −14 → −17. Con 3 o 4 carriles a la vez, la
+  // percusión sumaba casi lo que el kick; el foley es «faint», ear candy que se descubre: medido, a
+  // −14 sus gestos picaban como la percusión)
+  mix: { kick: -4.5, bass: -9.5, hat: -14, perc: -11, clap: -14.5, ohat: -17, foley: -17, chord: -15, pad: -17, dly: 0, rev: 0, fx: -11 },
 
   // ARQUETIPOS: `w` = probabilidad · `mute` = probabilidad de nacer en MUTE (× t; kick y bajo nunca) ·
   // `mix` = dB sobre la mezcla del estilo · `k` = sustituye datos de arriba · `mul` = multiplica pesos ·
@@ -323,11 +373,12 @@ export const ROMINIMAL = {
       mute: { clap: 0.35, ohat: 0.45, chord: 0.5, pad: 0.5, foley: 0.1 },
       mix: { perc: 1, chord: -1, pad: -1 },
       k: {
-        'kit.perc.amt': [0.55, 0.85], 'kit.perc.vary': [0.6, 1], 'kit.hat.amt': [0.4, 0.65], 'kit.hat.vary': [0.45, 0.85],
-        'kit.foley.amt': [0.4, 0.65], 'kit.foley.vary': [0.3, 0.7], 'cx.perc': [0.55, 0.9], 'cx.bass': [0.4, 0.75],
+        'kit.perc.amt': [0.4, 0.65], 'kit.perc.vary': [0.45, 0.8], 'kit.hat.amt': [0.35, 0.55], 'kit.hat.vary': [0.45, 0.85],
+        'kit.foley.amt': [0.2, 0.45], 'kit.foley.vary': [0.2, 0.5], 'cx.perc': [0.45, 0.75], 'cx.bass': [0.4, 0.75],
       },
       mul: { 'perc.type': { reso: 1.3, tone: 1.2, modal: 1.1 }, 'dly.focus': { perc: 2, chord: 0.6 } },
       bassModes: { pluck: 3, round: 3, sub: 1, acid: 1 },
+      percBack: [0.5, 0.7], // la percusión rueda entera: las de atrás, menos atrás
     },
     esqueleto: {
       w: 2, label: 'ESQUELETO',
@@ -335,8 +386,8 @@ export const ROMINIMAL = {
       mute: { clap: 0.55, ohat: 0.6, chord: 0.8, pad: 0.75, foley: 0.4 },
       mix: { hat: 1, bass: 0.5, foley: -2 },
       k: {
-        'kit.perc.amt': [0.35, 0.6], 'kit.perc.vary': [0, 0.35], 'kit.hat.amt': [0.5, 0.75], 'kit.hat.vary': [0.5, 0.9],
-        'kit.foley.amt': [0.3, 0.55], 'kit.foley.vary': [0.15, 0.5], 'cx.perc': [0.3, 0.6], 'cx.bass': [0.25, 0.6], 'cx.inst': [0.05, 0.3],
+        'kit.perc.amt': [0.25, 0.45], 'kit.perc.vary': [0, 0.3], 'kit.hat.amt': [0.4, 0.62], 'kit.hat.vary': [0.5, 0.9],
+        'kit.foley.amt': [0.2, 0.4], 'kit.foley.vary': [0.1, 0.35], 'cx.perc': [0.25, 0.5], 'cx.bass': [0.25, 0.6], 'cx.inst': [0.05, 0.3],
         // casi seco: lo mínimo también en el espacio
         'space.amt': [0.35, 0.65], 'rev.decay': [0.25, 0.6],
       },
@@ -350,10 +401,12 @@ export const ROMINIMAL = {
       mute: { perc: 0.7, clap: 0.7, ohat: 0.7, chord: 0.5, pad: 0.35 },
       mix: { foley: 3, hat: -1, perc: -2 },
       k: {
-        'kit.foley.amt': [0.6, 0.9], 'kit.foley.vary': [0.7, 1], 'kit.hat.amt': [0.3, 0.5], 'kit.hat.vary': [0.25, 0.6],
-        'kit.perc.amt': [0.3, 0.5], 'kit.perc.vary': [0.1, 0.4], 'cx.perc': [0.35, 0.7], 'cx.inst': [0.1, 0.4],
+        'kit.foley.amt': [0.45, 0.7], 'kit.foley.vary': [0.5, 0.85], 'kit.hat.amt': [0.3, 0.5], 'kit.hat.vary': [0.25, 0.6],
+        'kit.perc.amt': [0.25, 0.45], 'kit.perc.vary': [0.1, 0.35], 'cx.perc': [0.3, 0.6], 'cx.inst': [0.1, 0.4],
         // el foley dentro de su habitación (algo más grande) y rebotando
         'rev.foley': [0.25, 0.45], 'rev.decay': [0.5, 1.1],
+        // aquí el foley es lo que pasa: aparece a menudo (casi un compás de cada dos) y contesta más
+        'candy.rate': 0.5, 'candy.pair': 0.6,
       },
       mul: {
         'dly.focus': { foley: 4, chord: 0.5 },
@@ -368,7 +421,7 @@ export const ROMINIMAL = {
       mute: { clap: 0.35, ohat: 0.5, pad: 0.4, foley: 0.3, perc: 0.1 },
       mix: { chord: 2.5, bass: 0.5, perc: -1 },
       k: {
-        'cx.bass': [0.2, 0.55], 'cx.inst': [0.25, 0.55], 'cx.perc': [0.4, 0.75], 'kit.perc.vary': [0.35, 0.7],
+        'cx.bass': [0.2, 0.55], 'cx.inst': [0.25, 0.55], 'cx.perc': [0.3, 0.6], 'kit.perc.vary': [0.25, 0.55],
         // el eco manda: stabs que se repiten mucho y se oscurecen, y más throws
         'dly.fb': [0.5, 0.66], 'dly.tone': [900, 2400], 'dly.focusSend': [0.32, 0.5], 'dly.throw': [0.5, 0.85],
       },
@@ -382,10 +435,11 @@ export const ROMINIMAL = {
       mute: { clap: 0.5, ohat: 0.5, chord: 0.4 },
       mix: { pad: 2.5, chord: 1, foley: 1, perc: -1, hat: -1 },
       k: {
-        'cx.inst': [0.25, 0.6], 'cx.perc': [0.45, 0.8], 'kit.foley.amt': [0.55, 0.85], 'kit.foley.vary': [0.55, 0.95],
-        'kit.hat.amt': [0.35, 0.6],
+        'cx.inst': [0.25, 0.6], 'cx.perc': [0.35, 0.65], 'kit.foley.amt': [0.35, 0.6], 'kit.foley.vary': [0.4, 0.7],
+        'kit.hat.amt': [0.3, 0.5],
         // la sala algo más grande, con el pad y las teclas dentro
         'rev.decay': [0.6, 1.3], 'rev.pad': [0.2, 0.38], 'rev.chord': [0.12, 0.28],
+        'candy.rate': 0.25, // los objetos asoman algo más
       },
       mul: {
         'dly.focus': { chord: 1.3, foley: 1.5 },
@@ -402,8 +456,8 @@ export const ROMINIMAL = {
       mute: { clap: 0.45, ohat: 0.5, chord: 0.65, pad: 0.75, foley: 0.1 },
       mix: { perc: 0.5, hat: 0.5, foley: 1, bass: -0.5 },
       k: {
-        'cx.perc': [0.6, 0.95], 'cx.kick': [0.1, 0.55], 'kit.hat.amt': [0.5, 0.8], 'kit.hat.vary': [0.6, 1],
-        'kit.perc.amt': [0.55, 0.85], 'kit.perc.vary': [0.6, 1],
+        'cx.perc': [0.5, 0.8], 'cx.kick': [0.1, 0.55], 'kit.hat.amt': [0.4, 0.65], 'kit.hat.vary': [0.6, 1],
+        'kit.perc.amt': [0.4, 0.65], 'kit.perc.vary': [0.45, 0.85],
         // ecos cortos de clics (corchea, tresillo) y una sala mínima
         'dly.div': { '8': 3, '8.': 2.5, '4': 0.3, '4.': 0.5, '8T': 1.5 }, 'dly.fb': [0.25, 0.5], 'rev.decay': [0.2, 0.55],
       },
@@ -416,6 +470,7 @@ export const ROMINIMAL = {
       },
       bassModes: { pluck: 3, acid: 2.5, round: 1, sub: 1 },
       kickSkip: [0.15, 0.45],
+      percBack: [0.5, 0.7], // el juego de clics es de todas
     },
   },
 };
@@ -463,6 +518,11 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
   }
   k['kick.skip'] = r.float(...(A.kickSkip ?? P.kickSkip));
   k['kick.pickup'] = r.float(...(A.kickPickup ?? P.kickPickup));
+  if (P.loopBars) {
+    const LB = A.loopBars ?? P.loopBars, lens = Object.keys(LB);
+    k['loop.bars'] = +r.weighted(lens, lens.map((x) => LB[x]));
+  }
+  if (P.percBack) k['perc.back'] = r.float(...(A.percBack ?? P.percBack));
   // COLOR: [t, lo0, hi0, lo1, hi1...] en el orden de COLOR_PARAMS
   const C = { ...P.color, ...P.bassModes[bassMode].color, ...P.chordModes[chordMode].color };
   const color = new Float64Array(1 + 2 * COLOR_PARAMS.length);

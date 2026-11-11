@@ -136,9 +136,9 @@ sus MUTE, su mezcla, su CANT · VAR y su complejidad:
 
 | Arquetipo | Qué es | MUTE probables (con el fader a tope) | Lo que sube |
 |---|---|---|---|
-| **RODANTE** (28 %) | el «roller» clásico: la percusión rueda y manda ([a:rpia:r], Raresh, Arapu) | clap 35 %, open 45 %, acordes 50 %, pad 50 % | percs: VAR 3–5, CANT alta, +1 dB; rim, conga, tono y madera |
+| **RODANTE** (28 %) | el «roller» clásico: la percusión rueda y manda ([a:rpia:r], Raresh, Arapu) | clap 35 %, open 45 %, acordes 50 %, pad 50 % | percs: VAR 3–4, CANT media, +1 dB; rim, conga, tono y madera |
 | **ESQUELETO** (20 %) | kick, bajo, hats y una o dos percusiones (Dan Andrei, «stripped-back») | clap 55 %, open 60 %, acordes 80 %, pad 75 %, foley 40 % | hats; bajo sub |
-| **BOSQUE** (14 %) | foley y un poco de hats: crujidos, golpecitos, gotas (Barac) | **percs 70 %**, clap 70 %, open 70 %, acordes 50 %, pad 35 % | foley: VAR 4–5, CANT alta, +3 dB; madera, agua, arena |
+| **BOSQUE** (14 %) | foley y un poco de hats: crujidos, golpecitos, gotas (Barac) | **percs 70 %**, clap 70 %, open 70 %, acordes 50 %, pad 35 % | foley: VAR 3–4, CANT media-alta, +3 dB; madera, agua, arena |
 | **DUB** (13 %) | acordes dub y bajo redondo, más hondo (Sublee, Priku) | clap 35 %, open 50 %, pad 40 %, foley 30 % | acordes +2,5 dB (stab dub); bajo sub o redondo |
 | **ORGÁNICO** (13 %) | pad que sube despacio, acordes como teclas u órgano, madera y objetos (Petre Inspirescu, Amorf) | clap 50 %, open 50 %, acordes 40 % | pad +2,5 dB; foley; percusión modal y Karplus |
 | **CLICS** (14 %) | clics, granos y chasquidos sobre un bajo seco (Villalobos, Perlon, Rhadoo) | clap 45 %, open 50 %, acordes 65 %, pad 75 % | glitch, granos, hats de ruido con bits; bajo pluck o ácido |
@@ -163,8 +163,8 @@ fader, los mismos y alguno más).
 | **HAT** | VAR alta (los 4–5 tipos ciclando), CANT media-alta. Motores: FINO shaker de granos 61 %, ruido con 6 u 8 bits más probable (el «grano de vinilo»), menos plato. Timbre corto (decay 16–42 ms), brillante y con acentos más marcados. Mezcla −14 dB. |
 | **OPEN** | Más corto (0,12–0,28 s); en MUTE la mitad de las veces; −17 dB. |
 | **CLAP** | Más «solo en el 4» y «atrasado», menos «2 y 4»; corto (70–160 ms), algo más agudo; en MUTE casi la mitad de las veces; −14,5 dB. |
-| **PERC** | Tipos: rim/clave/conga, madera modal y Karplus-Strong, clics y granos; casi nada de cowbell. La principal, de madera o rim. Más carriles impares (7, 5, 3: polimetría), golpes más cortos y abiertos en el panorama, más diferencia entre golpes y más golpes que a veces no salen. Alturas con 2ª, 4ª y 6ª (micro-melodías modales). Al mutar, gira y quita/pone golpes; casi nunca cambia de sonido. VAR 2–5. −9 dB (delante). |
-| **FOLEY** | Primero madera, arena, agua y papel (según arquetipo). CANT · VAR más altas; −10,5 dB (y protagonista en BOSQUE). |
+| **PERC** | Tipos: rim/clave/conga, madera modal y Karplus-Strong, clics y granos; casi nada de cowbell. La principal, de madera o rim. **Loops que se repiten** (2026-11-11, ver §6 «Repetición»): carriles de compás y **frases de dos compases** (la principal, el 60 %: el gancho), alguna polimetría (12, 6, 3) que **cierra** cada 2 o 4 compases; los golpes fuertes salen siempre y solo los fantasmas a veces no. **Jerarquía**: la principal delante y las demás de −4 a −8 dB detrás (RODANTE y CLICS, −3 a −6). Golpes cortos y abiertos en el panorama, con más diferencia entre ellos. Alturas con 2ª, 4ª y 6ª (micro-melodías modales). Al mutar, gira y quita/pone golpes; casi nunca cambia de sonido. Pocos golpes: VAR 2–4, CANT baja. −11 dB, por el bus de percusión (ver «Mezcla de la percusión»). |
+| **FOLEY** | **Ear candy, no ritmo** (2026-11-11): ya no es un carril del loop; un objeto **aparece** de vez en cuando (≈15 % de los compases, más al final de frase, en un sitio débil del compás, a veces con una respuesta) y no vuelve en el mismo sitio. Gestos más cortos, dentro de la sala y del eco (envíos más altos), −17 dB. Primero madera, arena, agua y papel (según arquetipo). En BOSQUE aparece casi un compás de cada dos (+3 dB); en ORGÁNICO, algo más. |
 | **CHORD** | Casi siempre **un solo acorde** (73 %), voicing abierto dub (5ª, 7ª, 9ª sin 3ª) o hueco; 2–3 notas; stabs cortos y oscuros (modo dub) o teclas u órgano. Muta poco. En MUTE la mitad de las veces. −15 dB (órgano −2,5 y teclas −1 más: suenan más llenos, medido). |
 | **PAD** | Oscuro (corte 320–1200 Hz), ataque lento (1,2–3 s, «sube desde abajo»), más aire; respira cada 4–8 compases. En MUTE la mitad de las veces. −17 dB. |
 
@@ -176,10 +176,12 @@ fader, los mismos y alguno más).
 | **Groove** | Swing 55–58 % (arriba, sin pasar del tope de siempre), clap atrasado 8–18 ms, empuje-tirón 2–4,5 ms. |
 | **Complejidad** | KICK 0,05–0,45 · PERCS 0,45–0,85 · BASS 0,3–0,7 · INSTR. 0,1–0,45 (cada arquetipo los mueve). El GLOBAL no se toca. |
 | **Osciladores** | Más encendidos (percs 76 %) pero de recorrido corto (B a 0,08–0,25 del fader) y lentos: RESPIRA, OLA y CRECE por delante; variantes de 2 compases o de compás. |
-| **CANT · VAR** | Las del arquetipo (ver §5). |
-| **Mutación** | Percs y foley: girar y quitar/poner golpes; casi nunca otro sonido. Armonía: casi solo ritmo. |
+| **CANT · VAR** | Las del arquetipo (ver §5), más bajas desde 2026-11-11 en percs y foley. |
+| **Mutación** | Percs y foley: girar y quitar/poner golpes; casi nunca otro sonido. Armonía: casi solo ritmo. Desde 2026-11-11, **solo al empezar frase** (cada 8 compases, no cada 4) y menos (×0,7 percs, ×0,5 foley, ×0,6 hats); la fuerte de cada 32 compases, la mitad de las veces. |
+| **Mezcla de la percusión** (2026-11-11) | Al escucharlo: percs y foley con demasiado protagonismo; no bastaba con bajar faders. Como en un estudio [Attack bus, MusicRadar mix]: **BUS** de hats, open, percs y foley (el **clap y el kick fuera**: el clap cae con el kick y con el sidechain desaparecería) con **compresión suave** (−26 dB, 3:1, rodilla 8, ataque 3 ms, salida 120 ms: pega y doma los golpes puntiagudos; sin la subida automática del compresor del navegador, que daba +8,9 dB) y **SIDECHAIN del kick** (percs y foley ≈ −3…−5 dB con cada kick, hats algo menos): el kick asoma y la percusión se sienta entre golpe y golpe. El compresor retrasa 6 ms: los golpes del bus se programan antes y llegan a tiempo. Medido en la app (GROOVE 2, 4 universos): el grupo queda 18–25 dB por debajo del kick en media (filtro K) y 11–15 dB en pico; un NORMAL, 12 y 4. Compresión media 1,6–3,6 dB, picos 5–7,6. |
+| **Repetición** (2026-11-11) | Al escucharlo, frente a temas reales: **exceso de percusión y foley** y nada se asentaba. Medido (300 universos, GROOVE 2): 13 golpes de percusión por compás (3–4 carriles), 16 de hats, y **el 0,1 % de los compases igual al de 4 antes** (carriles 7, 5, 3 girando sin fin, un 3–32 % de golpes que no salían al azar, mutación cada ~10 compases). El disco real repite el loop 16–64 compases y lo que se mueve es pequeño. Ahora: la **polimetría cierra** (los carriles vuelven a empezar cada 2 o 4 compases, como el «master length» de una caja de ritmos: lo sortea cada universo), **frases de dos compases** (pregunta y respuesta), golpes fuertes siempre, menos mutación, menos CANT · VAR y COMPLEJIDAD de PERCS (0,35–0,7). Resultado: 9,8 golpes de percusión y 13 de hats por compás, **69 % de compases iguales al de 4 antes** (lo demás: fantasmas, redobles de final de frase, alguna mutación), energía de la percusión −3,3 dB y del foley −5,2 dB (con la mezcla nueva). |
 | **MIXER** | Nace con su mezcla (faders de sus instrumentos y de FX) y sus MUTE, en el 1 del compás en que entra. La mezcla de antes se guarda: un universo **NORMAL** después la recupera (no hereda los MUTE). Elegir un preset del MIXER la olvida (la mezcla vuelve a ser tuya). |
-| **Espacio** (2026-11-10) | Delay **parte del ritmo** [MusicRadar, Attack]: corchea o corchea con puntillo (a veces negra con puntillo), ping-pong 70 %, realimentación 0,35–0,6 que se oscurece (paso bajo 1,1–3,2 kHz) y adelgaza (paso alto 300–750 Hz), cinta (saturación y vaivén: «a bit of movement» [Caia]); protagonista del eco: los stabs o la percusión; hats casi secos; **throws** al final de frase más probables (30–65 %): mejor un eco que un riser. Reverb **corta y deliberada** [RMC, MD]: salas de 0,3–0,9 s, cálidas (agudos que se apagan a 2,2–5,5 kHz), con reflexiones tempranas (carácter de habitación); percusión, clap y foley «en la misma habitación» («faint room ambiences, foley» [MD]); transiciones poco. Por arquetipo: DUB (el eco manda: más repetición, más oscuro, más throws), ESQUELETO (casi seco), BOSQUE (el foley en su sala), ORGÁNICO (sala algo mayor con pad y teclas), CLICS (ecos cortos de clics, sala mínima), RODANTE (eco en la percusión). |
+| **Espacio** (2026-11-10) | Delay **parte del ritmo** [MusicRadar, Attack]: corchea o corchea con puntillo (a veces negra con puntillo), ping-pong 70 %, realimentación 0,35–0,6 que se oscurece (paso bajo 1,1–3,2 kHz) y adelgaza (paso alto 300–750 Hz), cinta (saturación y vaivén: «a bit of movement» [Caia]); protagonista del eco: los stabs o la percusión; hats casi secos; **el clap casi seco** (2026-11-11, al escucharlo: nunca protagonista del eco, envío al delay 0–0,03 y a la sala 0,03–0,1; antes 0–0,12 y 0,14–0,3, lo más mojado de la batería); **throws** al final de frase más probables (30–65 %): mejor un eco que un riser. Reverb **corta y deliberada** [RMC, MD]: salas de 0,3–0,9 s, cálidas (agudos que se apagan a 2,2–5,5 kHz), con reflexiones tempranas (carácter de habitación); percusión y foley «en la misma habitación» («faint room ambiences, foley» [MD]); transiciones poco. Por arquetipo: DUB (el eco manda: más repetición, más oscuro, más throws), ESQUELETO (casi seco), BOSQUE (el foley en su sala), ORGÁNICO (sala algo mayor con pad y teclas), CLICS (ecos cortos de clics, sala mínima), RODANTE (eco en la percusión). |
 | **Transiciones** | Paleta sobria: intensidad 0,25–0,55, riser de ruido más que de tono, silencio antes del drop 12 % (antes 46 %), platos más cortos, filtros de tensión más suaves; redobles de rim y «fantasma» más que «acelera»; FX −11 dB. |
 | **Estructura** | No se toca: es del intérprete (ver §9). |
 | **Globales** | BPM, tónica y modo no se tocan (son de los dos universos). |
@@ -289,6 +291,19 @@ el estilo no toca:
 - **Chasquidos** (detector de saltos de agudos en 1 ms fuera de los ataques, como RENDIMIENTO.md
   §7): kick y clap 0; en acordes y bajo los rangos ROMINIMAL dan **menos** marcas que los colores
   de siempre (son los transitorios propios de los filtros resonantes).
+- **Repetición y densidad** (2026-11-11): NORMAL otra vez idéntico (300 semillas, generadores con
+  96 compases y mutaciones, color, complejidad, osciladores, CANT · VAR, paleta y espacio: 30 600
+  comprobaciones, 0 diferencias); los números de ROMINIMAL antes y después, en §6 «Repetición»; en la
+  app, universos ROMINIMAL seguidos sin errores, AUDIO OK y el MIXER con PERC ≈ −11 y FOLEY ≈ −14.
+  **Falta: escucharlo.**
+- **Mezcla de la percusión y foley como ear candy** (2026-11-11): NORMAL idéntico otra vez (las
+  mismas 30 600 comprobaciones; en el audio, NORMAL va por el camino directo: los mismos nodos ×1);
+  el foley pasa de sonar en el 77 % de los compases (1 s de cada 1,92) al 19 % (0,11 s); la subida
+  automática del compresor, calculada con la fórmula del navegador y comprobada contra el nodo
+  (8,92 · 8,12 · 5,84 · 0 dB, igual que medido); su retraso, medido (264 muestras a 44,1 kHz, 288 a
+  48 kHz); el cambio entre el camino directo y el del compresor, sin clic (misma 2ª derivada máxima
+  con y sin cambio); en la app, universos ROMINIMAL seguidos: 0 TARDE, 0 CORTES, sin errores.
+  **Falta: escucharlo.**
 - **En la app** (UN UNIVERSO y DJ): 8 universos seguidos con el fader en 1, 0,5, 0,3 y 0: MIXER y
   MUTE correctos, NORMAL recupera la mezcla de antes, el otro universo intacto; AUDIO OK, 0 CORTES,
   0 TARDE, sin incidencias. **Falta: escucharlo** (el oído decide los rangos).
@@ -344,6 +359,18 @@ Leídas para esta investigación (2026-11-10). Las abreviaturas son las de `styl
 - **[Adam Bogdan]** *How I Build a Minimal & Deep Tech DJ Set* — https://adambogdan.com/how-to-build-minimal-deep-tech-dj-set.html
 - **[Attack]** Attack Magazine, Beat Dissected *Truncate-style melodic percussion* —
   https://www.attackmagazine.com/technique/beat-dissected/truncate-style-melodic-percussion/
+- **[Attack bus]** Attack Magazine, *Advanced parallel buss processing* (en house y techno, la
+  percusión agrupada sin el kick, comprimida y con sidechain juntas) —
+  https://www.attackmagazine.com/technique/tutorials/advanced-parallel-buss-processing/
+- **[MusicRadar mix]** MusicRadar, *9 ways to create better drum mixes* y *10 tricks that pros use to
+  add punch and power* (bus de batería sin el kick con sidechain del kick; percusión «enough to give
+  the impression of ambience, but not so much that they bury your core drum sounds») —
+  https://www.musicradar.com/how-to/9-ways-to-create-better-drum-mixes ·
+  https://www.musicradar.com/how-to/10-tricks-that-pros-use-to-add-punch-and-power-to-their-mixes
+- **[Audient]** Audient, *Ear candy production tips* (el ear candy como algo aparte del ritmo
+  principal, filtrado para tener su sitio) — https://audient.com/tutorial/ear-candy-production-tips/
+- **[KVR]** foro KVR, hilo sobre ear candy y FX en techno (sonidos sueltos dejados caer en una reverb
+  grande y oscura o en un delay) — https://www.kvraudio.com/forum/viewtopic.php?p=8924370
 - **[Loopmasters]** UNDRGRND Sounds, *Romanian Minimal House* (descripción del pack) —
   https://www.loopmasters.com/genres/52-Minimal-Techno/products/11398-Romanian-Minimal-House
 - **[Roland]** Roland Cloud, *Rominimal* (descripción del pack) — https://www.roland.com/UK/products/rc_rominimal/

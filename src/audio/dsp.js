@@ -86,6 +86,31 @@ export class Saturator {
   }
 }
 
+// ── GANANCIA DE COMPENSACIÓN del compresor del navegador (DynamicsCompressorNode): SUBE la salida
+// él solo, según umbral, rodilla y ratio (es la del código de WebKit/Chromium, que heredan los demás
+// navegadores: (1 / curva(1))^0,6). Con −26 dB, 3:1 y rodilla 8: +8,9 dB, más de lo que comprime. Para
+// comprimir sin subir el nivel, se divide la salida por esto. Comprobado contra el nodo (2026-11-11:
+// −26/3/8 → 8,92 dB; −24/3/8 → 8,12; −20/2,5/8 → 5,84; ratio 1 → 0, igual que medido)
+export function compMakeup(thrDb, kneeDb, ratio) {
+  const d2l = (d) => Math.pow(10, d / 20), l2d = (x) => 20 * Math.log10(x);
+  const lt = d2l(thrDb);
+  const knee = (x, k) => (x < lt ? x : lt + (1 - Math.exp(-k * (x - lt))) / k);
+  const slopeAt = (x, k) => {
+    if (x < lt) return 1;
+    const x2 = x * 1.001;
+    return (l2d(knee(x2, k)) - l2d(knee(x, k))) / (l2d(x2) - l2d(x));
+  };
+  const kt = d2l(thrDb + kneeDb);
+  let minK = 0.1, maxK = 10000, k = 5; // la k de la rodilla: la del navegador (15 pasos de bisección)
+  for (let i = 0; i < 15; i++) {
+    if (slopeAt(kt, k) < 1 / ratio) maxK = k; else minK = k;
+    k = Math.sqrt(minK * maxK);
+  }
+  const ykt = l2d(knee(kt, k));
+  const sat = (x) => (x < kt ? knee(x, k) : d2l(ykt + (l2d(x) - (thrDb + kneeDb)) / ratio));
+  return Math.pow(1 / sat(1), 0.6);
+}
+
 // ── TECHO de la salida: transparente hasta ±0,95 y nunca pasa de ±1. Es la red de
 // seguridad tras el limitador (que no es de muro): sin él, un pico de más se
 // recortaría en seco en la tarjeta de sonido. Cubre hasta ±4 (12 dB de más).

@@ -8,7 +8,7 @@
 //           en PING-PONG (un eco a cada lado) o centrado, cuánto se repite (realimentación), cómo se
 //           oscurece y adelgaza cada repetición (filtros dentro del bucle, como un eco de cinta), un
 //           poco de saturación de cinta y de «wow» (la cinta que no gira perfecta), cuánto pasa a la
-//           reverb y A QUIÉN: un instrumento PROTAGONISTA del eco (los stabs, la percusión, el clap...)
+//           reverb y A QUIÉN: un instrumento PROTAGONISTA del eco (los stabs, la percusión, los hats...; el clap no)
 //           y los demás con poco o nada.
 //   THROWS  el gesto dub: al final de algunas frases, el envío del protagonista se abre de golpe para
 //           UN golpe y sus ecos se quedan sonando sobre el 1 de la frase siguiente.
@@ -34,12 +34,16 @@ export const DIVS = { '8': 2, '8.': 3, '4': 4, '4.': 6, '8T': 8 / 3 };
 const DIV_NAMES = Object.keys(DIVS);
 const DIV_LABEL = { '8': '1/8', '8.': '1/8 con puntillo', '4': '1/4', '4.': '1/4 con puntillo', '8T': '1/8 tresillo' };
 
-// quién puede ser el PROTAGONISTA del eco
+// quién puede ser el PROTAGONISTA del eco. El CLAP ya no (2026-11-11, al escucharlo: demasiado clap
+// en el eco y en la sala): su peso pasó a la PERC (el mismo sorteo; los universos que lo sacaban,
+// ahora con la percusión de protagonista, y los demás igual que antes)
 const FOCUS = ['chord', 'perc', 'clap', 'hat', 'foley'];
+const FOCUS_W = [3, 4, 0, 0.8, 1];
 
-// LO DE SIEMPRE (NORMAL): rangos de cada envío [min, max] (ganancia lineal, antes del `amt`)
-const DLY0 = { hat: [0, 0.06], perc: [0, 0.14], clap: [0, 0.14], ohat: [0, 0.08], foley: [0, 0.12], chord: [0, 0.18], pad: [0, 0.1] };
-const REV0 = { hat: [0, 0.12], perc: [0.05, 0.28], clap: [0.1, 0.35], ohat: [0.02, 0.2], foley: [0.05, 0.3], chord: [0.08, 0.32], pad: [0.1, 0.38], fx: [0.15, 0.4] };
+// LO DE SIEMPRE (NORMAL): rangos de cada envío [min, max] (ganancia lineal, antes del `amt`). El
+// clap, casi seco (antes 0–0,14 al delay y 0,1–0,35 a la sala: lo más mojado de la batería)
+const DLY0 = { hat: [0, 0.06], perc: [0, 0.14], clap: [0, 0.03], ohat: [0, 0.08], foley: [0, 0.12], chord: [0, 0.18], pad: [0, 0.1] };
+const REV0 = { hat: [0, 0.12], perc: [0.05, 0.28], clap: [0.03, 0.12], ohat: [0.02, 0.2], foley: [0.05, 0.3], chord: [0.08, 0.32], pad: [0.1, 0.38], fx: [0.15, 0.4] };
 
 export function makeSpace(seed, sty) {
   const r = new Rng((seed ^ 0x3c6ef372) >>> 0);
@@ -58,7 +62,7 @@ export function makeSpace(seed, sty) {
   const wow = f('dly.wow', 0, 0.0015);      // s de vaivén del tiempo (la cinta)
   const wowHz = f('dly.wowHz', 0.25, 0.9);
   const toRev = f('dly.rev', 0, 0.3);       // los ecos, a la sala
-  const focus = sWeighted(r, sty, 'dly.focus', FOCUS, [3, 2.5, 1.5, 0.8, 1]);
+  const focus = sWeighted(r, sty, 'dly.focus', FOCUS, FOCUS_W);
   const focusSend = f('dly.focusSend', 0.22, 0.45);
   const dly = {};
   for (const k of SENDS) {

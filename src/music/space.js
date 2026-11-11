@@ -106,6 +106,9 @@ export function makeSpace(seed, sty) {
     for (const [fx, ks] of Object.entries(T)) for (const [k, g] of Object.entries(ks)) if (k in S[fx].send) S[fx].send[k] *= g;
     S.dly.throwAmt *= T.dly?.[focus] ?? 1;
   }
+  // copia de lo sorteado: las perillas de ENVÍOS del MIXER cambian `send` en vivo; con doble clic
+  // vuelven a esto
+  S.gen = { dly: { ...S.dly.send }, rev: { ...S.rev.send }, bg: { ...S.bg.send } };
   return S;
 }
 
@@ -113,10 +116,6 @@ export function makeSpace(seed, sty) {
 // antes del `amt` del universo. El foley y las transiciones, los que más: son los que hacen colchón
 export const BG_SENDS = ['hat', 'perc', 'ohat', 'foley', 'chord', 'pad', 'fx'];
 const BG0 = { hat: [0, 0.05], perc: [0, 0.1], ohat: [0, 0.08], foley: [0.2, 0.5], chord: [0, 0.12], pad: [0.12, 0.35], fx: [0.25, 0.6] };
-
-// quién manda a cada efecto (para las perillas de ENVÍOS del MIXER): al delay, los instrumentos que
-// usan efectos; a la sala, también las transiciones; al fondo, BG_SENDS
-export const FX_SENDS = { dly: SENDS, rev: [...SENDS, 'fx'], bg: BG_SENDS };
 
 function makeBg(seed, sty, amt) {
   const r = new Rng((seed ^ 0x1f83d9ab) >>> 0);

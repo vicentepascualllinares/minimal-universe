@@ -158,7 +158,13 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 /* ENVÍOS: tres filas de perillas arriba de cada canal (DELAY, REVERB, FONDO); donde un canal no
    manda, el hueco vacío del mismo alto, así los faders quedan alineados */
 .im-send + .im-send { margin-top: -6px; }
-.im-send { height: 24px; flex: none; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.im-send { height: 24px; flex: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.im-sg { display: flex; align-items: center; gap: 2px; }
+/* DJ: la de A y la de B, una al lado de la otra, cada una con su cifra debajo */
+.instmix.dj .im-send { height: 34px; }
+.instmix.dj .im-sg { flex-direction: column; gap: 0; }
+.instmix.dj .im-sk { width: 20px; height: 20px; }
+.instmix.dj .im-sv { width: auto; font-size: 7px; text-align: center; }
 .im-sk { width: 22px; height: 22px; cursor: ns-resize; touch-action: none; }
 .im-sv { width: 28px; color: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; letter-spacing: 0; text-align: left; }
 .im-sv.moved { color: var(--fg); }

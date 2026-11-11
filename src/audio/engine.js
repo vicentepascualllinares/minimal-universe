@@ -9,7 +9,6 @@ import { Strip, easyGains, easyX, bandGain, bandValue, faderGain } from './strip
 import { LowRoles } from './lowRoles.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS, MIX_CHANNELS } from '../music/arrangement.js';
-import { FX_SENDS } from '../music/space.js';
 import { glide, ceiling } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 import { QUALITY_MODES } from './quality.js';
@@ -128,10 +127,6 @@ export class Engine {
     this.mute = [new Set(), new Set()]; // MIXER: MUTE y SOLO (ver heard)
     this.solo = [new Set(), new Set()];
     this.fxPos = [FADER_ZERO, FADER_ZERO];
-    // ENVÍOS (perillas del MIXER, 2026-11-11, para calibrar): recorte en dB del envío de cada elemento
-    // al DELAY, a la REVERB y al FONDO, sobre lo que generó el universo (0 = como salió). Igual para
-    // los dos universos y para los que vengan. No se guarda
-    this.sendTrim = Object.fromEntries(Object.entries(FX_SENDS).map(([fx, ks]) => [fx, Object.fromEntries(ks.map((k) => [k, 0]))]));
     this.applyMix(DEFAULT_MIX);
     // REGISTRO DE INCIDENCIAS (ver logIncident)
     try { this.incidents = JSON.parse(store.get('mu.incidents') || '[]'); } catch { this.incidents = []; }
@@ -198,10 +193,13 @@ export class Engine {
     const anySolo = this.solo[0].size + this.solo[1].size > 0;
     return !this.mute[i].has(k) && (!anySolo || this.solo[i].has(k)) ? 1 : 0;
   }
-  // `fx` = 'dly' | 'rev' | 'bg'
-  setSendTrim(fx, k, db) {
-    this.sendTrim[fx][k] = db;
-    if (this.ready) for (const d of this.decks) d.spaceFx?.setSendTrim(fx, k, dbGain(db));
+  // ENVÍO (perillas del MIXER): cuánto manda el elemento `k` del universo `i` al efecto `fx`
+  // ('dly' | 'rev' | 'bg'), en ganancia. Se escribe en el espacio del universo que suena: el
+  // siguiente nace con los suyos (como los faders con la mezcla del estilo)
+  setSend(i, fx, k, g) {
+    const d = this.decks[i];
+    d.space[fx].send[k] = g;
+    if (this.ready) d.spaceFx?.updateSend(fx, k);
   }
   // `which` = 'mute' | 'solo'; `on` = encender o apagar
   setMuteSolo(which, i, k, on) {

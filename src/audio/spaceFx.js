@@ -28,7 +28,6 @@
 
 import { fixChannels, satCurveShared } from './dsp.js';
 import { Rng } from '../core/rng.js';
-import { BG_SENDS } from '../music/space.js';
 
 const MAX_DELAY = 2.5; // s (negra con puntillo a 100 BPM = 0,9 s)
 const HAAS = 0.011;    // s: el lado derecho del eco centrado
@@ -373,22 +372,19 @@ export class SpaceFx {
     this.sendD = {};
     this.sendR = {};
     this.sendB = {};
-    // RECORTE de cada envío por elemento y por efecto (ganancia lineal; 1 = como lo generó el
-    // universo). Lo ponen las perillas de ENVÍOS del MIXER (Engine.setSendTrim), iguales para los dos
-    // universos
-    this.trim = { dly: {}, rev: {}, bg: {} };
     this.sends = { dly: this.sendD, rev: this.sendR, bg: this.sendB };
     this.S = null;
     this.sd = 0;
   }
 
-  // ENVÍOS de un canal (`node` = su salida, tras el fader). 'fx' (las transiciones): a la sala y al
-  // fondo, no al delay. Al FONDO, solo los de BG_SENDS (el clap, nunca)
+  // ENVÍOS de un canal (`node` = su salida, tras el fader) a los tres efectos. Todos los elementos
+  // (y las transiciones, 'fx') tienen los tres: los que el universo no usa (kick y bajo, el clap al
+  // fondo, las transiciones al delay) nacen a 0 y se pueden subir con las perillas del MIXER
   wire(k, node) {
-    if (k !== 'fx') node.connect((this.sendD[k] = this.ctx.createGain())).connect(this.dIn);
+    node.connect((this.sendD[k] = this.ctx.createGain())).connect(this.dIn);
     node.connect((this.sendR[k] = this.ctx.createGain())).connect(this.rIn);
-    if (BG_SENDS.includes(k)) node.connect((this.sendB[k] = this.ctx.createGain())).connect(this.bIn);
-    for (const s of [this.sendD[k], this.sendR[k], this.sendB[k]]) if (s) s.gain.value = 0;
+    node.connect((this.sendB[k] = this.ctx.createGain())).connect(this.bIn);
+    for (const s of [this.sendD[k], this.sendR[k], this.sendB[k]]) s.gain.value = 0;
   }
 
   // el ESPACIO de un universo (music/space.js), desde `at` (el 1 del compás en que nace).
@@ -444,15 +440,12 @@ export class SpaceFx {
     this.dR.delayTime.setTargetAtTime(tr, at, 0.06);
   }
 
-  // cuánto manda `k` al efecto `fx` ('dly', 'rev', 'bg'): lo que generó el universo × su perilla
-  sendLevel(fx, k) {
-    const gen = fx === 'dly' ? this.S.dly.send : fx === 'rev' ? this.S.rev.send : this.S.bg.send;
-    return (gen[k] ?? 0) * (this.trim[fx][k] ?? 1);
-  }
+  // cuánto manda `k` al efecto `fx` ('dly', 'rev', 'bg') en el universo que suena (ganancia lineal)
+  sendLevel(fx, k) { return this.S?.[fx].send[k] ?? 0; }
 
-  // perilla de ENVÍO del MIXER: el envío de `k` a `fx`, × `g`, ya, con una rampa corta
-  setSendTrim(fx, k, g) {
-    this.trim[fx][k] = g;
+  // una perilla de ENVÍO del MIXER cambió el envío de `k` a `fx` (ya escrito en el espacio del
+  // universo: ver Engine.setSend): suena ya, con una rampa corta
+  updateSend(fx, k) {
     const s = this.sends[fx][k];
     if (s && this.S) s.gain.setTargetAtTime(this.sendLevel(fx, k), this.ctx.currentTime, 0.03);
   }
@@ -463,9 +456,10 @@ export class SpaceFx {
     const s = this.sendD[k];
     if (!s || !this.S) return;
     const D = this.S.dly;
-    // (con la perilla de envío al delay: a −∞, ni eco ni throw)
+    // (con su envío al delay a −∞, ni eco ni throw)
     const base = this.sendLevel('dly', k);
-    const top = Math.max(base, Math.min(D.throwAmt * (this.trim.dly[k] ?? 1), 1 / RET_GAIN.dly));
+    if (!(base > 0)) return;
+    const top = Math.max(base, Math.min(D.throwAmt, 1 / RET_GAIN.dly));
     const p = s.gain;
     const a = Math.max(this.ctx.currentTime, t - 0.006);
     p.cancelScheduledValues(a);

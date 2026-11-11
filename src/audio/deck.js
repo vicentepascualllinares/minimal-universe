@@ -16,10 +16,9 @@ import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, new
 import { newKit, randomKit } from '../music/kit.js';
 import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
 import { NORMAL, rollStyle, styleColor, sValue } from '../music/styles.js';
-import { makeSpace, SENDS } from '../music/space.js';
+import { makeSpace } from '../music/space.js';
 import { Rng, makeDrift, lerp } from '../core/rng.js';
 import { PROFILE } from '../core/profile.js';
-import { dbGain } from '../core/fader.js';
 
 const glideAll = glide;
 
@@ -182,12 +181,10 @@ export class Deck {
       this.ch[k].user.gain.value = this.engine.instGain(this, k); // MIXER (fader, MUTE y SOLO)
     }
 
-    // ESPACIO: delay y reverb, con un envío de cada instrumento que los usa (tras su fader) y de
-    // los efectos de transición (solo a la reverb). Los retornos, en el MIXER como un canal más
+    // ESPACIO: delay, reverb y fondo, con un envío de cada instrumento a cada uno (tras su fader) y de
+    // los efectos de transición. Los retornos, en el MIXER como un canal más
     this.spaceFx = new SpaceFx(ctx, this.sum, Q);
-    // las perillas de ENVÍOS del MIXER
-    for (const fx in this.engine.sendTrim) for (const k in this.engine.sendTrim[fx]) this.spaceFx.trim[fx][k] = dbGain(this.engine.sendTrim[fx][k]);
-    for (const k of SENDS) this.spaceFx.wire(k, this.ch[k].out);
+    for (const k of INSTRUMENTS) this.spaceFx.wire(k, this.ch[k].out);
     this.spaceFx.wire('fx', this.fx.bus);
     for (const k in this.spaceFx.ret) this.spaceFx.ret[k].user.gain.value = this.engine.instGain(this, k);
     this.spaceFx.set(this.space, ctx.currentTime, this.engine.stepDur, true);

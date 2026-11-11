@@ -14,7 +14,6 @@ import { toDb, fmtDb as fmt, paintMaster } from './meters.js';
 import { FADER_ZERO as DEF, faderDb, dbFader, dbGain } from '../core/fader.js';
 import { MIX_PRESETS } from '../audio/mix.js';
 import { Knob } from './knob.js';
-import { FX_SENDS } from '../music/space.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
 const MASTER_TOP = 12; // el MÁSTER sube hasta +12 dB (para empujar contra el limitador)
@@ -60,15 +59,45 @@ const TIP = {
 // las tres filas de ENVÍOS (arriba de cada canal) y cómo se llaman
 const SEND_ROWS = [['dly', 'DLY'], ['rev', 'REV'], ['bg', 'FONDO']];
 const SEND_NAME = { dly: 'DELAY', rev: 'REVERB', bg: 'FONDO' };
-// perilla de ENVÍO: posición 0..1 ↔ dB (lineal de −30 a +12; abajo del todo, nada)
-const SEND_ZERO = 30 / 42;
-const sendDb = (v) => (v <= 0.005 ? -Infinity : -30 + 42 * v);
-const sendPos = (d) => (d === -Infinity ? 0 : (d + 30) / 42);
+// perilla de ENVÍO: el envío REAL del universo (ganancia: 0 dB = el elemento entra al efecto a su
+// nivel), en la misma escala que los faders (0 dB a 3/4, +6 arriba, −70 y −∞ abajo)
+const sendGain = (v) => dbGain(faderDb(v));
+const sendPos = (g) => (g > 0 ? dbFader(20 * Math.log10(g)) : 0);
+const gainDb = (g) => (g > 0 ? 20 * Math.log10(g) : -Infinity);
+// los retornos no mandan a los efectos (no tienen perillas de envío)
+const NO_SENDS = ['dly', 'rev', 'bg'];
 
 export function instMixer(root, engine, onClose) {
   let linked = true;
   let chans = []; // { i, k, s, apply, el, meter, lv }
   let master = null; // { s, apply, el }
+  let sends = []; // perillas de ENVÍO: { i, k, fx, knob, out, v, last, sp }
+  // una perilla de envío: el número (dB reales) y blanco si no está como nació el universo
+  const showSend = (x, g) => {
+    x.out.textContent = fmt(gainDb(g));
+    const gen = x.sp?.gen?.[x.fx]?.[x.k] ?? 0;
+    x.out.classList.toggle('moved', Math.abs(gainDb(g) - gainDb(gen)) > 0.05);
+  };
+  const setSend = (x, v) => {
+    x.v = v;
+    const g = sendGain(v);
+    engine.setSend(x.i, x.fx, x.k, g);
+    x.last = g;
+    showSend(x, g);
+  };
+  // las perillas siguen al universo (otro universo: sus envíos y su «como nació» del doble clic)
+  function syncSends() {
+    for (const x of sends) {
+      const sp = engine.decks[x.i].space;
+      const g = sp[x.fx].send[x.k] ?? 0;
+      if (sp !== x.sp) { x.sp = sp; x.knob.def = sendPos(sp.gen?.[x.fx]?.[x.k] ?? 0); x.last = -1; }
+      if (g === x.last) continue;
+      x.last = g;
+      x.v = sendPos(g);
+      x.knob.set(x.v);
+      showSend(x, g);
+    }
+  }
   const val = [{}, {}]; // posición de cada fader (se lee del motor al dibujar y al cambiar de preset)
   const load = () => {
     for (const i of [0, 1]) {
@@ -112,9 +141,8 @@ export function instMixer(root, engine, onClose) {
       </div>
       <div class="im-row">${COLS.map((k) => `
         <div class="im-ch${k === 'fx' ? ' im-fx' : k === 'dly' ? ' im-ret' : ''}" data-k="${k}"${TIP[k] ? ` title="${TIP[k]}"` : ''}>
-          ${SEND_ROWS.map(([fx]) => (FX_SENDS[fx].includes(k)
-    ? `<div class="im-send" data-fx="${fx}" data-k="${k}" title="ENVÍO al ${SEND_NAME[fx]} de ${LABEL[k]}: sobre lo que generó cada universo (0 dB = como salió) · los dos universos y los que vengan · doble clic = 0 dB"><div class="im-sk"></div><span class="im-sv">0.0</span></div>`
-    : '<div class="im-send"></div>')).join('')}
+          ${SEND_ROWS.map(([fx]) => (NO_SENDS.includes(k) ? '<div class="im-send"></div>'
+    : `<div class="im-send" data-fx="${fx}" data-k="${k}" title="ENVÍO al ${SEND_NAME[fx]} de ${LABEL[k]}${dj ? ' (A y B)' : ''}: lo que manda ahora el universo · un universo nuevo trae los suyos · doble clic = como nació">${decks.map((i) => `<div class="im-sg" data-i="${i}"><div class="im-sk"></div><span class="im-sv">−∞</span></div>`).join('')}</div>`)).join('')}
           <div class="im-dbs">${decks.map((i) => `<span class="im-db" data-i="${i}">0.0</span>`).join('')}</div>
           <div class="im-pair">${decks.map((i) => fader(i, dj)).join('')}</div>
           <span class="im-name">${LABEL[k]}</span>
@@ -202,22 +230,31 @@ export function instMixer(root, engine, onClose) {
         chans.push(c);
       }
     }
-    // ENVÍOS: una perilla por elemento y efecto (DELAY, REVERB, FONDO): recorte en dB sobre lo que
-    // generó cada universo; los dos universos a la vez. Abajo del todo = nada; 0 dB a 5/7; arriba +12
+    // ENVÍOS: una perilla por elemento, efecto (DELAY, REVERB, FONDO) y universo, con el envío REAL
+    // (cada universo nace con los suyos y las perillas lo siguen, como los faders). Vinculados en DJ
+    // como los faders (las transiciones, nunca). Doble clic = como nació el universo
+    sends = [];
     for (const el of root.querySelectorAll('.im-send[data-k]')) {
       const k = el.dataset.k, fx = el.dataset.fx;
-      const out = el.querySelector('.im-sv');
-      const show = (d) => { out.textContent = fmt(d); out.classList.toggle('moved', d !== 0); };
-      new Knob(el.querySelector('.im-sk'), {
-        value: sendPos(engine.sendTrim[fx][k]), def: SEND_ZERO, bipolar: false,
-        onChange: (v) => {
-          const d = Math.abs(v - SEND_ZERO) < 0.012 ? 0 : sendDb(v); // imán a 0 dB
-          engine.setSendTrim(fx, k, d);
-          show(d);
-        },
-      });
-      show(engine.sendTrim[fx][k]);
+      for (const sg of el.querySelectorAll('.im-sg')) {
+        const x = { i: Number(sg.dataset.i), k, fx, out: sg.querySelector('.im-sv'), v: 0, last: -1, sp: null };
+        x.knob = new Knob(sg.querySelector('.im-sk'), {
+          value: 0, def: 0, bipolar: false,
+          onChange: (v) => {
+            const delta = v - x.v;
+            setSend(x, v);
+            if (!(dj && linked) || k === 'fx') return;
+            const o = sends.find((y) => y.k === k && y.fx === fx && y.i !== x.i);
+            if (!o) return;
+            const ov = Math.min(1, Math.max(0, o.v + delta));
+            o.knob.set(ov);
+            setSend(o, ov);
+          },
+        });
+        sends.push(x);
+      }
     }
+    syncSends();
     // MÁSTER: mismo fader (imán, doble clic = 0 dB) pero hasta +12 dB y nunca vinculado
     {
       const el = root.querySelector('.im-master');
@@ -306,6 +343,7 @@ export function instMixer(root, engine, onClose) {
         c.lv = Math.max(p, c.lv * 0.9);
         c.meter.style.transform = `scaleY(${c.lv.toFixed(3)})`;
       }
+      syncSends(); // un universo nuevo trae sus envíos
     },
   };
 }

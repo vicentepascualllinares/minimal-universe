@@ -672,11 +672,14 @@ medio apagados). Vinculados, A y B se encienden juntos (los FX, nunca). Rampa co
 salir: sin clics. **RESTABLECER** los quita todos. No se guardan. En la fila de instrumentos del
 universo, lo que no se oye (en MUTE, o callado por el SOLO de otro) sale en gris, no en blanco.
 
-**ENVÍOS** (2026-11-11, para calibrar): arriba de cada canal, tres filas de perillas, **DLY**, **REV** y
-**FONDO**: cuánto manda ese elemento al delay, a la sala y a la reverb de fondo. Es un recorte en dB
-sobre lo que generó cada universo (0 dB = como salió; abajo del todo, nada; arriba, +12), igual
-para los dos universos y para los que vengan, y no se guarda. Solo salen donde el canal manda (el
-clap no va al fondo; las transiciones no van al delay). Doble clic = 0 dB.
+**ENVÍOS** (2026-11-11): arriba de cada canal, tres filas de perillas, **DLY**, **REV** y **FONDO**:
+cuánto manda ese elemento al delay, a la sala y a la reverb de fondo, **el valor real** del
+universo en dB (misma escala que los faders: 0 dB a tres cuartos, abajo −∞). Están en **todos**
+los elementos y las transiciones, aunque estén a −∞ (kick y bajo nacen secos, el clap sin fondo,
+las transiciones sin delay: se pueden subir). Cada universo nace con los suyos y las perillas
+los siguen, como los faders con la mezcla del estilo; tocarlas cambia el universo que suena (el
+siguiente trae los suyos). En DJ, una para A y otra para B, **vinculadas** como los faders (las
+transiciones, nunca). La cifra en blanco = ya no está como nació; doble clic = como nació.
 
 **0 dB = el pico máximo del instrumento en 0 dBFS.** Cada instrumento (y los FX) sale de su
 canal con su pico más alto en 0 dB, y la mezcla es **solo la posición de los faders**. Arriba,

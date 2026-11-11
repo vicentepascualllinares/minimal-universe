@@ -266,7 +266,9 @@ tope de voces, AudioWorklet).
      modo (no los imponga: son de los dos universos); guardar el estilo con el universo (cuentas).
 
 16. **GROOVE: swing, micro-timing y humanización** (apuntado antes de palabra, por escrito el
-   2026-11-10): una sesión propia, separada del diseño de sonido. Hoy hay un swing por universo
+   2026-11-10). **Hecho para ROMINIMAL (2026-11-11)**: swing por instrumento y un dibujo fijo por
+   paso (entero, empuje-tirón y huella) en `groove` de styles.js y `grooveTime` en deck.js (ver
+   ROMINIMAL.md §6). Pendiente: NORMAL y los otros géneros, acentos de velocidad. Lo de antes: una sesión propia, separada del diseño de sonido. Hoy hay un swing por universo
    (tope 58 %), el clap atrasado y un empuje-tirón leve al azar. El ROMINIMAL (ROMINIMAL.md §3 y §7)
    pide más: el swing es «lo más reconocible» del género; **swing por instrumento** (hats unos ms
    antes o después, percusión con su propio swing), cuantización al 70–80 %, curvas tipo MPC por

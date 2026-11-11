@@ -173,7 +173,7 @@ fader, los mismos y alguno más).
 | Parte | Qué hace el estilo |
 |---|---|
 | **Color (timbre)** | El color del universo (valencia −0,6…0,45, activación −0,55…0,3: de oscuro a algo cálido, de quieto a medio) y, encima, cada parámetro llevado a su rango del género **conservando dónde caía el universo** (uno oscuro sigue siendo el oscuro). Viaja con la misma inercia que el color (~2 s). |
-| **Groove** | Swing 55–58 % (arriba, sin pasar del tope de siempre), clap atrasado 8–18 ms, empuje-tirón 2–4,5 ms. |
+| **Groove** | Swing del universo 55–58 %, clap atrasado 8–18 ms. **Por instrumento** (2026-11-11, la sesión 16): cada uno su swing sobre el del universo (hats ≈ 56–65 %, mediana 60 % como la MPC en minimal [Attack]; percusión ≈ 57–66 %, mediana 61 %; bajo ≈ 52–58 % y acordes ≈ 53–60 %, el suelo más recto; el kick, recto; CLICS más cojo, hasta ~68 %) y su **dibujo fijo** por paso: entero adelantado o atrasado (hats −4…+5 ms, percusión −2…+6, bajo −2…+3, acordes 0…+8 y en DUB +4…+12: stabs perezosos), empuje-tirón de los hats y la percusión (la corchea a contratiempo hasta 4 ms detrás, la semicorchea antes del tiempo hasta 4 ms delante) y una huella de ±1,5 ms por paso, igual en cada compás. El temblor al azar, bajo (0,6–1,5 ms): un groove, no ruido («cuantizar al 70–80 %»). Comprobado en la app: los golpes caen donde dice el dibujo (±0,3 ms). |
 | **Complejidad** | KICK 0,05–0,45 · PERCS 0,45–0,85 · BASS 0,3–0,7 · INSTR. 0,1–0,45 (cada arquetipo los mueve). El GLOBAL no se toca. |
 | **Osciladores** | Más encendidos (percs 76 %) pero de recorrido corto (B a 0,08–0,25 del fader) y lentos: RESPIRA, OLA y CRECE por delante; variantes de 2 compases o de compás. |
 | **CANT · VAR** | Las del arquetipo (ver §5), más bajas desde 2026-11-11 en percs y foley. |
@@ -219,10 +219,9 @@ Para que no se pierda. Cada punto dice qué pide el género y en qué sesión de
     de sierra y cuadrada con otra envolvente.
   - **Una voz de bleeps / micro-melodía** y un **acid** de verdad (303: deslizamientos, acentos).
   - Sub-bajo de seno puro con su propio canal o capa.
-- **Groove (sesión propia, pendiente)**: swing por instrumento (hats adelantados o atrasados unos ms,
-  percusión con su propio swing), cuantización al 70–80 %, curvas de swing tipo MPC por encima del
-  58 %, empuje-tirón «de batería de jazz» [RMC]. Hoy el estilo solo usa lo que existe (swing del
-  universo, clap atrasado, empuje-tirón leve).
+- ~~**Groove**~~: **hecho (2026-11-11)** en ROMINIMAL, ver §6 «Groove». Falta: escucharlo; acentos
+  de velocidad con su propio dibujo (hoy los da cada carril); y groove para NORMAL (hoy sigue con
+  un swing para todo, a propósito: NORMAL no cambia).
 - **Partes que evolucionan solas (sesión 10)**: el rominimal es un **proceso** («horizontal»): un
   elemento entra o sale cada 8–16 compases, uno a uno; GROOVE que rota percusiones; silencio de dos
   compases como recurso. Es la manera natural de que un universo rominimal «viva» sin tocarlo.

@@ -28,6 +28,9 @@ export const PERC_BUS = ['hat', 'ohat', 'perc', 'foley'];
 // el retraso del compresor del navegador (6 ms de «lookahead», medido: 264 muestras a 44,1 kHz,
 // 288 a 48 kHz)
 const busLatency = (sr) => Math.floor(0.006 * sr) / sr;
+// GROOVE (ver grooveTime): el dibujo de quién sigue cada instrumento (el open, el de los hats; el
+// foley, el de la percusión). Kick, clap y pad no están: van con la rejilla
+const GROOVE_OF = { hat: 'hat', ohat: 'hat', perc: 'perc', foley: 'perc', bass: 'bass', chord: 'chord' };
 
 const newSeed = () => (Math.random() * 1e9) | 0;
 
@@ -706,6 +709,19 @@ export class Deck {
     this.busLat = on ? busLatency(this.ctx.sampleRate) : 0;
   }
 
+  // GROOVE (styles.js, `groove`; solo con ESTILO): cuándo suena el paso `s` de un instrumento.
+  // Su swing (el del universo más el suyo, hasta 68 %) y su dibujo (entero adelantado o atrasado,
+  // empuje-tirón y huella, fijos por paso), con el fader del estilo. Kick, clap y pad, y todo sin
+  // estilo: la rejilla con el swing del universo, lo de siempre
+  grooveTime(k, s, gridT) {
+    const sd = this.engine.stepDur, sw0 = this.e.groove.swing;
+    const G = this.sty.t ? this.sty.k.groove?.[GROOVE_OF[k]] : null;
+    if (!G) return gridT + (s % 2 === 1 ? (sw0 - 0.5) * 2 * sd : 0);
+    const u = this.sty.t;
+    const sw = Math.min(0.68, sw0 + G.sw * u);
+    return gridT + (s % 2 === 1 ? (sw - 0.5) * 2 * sd : 0) + G.tm[s] * u;
+  }
+
   // THROW (el gesto dub del ESPACIO): en el último compás de algunas frases, el envío al delay del
   // PROTAGONISTA del eco se abre para su último golpe del compás (desde el 2º tiempo) y los ecos
   // caen sobre el 1 de la frase siguiente. No en LOOP (se repite lo que sonó)
@@ -718,7 +734,7 @@ export class Deck {
     while (s >= 4 && !steps?.[s]) s--;
     if (s < 4) return;
     const sd = this.engine.stepDur;
-    const t = t0 + s * sd + (s % 2 === 1 ? (this.e.groove.swing - 0.5) * 2 * sd : 0);
+    const t = this.sty.t ? this.grooveTime(D.focus, s, t0 + s * sd) : t0 + s * sd + (s % 2 === 1 ? (this.e.groove.swing - 0.5) * 2 * sd : 0);
     // (el envío sale del canal, antes del BUS: para los del bus, el golpe sale `busLat` antes)
     const lat = PERC_BUS.includes(D.focus) ? this.busLat : 0;
     this.spaceFx.throwHit(D.focus, t - lat, Math.min(0.2, sd * 1.5));
@@ -814,6 +830,8 @@ export class Deck {
     const root = this.engine.rootHz;
     const scale = this.loop ? this.loop.scale : this.engine.scale;
     const emit = (k, time, vel) => this.events.push({ k, t: time, vel });
+    // GROOVE por instrumento (solo con ESTILO: ver grooveTime). Sin estilo, todos en `t`, como siempre
+    const tg = this.sty.t ? (k) => this.grooveTime(k, s, gridT) : () => t;
 
     let ev;
     if ((ev = B.kick[s]) && A.audible('kick', t)) {
@@ -861,36 +879,39 @@ export class Deck {
     // Van por el BUS DE PERCUSIÓN: con su compresor encendido salen `lat` antes (llegan a tiempo)
     const lat = this.busLat;
     if ((ev = B.hat[s]) && A.audible('hat', t)) {
-      const th = Math.max(t + hum() - lat, ctx.currentTime);
+      const th = Math.max(tg('hat') + hum() - lat, ctx.currentTime);
       if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'hat', th, ev.vel)) emit('hat', th + lat, ev.vel);
     }
     if ((ev = B.ohat[s]) && A.audible('ohat', t)) {
-      const th = Math.max(t + hum() * 0.5 - lat, ctx.currentTime);
+      const th = Math.max(tg('ohat') + hum() * 0.5 - lat, ctx.currentTime);
       if (this.drums.hit(ev.ty ? `k${ev.ty - 1}` : 'ohat', th, ev.vel)) emit('ohat', th + lat, ev.vel);
     }
     if ((ev = B.perc[s]) && A.audible('perc', t)) {
+      const tq = tg('perc');
       for (const h of ev) {
-        const tp = Math.max(t + hum() - lat, ctx.currentTime);
+        const tp = Math.max(tq + hum() - lat, ctx.currentTime);
         if (this.drums.hit(`p${h.n}`, tp, h.vel)) emit('perc', tp + lat, h.vel);
       }
     }
     // FOLEY: en su paso, sin humanizar (el gesto ya lleva su tiempo dentro del sonido)
     if ((ev = B.foley[s]) && A.audible('foley', t)) {
-      const tf = Math.max(t - lat, ctx.currentTime);
+      const tf = Math.max(tg('foley') - lat, ctx.currentTime);
       for (const h of ev) if (this.drums.hit(`f${h.n}`, tf, h.vel)) emit('foley', tf + lat, h.vel);
     }
     if ((ev = B.bass[s]) && A.audible('bass', t)) {
       const semis = degreeToSemis(ev.deg, scale) + 12;
       const dur = Math.max(sd * 0.55, ev.len * sd * e.bass.lenMul - 0.01);
-      V.bass(ctx, C.bass.input, t, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, this.engine.q.lean);
-      emit('bass', t, ev.vel);
+      const tb = tg('bass');
+      V.bass(ctx, C.bass.input, tb, ev.vel, root * Math.pow(2, semis / 12), dur, e.bass, this.engine.q.lean);
+      emit('bass', tb, ev.vel);
     }
     // acordes y pad: dos octavas sobre la tónica del kick
     const freqsOf = (notes) => notes.map((d) => root * Math.pow(2, (degreeToSemis(d, scale) + 24) / 12));
     if ((ev = B.chord[s]) && A.audible('chord', t)) {
       const dur = Math.max(sd * 0.5, ev.len * sd * e.chord.lenMul - 0.01);
-      V.chord(ctx, C.chord.input, t, ev.vel, freqsOf(ev.notes), dur, e.chord, this.engine.q.lean);
-      emit('chord', t, ev.vel);
+      const tc = tg('chord');
+      V.chord(ctx, C.chord.input, tc, ev.vel, freqsOf(ev.notes), dur, e.chord, this.engine.q.lean);
+      emit('chord', tc, ev.vel);
     }
     if ((ev = B.pad[s]) && A.audible('pad', t)) {
       const freqs = freqsOf(ev.notes); // sin tónica grave: esa octava es del bajo

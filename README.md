@@ -507,7 +507,8 @@ el volumen de cada retorno en el MIXER (DELAY y REVERB, con MUTE y SOLO). Genera
 Ya no hay pad de EMOCIÓN. Cada universo sale con su propio color de sonido (más oscuro o
 más brillante, golpes más blandos o más duros, notas más largas o más cortas, más o menos
 swing), que cambia con NUEVO UNIVERSO, con un fundido de unos 2 s. El kick siempre suena en
-la tónica y el swing no pasa del 58 %. El color del universo en pantalla lo refleja.
+la tónica y el swing no pasa del 58 % (con ESTILO, cada instrumento swinguea a su manera por
+encima: ver ROMINIMAL.md §6 «Groove»). El color del universo en pantalla lo refleja.
 
 ## Estilo: NORMAL ↔ ROMINIMAL
 

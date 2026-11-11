@@ -167,9 +167,10 @@ export const ROMINIMAL = {
     'pad.drive': [0.02, 0.12],
     // saturación del universo: calor, sin apretar (los másters son de vinilo, sin limitar a tope) [RMC]
     'master.drive': [0.1, 0.28],
-    // GROOVE: el swing es «the most recognisable quality» [RMC]: arriba (sin pasar del 58 %), el clap
-    // detrás y un empuje-tirón sutil
-    'groove.swing': [0.55, 0.58], 'groove.humanize': [0.002, 0.0045], 'groove.clapNudge': [0.008, 0.018],
+    // GROOVE: el swing es «the most recognisable quality» [RMC]: arriba (sin pasar del 58 %: lo que
+    // cada instrumento swinguea de más lo pone `groove`, abajo), el clap detrás. El temblor al azar,
+    // poco (2026-11-11): el empuje-tirón ya es un DIBUJO fijo por paso (`groove.tm`), no ruido
+    'groove.swing': [0.55, 0.58], 'groove.humanize': [0.0006, 0.0015], 'groove.clapNudge': [0.008, 0.018],
   },
 
   // MODOS del bajo y de los acordes (cada universo saca uno; el arquetipo cambia las probabilidades)
@@ -355,6 +356,26 @@ export const ROMINIMAL = {
   // that they bury your core drum sounds» [MusicRadar mix]
   percBack: [0.4, 0.63],
 
+  // GROOVE por instrumento (deck.js, grooveTime; 2026-11-11, la sesión 16 de la HOJA_DE_RUTA). Lo
+  // de siempre es UN swing para todo y un temblor al azar. Un baterista (o una MPC con su plantilla)
+  // no es eso: cada instrumento tiene su swing y su sitio, y el empuje-tirón es un DIBUJO que se
+  // repite cada compás, no ruido [RMC: «push-and-pull of a jazz drummer, not programmed funk»,
+  // hats unos ms antes o después (Barac), cuantizar al 70–80 %; Attack: swing de MPC al 60 % en
+  // minimal; RA: «skippy drums», «screwface-inducing shuffle»]. Cada universo sortea:
+  //   sw    swing de cada uno SOBRE el del universo (color: 55–58 %): hats y percs más (hasta ~65 %,
+  //         la «cojera» del género), bajo y acordes menos (el suelo, más recto). El kick, recto
+  //   off   cada uno entero adelantado o atrasado (s): hats delante o detrás, percs algo detrás,
+  //         acordes perezosos (los stabs que caen tarde)
+  //   lay8  hats y percs: la corchea a contratiempo algo detrás (el «tss» que se deja caer)
+  //   push  hats y percs: la semicorchea antes del tiempo algo delante (empuja hacia el 1)
+  //   fine  la HUELLA: cada paso con un desvío pequeño FIJO (igual en cada compás). Con el temblor
+  //         al azar, ya poco, es el «cuantizar al 70–80 %»
+  groove: {
+    sw: { hat: [0.01, 0.05], perc: [0.02, 0.07], bass: [-0.03, 0], chord: [-0.02, 0.02] },
+    off: { hat: [-0.004, 0.005], perc: [-0.002, 0.006], bass: [-0.002, 0.003], chord: [0, 0.008] },
+    lay8: [0, 0.004], push: [-0.004, 0.001], fine: 0.0015,
+  },
+
   // MEZCLA con la que nace (dB del fader, como los presets de mix.js): la percusión delante, los hats
   // presentes sin morder, el kick «sin dominar» [RMC], armonía y pad al fondo, transiciones apenas
   // (DELAY y REVERB a 0 dB: cuánto efecto lleva ya está en sus envíos)
@@ -428,6 +449,8 @@ export const ROMINIMAL = {
       mul: { 'perc.type': { fm: 1.2, tone: 1.2, noise: 1.3 }, 'dly.focus': { chord: 2.5 } },
       bassModes: { sub: 3, round: 3, pluck: 1, acid: 0.3 },
       chordModes: { dub: 6, keys: 1, organ: 0.5 },
+      // los stabs, perezosos: caen detrás del tiempo, como en el dub
+      groove: { off: { hat: [-0.004, 0.005], perc: [-0.002, 0.006], bass: [-0.002, 0.003], chord: [0.004, 0.012] } },
     },
     organico: {
       w: 1.5, label: 'ORGÁNICO',
@@ -471,6 +494,8 @@ export const ROMINIMAL = {
       bassModes: { pluck: 3, acid: 2.5, round: 1, sub: 1 },
       kickSkip: [0.15, 0.45],
       percBack: [0.5, 0.7], // el juego de clics es de todas
+      // más cojo: «skippy drums», la escuela Villalobos / Perlon
+      groove: { sw: { hat: [0.03, 0.07], perc: [0.04, 0.09], bass: [-0.03, 0], chord: [-0.02, 0.02] } },
     },
   },
 };
@@ -523,6 +548,7 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
     k['loop.bars'] = +r.weighted(lens, lens.map((x) => LB[x]));
   }
   if (P.percBack) k['perc.back'] = r.float(...(A.percBack ?? P.percBack));
+  if (P.groove) k['groove'] = rollGroove(r, { ...P.groove, ...(A.groove || {}) });
   // COLOR: [t, lo0, hi0, lo1, hi1...] en el orden de COLOR_PARAMS
   const C = { ...P.color, ...P.bassModes[bassMode].color, ...P.chordModes[chordMode].color };
   const color = new Float64Array(1 + 2 * COLOR_PARAMS.length);
@@ -532,6 +558,25 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE) {
     color[2 + 2 * n] = C[p][1];
   });
   return { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a };
+}
+
+// GROOVE de un universo (ver `groove` en ROMINIMAL): por instrumento, su swing de más (`sw`) y su
+// dibujo de 16 pasos (`tm`, s: entero + empuje-tirón + huella). Siempre las mismas tiradas, en orden
+export const GROOVE_INST = ['hat', 'perc', 'bass', 'chord'];
+function rollGroove(r, G) {
+  const lay8 = r.float(...G.lay8), push = r.float(...G.push);
+  const out = {};
+  for (const inst of GROOVE_INST) {
+    const sw = r.float(...G.sw[inst]), off = r.float(...G.off[inst]);
+    const drum = inst === 'hat' || inst === 'perc';
+    // en el tiempo (paso 0, 4, 8, 12) solo el entero: ahí manda el kick
+    const tm = Array.from({ length: 16 }, (_, s) => {
+      const q = s % 4;
+      return off + (drum ? (q === 2 ? lay8 : q === 3 ? push : 0) : 0) + (q ? r.float(-G.fine, G.fine) : 0);
+    });
+    out[inst] = { sw, tm };
+  }
+  return out;
 }
 
 // para enseñarlo: «ROMINIMAL 70 % · RODANTE»

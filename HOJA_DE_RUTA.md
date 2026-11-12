@@ -296,15 +296,40 @@ que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
      aparte, mejor en un render sin conexión (más rápido que el tiempo real y sin cortes). La carpeta
      sería la unidad de exportación («los stems de toda la familia»). Encaja con la sesión 4 (mezcla y
      máster) y con GRABAR.
-18. **MOTORES CONGELADOS** (hecho 2026-11-11, `src/motores/LEEME.md`): el MOTOR 1 está congelado
-   (los universos guardados hasta ese día suenan siempre igual, comprobado con `herramientas/huella.mjs`)
-   y `src/` es el MOTOR 2, en obras. **Regla para todas las sesiones que cambien el sonido**: antes de
-   un cambio que rompa las semillas del motor en obras, mirar si hay universos guardados suyos
-   (`motor: 2` en `universos/`) y, si se quieren conservar, congelarlo primero. Pendiente: ver el selector
-   de MOTOR en el móvil (solo se probó en ordenador, UN UNIVERSO y DJ); y si se congelan
-   muchos motores, cargar los viejos solo cuando hagan falta (hoy se cargan todos al abrir, ~430 KB
-   cada uno). Los cambios de la mesa, el máster o LOW son comunes: afectan también a los universos de
-   motores congelados.
+18. **MOTORES** (`src/motores/LEEME.md`). Desde 2026-11-12, **un solo motor: ALPHA**. El MOTOR 1
+   (congelado el 2026-11-11) cabía entero en el MOTOR 2 (en obras) y se unificaron: sin los efectos de
+   transición, los universos guardados suenan idénticos (huella), y todo `universos/` apunta a ALPHA.
+   **Regla para todas las sesiones que cambien el sonido**: ALPHA se cambia **sin congelar y sin quitar
+   nada de lo que había** (lo nuevo, apagado o como antes en los universos de antes; un generador
+   nuevo, con su propio azar), y se comprueba con
+   `node huella.mjs ../src --comprobar referencias/huella-alpha.json` (desde `herramientas/`) que lo de
+   antes suena IDÉNTICO. Cuando una feature niegue algo que existía (capas, ADN, cambios de patrones),
+   decidir con el usuario: unificar otra vez o saltar a un motor nuevo con otro nombre (BETA),
+   congelando ALPHA antes. Pendiente para entonces: ver el selector de MOTOR en el móvil y, si se
+   congelan muchos, cargar los viejos solo cuando hagan falta (~430 KB cada uno). Los cambios de la
+   mesa, el máster o LOW son comunes: afectan también a los universos de motores congelados.
+19. **SINTETIZADOR DE VOZ: canal VOZ** (apuntado 2026-11-12, sin empezar). Voz sintetizada de verdad,
+   **sin IA y sin samples** (la filosofía de `voices.js`): la voz como **instrumento** (vocales,
+   sílabas, respiraciones, «hm», «tch»), no para decir palabras. Encaja con el microhouse y con
+   ROMINIMAL (cortes vocales sueltos, «ah/oh» de formantes como pad, vocoder).
+   - **Técnica**: síntesis por **formantes** (fuente + filtro). Fuente glotal (pulso rico en
+     armónicos) + ruido → 4–5 paso banda en F1–F5 según la vocal. Las vocales se funden unas en
+     otras («a→o→u»): va con el movimiento lento (ROMINIMAL.md §7).
+   - **Montaje**: canal propio como FOLEY (tira en `mix.js`, complejidad, CANT/VAR, envíos a
+     ESPACIO; el delay dub sobre la voz es un clásico). Las sílabas se **fabrican en el taller**
+     (worker, como hats y percs con `drumsynth.js`/`bankWorker.js`): un banco por universo sacado
+     de su semilla; en directo solo se reproducen (coste casi nulo, síntesis cuidada sin clics).
+     La altura sigue la escala del universo (`Engine.keyView`, para DJ). Frase corta de sílabas
+     que se repite y varía poco, en los huecos del groove.
+   - ⚠ **Semillas**: VOZ con su **propio generador aleatorio**, para no desplazar los números del
+     resto y no cambiar los universos guardados. En ALPHA, VOZ apagada por defecto en los universos
+     de antes, comprobar con `herramientas/huella.mjs` (`referencias/huella-alpha.json`) que lo
+     existente suena idéntico.
+   - **Fases**: (1) fuente glotal + formantes, vocales y golpes de voz (ah, oh, hm) en el banco, y
+     el canal sonando con CANT/VAR; (2) consonantes (ruido filtrado, plosivas) → sílabas («da»,
+     «ka», «tsh»), vocales que se transforman despacio; (3, opcional) vocoder sobre acordes o pad,
+     o palabras inteligibles (estilo Klatt/LPC: mucho trabajo, poco uso).
+   - Es timbre: el timbre se decide **de oído** con el usuario.
 
 ## Arreglos pendientes
 

@@ -129,37 +129,38 @@ export function bindSaver(root, engine, deck) {
 }
 
 // ───────────────────────── MOTOR AL TRAER (src/motores/LEEME.md)
-// Cada universo apunta a su motor («-M1» en la semilla, `motor` en el archivo; sin nada, el 1, el de
-// antes de los motores) y se trae con él. Se puede elegir otro para comparar: en otro motor se trae
-// TAL COMO NACE (la misma semilla, estilo, tempo y escala), porque lo que mutó o se tocó es de los
-// generadores de su motor y en otro no tiene por qué encajar
+// Cada universo apunta a su motor («-ALPHA» en la semilla, `motor` en el archivo) y se trae con él. Los
+// de antes de ALPHA (sin motor, el 1 o el 2) son de ALPHA: el de partida. Con más de un motor se puede
+// elegir otro para comparar: en otro motor se trae TAL COMO NACE (la misma semilla, estilo, tempo y
+// escala), porque lo que mutó o se tocó es de los generadores de su motor y en otro no tiene por qué
+// encajar. Con uno solo (hoy, ALPHA) la línea no se ve
 const motorPickHTML = '<div class="ui-line ui-motline"><span class="ui-lab">MOTOR</span><div class="mots ui-mots"></div><span class="ui-motnote"></span></div>';
 function motorPicker(line, engine) {
   const box = line.querySelector('.ui-mots'), noteEl = line.querySelector('.ui-motnote');
-  const M = engine.motors, ids = engine.multi ? Object.keys(M).map(Number) : [];
-  line.hidden = !ids.length;
-  let own = 1, pick = 1, seedOnly = false;
-  box.innerHTML = ids.map((m) => `<button data-m="${m}"${M[m].frozen ? '' : ' class="dev"'}>${m}</button>`).join('');
+  const M = engine.motors, ids = engine.multi ? Object.keys(M) : [];
+  const ownOf = (u) => (M[u.motor] ? u.motor : engine.devMotor);
+  line.hidden = ids.length < 2;
+  let own = engine.devMotor, pick = own, seedOnly = false;
+  box.innerHTML = ids.map((m) => `<button data-m="${m}"${M[m].frozen ? '' : ' class="dev"'}>${M[m].label}</button>`).join('');
   const paint = () => {
     for (const b of box.children) {
-      const m = Number(b.dataset.m);
+      const m = b.dataset.m;
       b.classList.toggle('on', m === pick);
       b.classList.toggle('now', m === own);
       b.title = `${M[m].label}: ${M[m].desc}${m === own ? '\n(el suyo: el punto)' : ''}`;
     }
-    noteEl.textContent = !M[own] ? `su motor (${own}) no está en esta versión del programa`
-      : pick === own ? 'el suyo' : seedOnly ? 'otro motor: la misma semilla, para comparar' : 'otro motor: tal como nace (lo que mutó es del suyo)';
+    noteEl.textContent = pick === own ? 'el suyo' : seedOnly ? 'otro motor: la misma semilla, para comparar' : 'otro motor: tal como nace (lo que mutó es del suyo)';
   };
   box.addEventListener('click', (ev) => {
     const b = ev.target.closest('button');
     if (!b) return;
-    pick = Number(b.dataset.m);
+    pick = b.dataset.m;
     paint();
   });
   return {
-    set(u, onlySeed) { own = u.motor ?? 1; pick = M[own] ? own : engine.devMotor; seedOnly = !!onlySeed; paint(); },
-    get: () => (ids.length ? pick : undefined),
-    note: (u) => (ids.length && pick !== (u.motor ?? 1) ? ` · con el MOTOR ${pick}` : ''),
+    set(u, onlySeed) { own = pick = ownOf(u); seedOnly = !!onlySeed; paint(); },
+    get: () => (ids.length > 1 ? pick : undefined),
+    note: (u) => (ids.length > 1 && pick !== ownOf(u) ? ` · con el MOTOR ${M[pick].label}` : ''),
   };
 }
 
@@ -168,7 +169,7 @@ export const importerHTML = () => `
   <button class="ui-libbtn" title="los universos guardados en la biblioteca (la carpeta universos/)">GUARDADOS <b class="ui-count"></b><i class="ui-arrow">▾</i></button>
   <div class="ui-lib" hidden></div>
   <div class="ui-line">
-    <input class="ui-in" type="text" spellcheck="false" autocomplete="off" placeholder="o una semilla · 968782145-RO100-124-F#EOL-M1">
+    <input class="ui-in" type="text" spellcheck="false" autocomplete="off" placeholder="o una semilla · 968782145-RO100-124-F#EOL-ALPHA">
     <button class="ui-open" title="abrir un archivo de universo (.json) de fuera de la biblioteca">ARCHIVO</button>
     <input class="ui-file" type="file" accept=".json,application/json" hidden>
   </div>
@@ -403,7 +404,7 @@ const bpmTxt = (G) => (G?.bpm ? String(G.bpm).replace('.', ',') : '—');
 // la semilla (con su estilo, sin tempo ni escala: esos van en sus columnas)
 const seedTxt = (it) => {
   const seed = it.seed ?? parseInt(it.code, 10);
-  return Number.isFinite(seed) ? seedCode({ seed, style: it.style, motor: it.motor ?? 1 }) : '—';
+  return Number.isFinite(seed) ? seedCode({ seed, style: it.style, motor: it.motor }) : '—';
 };
 export const multiverseHTML = (codeBtn) => `
   <div class="gp mv-now">
@@ -660,5 +661,5 @@ export const currentCode = (deck, engine, withGlobal = true) => seedCode({
   seed: deck.seed,
   style: deck.sty.t > 0 ? { name: deck.sty.name, t: deck.sty.t, purity: deck.sty.purity ?? 1 } : null,
   global: withGlobal ? nowGlobal(engine) : null,
-  motor: deck.motor, // (MOTORES: «-M1»; ver src/motores/LEEME.md)
+  motor: deck.motor, // (MOTORES: «-ALPHA»; ver src/motores/LEEME.md)
 }) + (deck.similarOf ? ' · PARECIDO' : '');

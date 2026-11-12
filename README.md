@@ -65,7 +65,7 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | **OSCILADOR** (uno por fader) | La complejidad del grupo va y viene entre el fader (A) y la **marca** ◂ de su derecha (B): arrastrar = ponerla, doble clic = quitarla. El **cuadradito** junto al nombre del grupo = encenderlo / apagarlo. Debajo, el **GESTO** (‹ › o clic en la palabra) y la **línea de la frase**: arrastrar arriba / abajo = más rápido / más lento, de lado = en qué tramo de la frase; doble clic = como el gesto; mantener = editor de casillas. Ver "Osciladores". |
 | **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
-| **AFINAR** (bajo BASS y KICK; desde 2026-11-12, solo MOTOR 2) | En minimal el bajo es media canción: estas perillas mueven la línea que hizo el universo **sin salir de la escala**. Bajo **BASS**: **TECHO** = la nota más alta, de 1 (la tónica) a 8 (su octava), o sin techo (a la derecha del todo): lo que pase **baja una octava** (es la misma nota de la escala); si así bajara del límite grave, se queda en el techo. **ZONA** = mueve toda la línea por la escala, de −7 a +7 grados (1-3-7 con −1 = 7-2-6, con −2 = 6-1-5, con +1 = 2-4-1): los saltos entre notas se mantienen. **8** = la octava de la tónica de la línea (el salto 1–8; en ROMINIMAL, un golpe corto): encendido (por defecto), se salta el TECHO; se mueve con la ZONA. Primero la ZONA, luego el TECHO y al final el registro en Hz (40–140 Hz, el 8 hasta 200). Bajo **KICK**: **NOTA** = la nota del kick, de −4 a +4 grados alrededor de la tónica, entre 32 y 100 Hz (el número a su lado: la nota que suena); el golpe grave de las transiciones la sigue. Por defecto no cambian nada. Son del **universo**: se guardan en su archivo, pasan al PARECIDO y NUEVO UNIVERSO empieza en lo de por defecto. En universos de motores de antes (MOTOR 1) se ven apagadas: para usarlas, traer su semilla con el MOTOR 2 (hoy suena igual; ver "Motores"). Código: `src/music/tune.js`. |
+| **AFINAR** (bajo BASS y KICK; desde 2026-11-12) | En minimal el bajo es media canción: estas perillas mueven la línea que hizo el universo **sin salir de la escala**. Bajo **BASS**: **TECHO** = la nota más alta, de 1 (la tónica) a 8 (su octava), o sin techo (a la derecha del todo): lo que pase **baja una octava** (es la misma nota de la escala); si así bajara del límite grave, se queda en el techo. **ZONA** = mueve toda la línea por la escala, de −7 a +7 grados (1-3-7 con −1 = 7-2-6, con −2 = 6-1-5, con +1 = 2-4-1): los saltos entre notas se mantienen. **8** = la octava de la tónica de la línea (el salto 1–8; en ROMINIMAL, un golpe corto): encendido (por defecto), se salta el TECHO; se mueve con la ZONA. Primero la ZONA, luego el TECHO y al final el registro en Hz (40–140 Hz, el 8 hasta 200). Bajo **KICK**: **NOTA** = la nota del kick, de −4 a +4 grados alrededor de la tónica, entre 32 y 100 Hz (el número a su lado: la nota que suena); el golpe grave de las transiciones la sigue. Por defecto no cambian nada. Son del **universo**: se guardan en su archivo, pasan al PARECIDO y NUEVO UNIVERSO empieza en lo de por defecto. En universos de motores de antes (MOTOR 1) se ven apagadas: para usarlas, traer su semilla con el MOTOR 2 (hoy suena igual; ver "Motores"). Código: `src/music/tune.js`. |
 | **CANT · VAR** (bajo HAT, PERC y FOLEY) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
 | **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás). El GLOBAL no cambia. Nace con el **ESTILO** que marca el fader de al lado. |
 | **ESTILO** (junto a NUEVO UNIVERSO) | **NORMAL ← → ROMINIMAL**: con qué género nace el **próximo** universo. NORMAL (izquierda) = lo de siempre, idéntico; ROMINIMAL (derecha) = el género puro; en medio, los valores intermedios. Cuenta al pulsar NUEVO UNIVERSO y, antes del primer GENERAR, también para el universo que espera (no hay que generar dos veces). En UN UNIVERSO es un fader; en DJ y en el móvil, una perilla (**RO**). Doble clic = NORMAL. La marca del fader = el estilo del universo que suena; al pasar el ratón, su arquetipo. Ver "Estilo: NORMAL ↔ ROMINIMAL". |
@@ -195,7 +195,7 @@ suenan dentro de la **sala** del universo (ver "Espacio: delay, reverb y fondo")
 | **Se va la música** (DROP → INTRO, DROP → GROOVE…) | un reverse corto, redoble del último tiempo y plato |
 | **Sin kick** (entre escenas de la fila de arriba) | solo un barrido suave |
 
-- **Los compases cuentan** (desde 2026-11-12, MOTOR 2): nada suena mientras el viaje espera su
+- **Los compases cuentan** (desde 2026-11-12): nada suena mientras el viaje espera su
   rejilla; en cuanto **empieza a contar**, en viajes de 4 o más arranca la capa **LÍDER** y crece
   hasta la llegada (en uno de 8 o más ya se oye al empezar, ~8 dB por debajo de su final). Las
   demás se suman por el camino: a la mitad, en los últimos compases. Las escaleras de golpes se
@@ -228,7 +228,7 @@ suenan dentro de la **sala** del universo (ver "Espacio: delay, reverb y fondo")
   riser, hasta dónde suben los filtros) y una combinación principal (líder · riser · shh · voz del
   redoble · patrón · impacto) que **no repite ninguna de las 3 anteriores**. Se reconoce el
   universo, pero nunca suena idéntico. (El **riser TONAL**, un arpegio de notas cortas que subía,
-  se quitó el 2026-11-12 en el MOTOR 2: no convencía. En el MOTOR 1, congelado, sigue.)
+  se quitó el 2026-11-12: no convencía.)
   - **Redoble con la voz PROPIA**: el clap del universo, con su color, más corto y subiendo de tono.
   - **Patrones de redoble**: ACELERA (negras → fusas), RECTO (semicorcheas), TRESILLOS (de
     corchea y luego de semicorchea) y FANTASMAS (acento en los tiempos, el resto flojo y con huecos).
@@ -606,10 +606,10 @@ Para volver a tener un universo que gusta (2026-11-11; código en `src/music/uni
   SÍ, BORRAR / NO; va a la papelera); en la cabecera de la carpeta, ✎ y ✕ para la carpeta. Traer una
   semilla escrita o un archivo de fuera está en OPCIONES → UNIVERSOS. En DJ todo sigue en la cabecera de cada universo, y traer y guardar en OPCIONES →
   UNIVERSOS (también en móvil, donde el panel es una tira compacta solo con lo de generar).
-- **SEMILLA** — el código del universo, p. ej. `968782145-RO100-124-F#EOL-M1`: la semilla, el estilo y
+- **SEMILLA** — el código del universo, p. ej. `968782145-RO100-124-F#EOL-ALPHA`: la semilla, el estilo y
   cuánto (RO = ROMINIMAL; `-P60` si la PUREZA no es 100 %), el **tempo** y la **tónica y el modo** con
-  que sonaba (FRI, EOL, DOR, MIX) y su **MOTOR** (`-M1`; sin nada, el 1: ver «Motores», abajo). Se
-  escribe como se quiera (`968782145 ro 100 124 f# eol m1`), y tempo, escala y motor son opcionales. Vuelve ese universo **tal como nace** (estilo, generadores, espacio,
+  que sonaba (FRI, EOL, DOR, MIX) y su **MOTOR** (`-ALPHA`; los de antes, con `-M1`, `-M2` o sin nada, suenan con ALPHA: ver «Motores»,
+  abajo). Se escribe como se quiera (`968782145 ro 100 124 f# eol alpha`), y tempo, escala y motor son opcionales. Vuelve ese universo **tal como nace** (estilo, generadores, espacio,
   transiciones, color, complejidad, osciladores, CANT · VAR). El fader de ESTILO y la PUREZA se ponen
   en los suyos (por eso al generar se redondean a 0,1 %: el código lo rehace exacto).
 - **ARCHIVO** — GUARDAR ARCHIVO descarga `universo-<código>.json` con el universo **tal como
@@ -644,24 +644,28 @@ Para volver a tener un universo que gusta (2026-11-11; código en `src/music/uni
 - **Semillas vecinas NO dan universos parecidos** (medido en 500 parejas: se parecen igual que dos al
   azar): cada semilla pasa por un mezclador. Para eso está el PARECIDO.
 
-### Motores (2026-11-11)
+### Motores (2026-11-11; un solo motor, ALPHA, desde 2026-11-12)
 
 Una semilla es una receta: si cambia el código que la convierte en música, la misma semilla da otra
-cosa. Por eso el código que hace sonar los universos se **congela** por épocas (detalle y reglas:
-`src/motores/LEEME.md`):
+cosa. Por eso el código que hace sonar los universos va por **motores** (detalle y reglas:
+`src/motores/LEEME.md`).
 
-- **MOTOR 1** — congelado el 2026-11-11: «Génesis» y todo lo guardado hasta ese día. Suena siempre
-  igual (comprobado con la huella: idéntico, nodo a nodo y golpe a golpe, a la app de antes).
-- **MOTOR 2** — **en obras**: el que se sigue cambiando. Sus semillas pueden sonar distinto hasta que
-  se congele. Antes de un cambio que las rompa, si hay universos guardados suyos, se congela primero.
-  Lo que tiene que el 1 no (2026-11-12): las perillas de **AFINAR** (TECHO, ZONA y 8 del bajo, NOTA del
-  kick; por defecto no cambian nada) y el **registro del bajo en NORMAL** (40–140 Hz, el 8 hasta 200;
-  antes llegaba a ~470 Hz). En ROMINIMAL, con las perillas en su sitio, suena igual que el 1 (huella).
-- Cada universo apunta a su motor (`-M1` en la semilla, `motor` en el archivo; sin nada, el 1) y se
-  trae con él. Al traer (EN COLA, OPCIONES → UNIVERSOS) se puede elegir otro para **comparar**: en
+**Hoy hay uno: ALPHA** (2026-11-12). El MOTOR 1 (congelado el 2026-11-11) cabía entero en el MOTOR 2
+(en obras), así que se unificaron: sin los efectos de transición, los universos guardados suenan con
+ALPHA idénticos a como sonaban en el 1 (huella). Todos los de `universos/` apuntan a ALPHA (`-ALPHA`
+en el código, `motor: "alpha"` en el archivo, en `universos/Alpha/`); los códigos de antes (`-M1`,
+`-M2`, sin nada) se siguen leyendo y suenan con ALPHA. ALPHA se sigue cambiando **sin congelar** y
+**sin quitar nada de lo que había** (lo nuevo, apagado en los universos de antes; la huella lo
+comprueba). Cuando una feature niegue algo que existía, o se unifica de nuevo o se salta a un motor
+nuevo con otro nombre (BETA...). Cómo funciona con más de un motor (por si vuelve a haberlos):
+
+- Un motor **congelado** es una copia que no se toca (`src/motores/<nombre>/`): sus universos suenan
+  siempre igual. El de `src/` es el que se sigue cambiando.
+- Cada universo apunta a su motor y se trae con él. Al traer (EN COLA, OPCIONES → UNIVERSOS) se puede elegir otro para **comparar**: en
   otro motor entra **tal como nace** (semilla, estilo, tempo y escala); lo que mutó es del suyo.
-- **MOTOR** en GENERAR UNIVERSO (y en DJ, en la cabecera): con cuál nace el próximo NUEVO UNIVERSO.
-  Como el fader de ESTILO, solo al generar, y traer un universo lo pone en el suyo. Punto = el del que
+- **MOTOR** en GENERAR UNIVERSO (y en DJ, en la cabecera): con cuál nace el próximo NUEVO UNIVERSO
+  (hoy solo se ve ALPHA). Como el fader de ESTILO, solo al generar, y traer un universo lo pone en el
+  suyo. Punto = el del que
   suena; parpadea = el del que espera; el EN OBRAS, subrayado.
 - Cambia en el 1 del compás, como un NUEVO UNIVERSO: lo que estás tocando (la parte, los viajes, el
   GLOBAL, el ESTILO) sigue; el universo que se va deja sonar sus colas. En DJ, A y B pueden ser de
@@ -939,6 +943,6 @@ Todo es síntesis en tiempo real con Web Audio, sin samples ni dependencias.
 - `src/music/kit.js` — CANTIDAD y VARIEDAD de hats y percs: las curvas de las perillas y los tipos de hat (FINO, OSCURO, TICK, MEDIO).
 - `src/music/styles.js` — los ESTILOS (de momento ROMINIMAL) como datos: rangos, pesos, arquetipos, modos, timbre y mezcla; las tiradas con estilo (con NORMAL, las de siempre) y el color llevado a los rangos del género. Investigación: ROMINIMAL.md.
 - `src/ui/` — sliders, knobs y la vista de universo (se instancia dos veces).
-- `src/motor.js` — la entrada de un motor (su Deck y su banco de sonidos). `src/motores/` — los MOTORES congelados (`N/`, copias que no se tocan) y su registro (`index.js`); ver `src/motores/LEEME.md`.
+- `src/motor.js` — la entrada de un motor (su Deck y su banco de sonidos). `src/motores/` — el registro de MOTORES (`index.js`: hoy solo ALPHA, el de `src/`) y, si algún día los hay, los congelados (`<nombre>/`, copias que no se tocan); ver `src/motores/LEEME.md`.
 - `src/audio/slots.js` — los PUESTOS A y B: cada uno con el Deck del motor del universo que suena; cambian de Deck en el 1 del compás.
-- `herramientas/` — scripts de Node para medir lo que genera el motor (densidad, repetición del loop, foley, groove), comprobar que NORMAL sale idéntico tras un cambio y la HUELLA de un motor (todo lo que programa en el audio: que un motor congelado siga igual). Cómo usarlos: herramientas/LEEME.md.
+- `herramientas/` — scripts de Node para medir lo que genera el motor (densidad, repetición del loop, foley, groove), comprobar que NORMAL sale idéntico tras un cambio y la HUELLA de un motor (todo lo que programa en el audio: que un cambio en ALPHA no quite nada de lo que ya sonaba). Cómo usarlos: herramientas/LEEME.md.

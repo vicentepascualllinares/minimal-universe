@@ -8,7 +8,7 @@
   "t": 0.558,
   "purity": 1
  },
- "motor": 2,
+ "motor": "alpha",
  "global": {
   "bpm": 124,
   "rootMidi": 30,
@@ -1872,6 +1872,6 @@
    "perc.back": 0.5536999361589551
   }
  },
- "code": "357988047-RO55.8-124-F#EOL-M2",
- "name": "CLICS · 357988047-RO55.8-M2 · 124 BPM · F# EÓLICO"
+ "code": "357988047-RO55.8-124-F#EOL-ALPHA",
+ "name": "CLICS · 357988047-RO55.8-ALPHA · 124 BPM · F# EÓLICO"
 }

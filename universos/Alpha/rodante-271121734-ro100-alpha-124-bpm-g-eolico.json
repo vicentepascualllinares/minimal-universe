@@ -8,7 +8,7 @@
   "t": 1,
   "purity": 1
  },
- "motor": 2,
+ "motor": "alpha",
  "global": {
   "bpm": 124,
   "rootMidi": 31,
@@ -1915,7 +1915,7 @@
    "perc.back": 0.618951503187418
   }
  },
- "code": "271121734-RO100-124-GEOL-M2",
+ "code": "271121734-RO100-124-GEOL-ALPHA",
  "oscMuted": false,
- "name": "RODANTE · 271121734-RO100-M2 · 124 BPM · G EÓLICO"
+ "name": "RODANTE · 271121734-RO100-ALPHA · 124 BPM · G EÓLICO"
 }

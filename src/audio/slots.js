@@ -203,11 +203,12 @@ export function makeSlot(engine, i, id, opts, motor) {
       prep(want(slot.motorNext)).reseed();
       swapIfStopped();
     },
-    // UNIVERSO GUARDADO: con su motor (los de antes de los motores, el 1) o con el que se elija. En otro
-    // motor que el suyo se trae TAL COMO NACE (su semilla, su estilo, su tempo y escala): lo que mutó o
-    // se tocó es de los generadores de su motor y en otro no tiene por qué encajar
+    // UNIVERSO GUARDADO: con su motor o con el que se elija. En otro motor que el suyo se trae TAL COMO
+    // NACE (su semilla, su estilo, su tempo y escala): lo que mutó o se tocó es de los generadores de su
+    // motor y en otro no tiene por qué encajar. Uno de un motor que ya no está (los de antes de ALPHA:
+    // sin motor, el 1 o el 2) es del de partida, ENTERO: ALPHA los une
     loadUniverse(u, withGlobals = false, motor) {
-      const own = u.motor ?? 1;
+      const own = want(u.motor);
       const m = want(motor ?? own);
       if (E.multi && m !== own) u = { seed: u.seed, style: u.style ?? null, global: u.global, motor: m };
       slot.motorNext = m; // como el fader de ESTILO: lo que se trae deja el MOTOR en el suyo

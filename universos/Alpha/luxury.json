@@ -8,7 +8,7 @@
   "t": 1,
   "purity": 1
  },
- "motor": 2,
+ "motor": "alpha",
  "global": {
   "bpm": 124,
   "rootMidi": 33,
@@ -1876,6 +1876,6 @@
    "perc.back": 0.6190373364533298
   }
  },
- "code": "110836448-RO100-124-AEOL-M2",
+ "code": "110836448-RO100-124-AEOL-ALPHA",
  "name": "Luxury"
 }

@@ -1,9 +1,9 @@
 // UNIVERSOS GUARDADOS (2026-11-11): volver a tener un universo que gustó.
 //
 // Dos maneras:
-//   CÓDIGO DE SEMILLA  «968782145-RO100-124-F#EOL-M1» (semilla · estilo y cuánto · «-P60» si la PUREZA no
-//                      es 100 % · TEMPO · TÓNICA y MODO con los que sonaba · MOTOR, ver src/motores/LEEME.md;
-//                      sin «-M», el MOTOR 1: los códigos de antes de los motores): vuelve a generar el universo
+//   CÓDIGO DE SEMILLA  «968782145-RO100-124-F#EOL-ALPHA» (semilla · estilo y cuánto · «-P60» si la PUREZA
+//                      no es 100 % · TEMPO · TÓNICA y MODO con los que sonaba · MOTOR, ver src/motores/LEEME.md;
+//                      los de antes, con «-M1», «-M2» o sin motor, suenan con ALPHA): vuelve a generar el universo
 //                      TAL COMO NACE (estilo, generadores, espacio, transiciones, color, complejidad,
 //                      osciladores, CANT · VAR). Corto: se copia, se apunta, se escribe. Tempo y escala
 //                      son opcionales al escribirlo, y al traerlo solo se aplican si se pide
@@ -36,6 +36,10 @@ const pct = (x) => String(Math.round(x * 1000) / 10).replace(/\.0$/, '');
 // TÓNICA y MODO: la nota (la tónica del kick, E1..B1 en el motor) y las tres primeras letras del modo
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const modeCode = (i) => SCALES[i].name.normalize('NFD').replace(/[̀-ͯ]/g, '').slice(0, 3).toUpperCase();
+// MOTOR: su nombre en el código («-ALPHA»). Los de antes de ALPHA eran números («-M1», «-M2»): se leen
+// y no se escriben (un universo sin motor suena con el de partida). Un motor nuevo, también aquí
+const MOTOR_CODES = { ALPHA: 'alpha' };
+const motorCode = (m) => (typeof m === 'string' && MOTOR_CODES[m.toUpperCase()] ? `-${m.toUpperCase()}` : '');
 const noteMidi = (pc) => (pc >= 4 ? 24 + pc : 36 + pc); // E1..B1 y, de C a D#, la octava de arriba
 // «124 BPM · F# EÓLICO»
 export const describeGlobal = (G) => [
@@ -50,7 +54,7 @@ export function seedCode(u) {
   if (S && S.t > 0 && S.name) c += `-${styleCode(S.name)}${pct(S.t)}${S.purity < 1 ? `-P${pct(S.purity)}` : ''}`;
   if (G?.bpm) c += `-${String(G.bpm)}`;
   if (G?.rootMidi !== undefined && SCALES[G.scaleI]) c += `-${NOTES[G.rootMidi % 12]}${modeCode(G.scaleI)}`;
-  if (u.motor) c += `-M${u.motor}`;
+  c += motorCode(u.motor);
   return c;
 }
 
@@ -68,11 +72,12 @@ export function parseSeedCode(str) {
     let t = toks[i];
     // «RO 100» escrito separado: las letras de un estilo y su número
     if (/^[A-Z]{2,}$/.test(t) && /^\d+(\.\d+)?$/.test(toks[i + 1] ?? '') && Object.keys(STYLES).some((n) => styleCode(n) === t)) t += toks[++i];
-    // y la tónica y el modo separados: «F# EOL»; y el motor: «M 1»
-    if (/^[A-G]#?$/.test(t) && /^[A-Z]{3,}$/.test(toks[i + 1] ?? '')) t += toks[++i];
+    // y la tónica y el modo separados: «F# EOL»; y un motor de antes: «M 1»
+    if (/^[A-G]#?$/.test(t) && /^[A-Z]{3,}$/.test(toks[i + 1] ?? '') && !MOTOR_CODES[toks[i + 1]]) t += toks[++i];
     if (t === 'M' && /^\d{1,3}$/.test(toks[i + 1] ?? '')) t += toks[++i];
     let m;
-    if ((m = /^M(\d{1,3})$/.exec(t))) out.motor = Number(m[1]);
+    if (MOTOR_CODES[t]) out.motor = MOTOR_CODES[t];
+    else if (/^M\d{1,3}$/.test(t)) {} // (los de antes de ALPHA, «-M1» y «-M2»: suenan con ALPHA)
     else if ((m = /^P(\d+(?:\.\d+)?)$/.exec(t))) { if (!out.style) return null; out.style.purity = Math.min(1, Number(m[1]) / 100); }
     else if ((m = /^([A-Z]{2,})(\d+(?:\.\d+)?)$/.exec(t))) {
       const name = Object.keys(STYLES).find((n) => styleCode(n) === m[1]);

@@ -1,20 +1,18 @@
 // REGISTRO DE MOTORES (ver LEEME.md, en esta carpeta): con qué motor puede sonar un universo.
 //
-// Cada motor es una copia CONGELADA del código que hace sonar los universos (src/motores/N/), menos
-// el último, que es el de src/ (EN OBRAS: el que se sigue cambiando). Un universo guardado lleva su
-// motor («-M1» en el código de semilla, `motor` en el archivo; sin nada, el 1) y suena con él.
-import * as M1 from './1/motor.js';
-import * as DEV from '../motor.js';
+// Desde 2026-11-12 hay UN motor, ALPHA: el de src/ (el MOTOR 1 congelado y el MOTOR 2 en obras se
+// unificaron en él: el 1 cabía entero en el 2). Se sigue cambiando sin congelar, con cambios que no
+// quitan nada de lo que había (lo nuevo, apagado o en lo de antes en los universos de antes). Cuando
+// haga falta un salto que sí lo quite, ALPHA se congela en src/motores/alpha/ y el nuevo lleva OTRO
+// nombre (ver LEEME.md). Un universo lleva su motor («-ALPHA» en el código de semilla, `motor` en el
+// archivo); los de antes («-M1», «-M2» o sin nada) suenan con ALPHA.
+import * as ALPHA from '../motor.js';
 
 export const MOTORS = {
-  1: {
-    ...M1, label: 'MOTOR 1', frozen: true, since: '2026-11-11',
-    desc: 'congelado el 2026-11-11: el de «Génesis» y los universos guardados hasta ese día. Suena siempre igual',
-  },
-  2: {
-    ...DEV, label: 'MOTOR 2', frozen: false,
-    desc: 'en obras: el que se sigue cambiando. Sus semillas pueden sonar distinto hasta que se congele. Tiene AFINAR (TECHO, ZONA y 8 del bajo, NOTA del kick) y el bajo de NORMAL entre 40 y 140 Hz. Transiciones que se oyen desde que empiezan a contar (SHH a ritmo, redoble y kick que suben; sin riser tonal)',
+  alpha: {
+    ...ALPHA, label: 'ALPHA', frozen: false, since: '2026-11-12',
+    desc: 'el motor de todos los universos (desde 2026-11-12: une el MOTOR 1 y el 2). Se sigue cambiando sin quitar nada de lo que había: lo de antes suena igual',
   },
 };
-// el de NUEVO UNIVERSO de partida: el que está en obras
-export const DEV_MOTOR = 2;
+// el de NUEVO UNIVERSO de partida
+export const DEV_MOTOR = 'alpha';

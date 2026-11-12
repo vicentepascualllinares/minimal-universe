@@ -43,18 +43,15 @@ simulado, así que el mismo código da siempre el mismo hash. Toca los universos
 PARECIDO por medio (96 s cada caso, ~1 min en total).
 
 ```bash
-node huella.mjs ../src/motores/1 --comprobar referencias/huella-motor-1.json
+node huella.mjs ../src --comprobar referencias/huella-alpha.json
 ```
 
-```bash
-node huella.mjs ../src 1 --comprobar referencias/huella-app-motor-1.json
-```
-
-La primera = el MOTOR 1 congelado, solo; la segunda = la app de ahora con universos del MOTOR 1. Las
-dos tienen que decir «IDÉNTICO» (ver `src/motores/LEEME.md`; la de la app tiene su propia referencia desde 2026-11-12). Otras opciones: `--guardar <archivo>`
+El motor ALPHA (el único desde 2026-11-12): tiene que decir «IDÉNTICO» después de cualquier cambio que
+no deba tocar lo que ya suena (ver `src/motores/LEEME.md`). Otras opciones: `--guardar <archivo>`
 (guardar una referencia), `SEG=20` (más corto), `ROOT=39` (otra tónica, MIDI 28–39; avisa de valores NaN), `SOLO=genesis` (un caso), `VER=1` (qué se apunta y
-cuánto), `MEZCLA=1` (además, cambios de motor mientras suena: no es referencia, comprueba que no falla
-nada). También sirve para reorganizar código que no debe cambiar el sonido: huella antes y después.
+cuánto), `SINFX=1` (los viajes sin efectos de transición: solo música y sonido), `MEZCLA=<motor>`
+(cuando haya más de uno: además, cambios de motor mientras suena; no es referencia, comprueba que no
+falla nada). También sirve para reorganizar código que no debe cambiar el sonido: huella antes y después.
 
 ## Densidad y repetición (`measure.mjs`)
 

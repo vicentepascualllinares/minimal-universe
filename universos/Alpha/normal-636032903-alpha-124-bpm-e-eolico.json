@@ -4,7 +4,7 @@
  "saved": "2026-11-12T00:43:57.403Z",
  "seed": 636032903,
  "style": null,
- "motor": 2,
+ "motor": "alpha",
  "global": {
   "bpm": 124,
   "rootMidi": 28,
@@ -1378,6 +1378,6 @@
  },
  "bars": 96,
  "styleData": null,
- "code": "636032903-124-EEOL-M2",
- "name": "NORMAL · 636032903-M2 · 124 BPM · E EÓLICO"
+ "code": "636032903-124-EEOL-ALPHA",
+ "name": "NORMAL · 636032903-ALPHA · 124 BPM · E EÓLICO"
 }

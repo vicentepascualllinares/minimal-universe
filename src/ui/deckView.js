@@ -520,13 +520,13 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
   // lo deja en el suyo. El punto = el motor del que suena; parpadea = el del que espera al compás
   const E0 = deck.engine;
   const motEl = q('.mots'), motH = q('.mot-h');
-  const motIds = E0.multi ? Object.keys(E0.motors).map(Number) : [];
-  motEl.innerHTML = motIds.map((m) => `<button data-m="${m}"${E0.motors[m].frozen ? '' : ' class="dev"'}>${m}</button>`).join('');
+  const motIds = E0.multi ? Object.keys(E0.motors) : [];
+  motEl.innerHTML = motIds.map((m) => `<button data-m="${m}"${E0.motors[m].frozen ? '' : ' class="dev"'}>${E0.motors[m].label}</button>`).join('');
   if (!motIds.length) (q('.gp-mot') ?? motEl).hidden = true;
   motEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('button');
     if (!b) return;
-    deck.motorNext = Number(b.dataset.m);
+    deck.motorNext = b.dataset.m;
     if (E0.generated) return;
     clearTimeout(styWait);
     styWait = setTimeout(() => deck.styleWaiting(), 200);
@@ -538,7 +538,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
     motSeen = key;
     const M = E0.motors, nx = M[deck.motorNext];
     for (const b of motEl.children) {
-      const m = Number(b.dataset.m);
+      const m = b.dataset.m;
       b.classList.toggle('on', m === deck.motorNext);
       b.classList.toggle('now', m === deck.motor);
       b.classList.toggle('wait', m === deck.nextMotor);
@@ -627,7 +627,7 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
 
   // AFINAR (music/tune.js): bajo BASS, TECHO, ZONA y el 8; bajo KICK, NOTA. Son del universo (NUEVO
   // UNIVERSO las vuelve a lo de por defecto; un archivo trae las suyas). Solo en motores que las tienen
-  // (desde el MOTOR 2): en los congelados de antes se ven apagadas
+  // (ALPHA, sí): en un motor congelado sin ellas se verían apagadas
   const TUNE_PARAMS = {
     bass: [
       ['ceil', 'TECHO', 'TECHO: la nota más alta del bajo, de 1 (la tónica) a 8 (su octava) · a la derecha del todo, sin techo · lo que pase baja una octava (si así bajara del límite grave, se queda en el techo) · el 8 se lo salta si el botón 8 está encendido · doble clic = sin techo'],

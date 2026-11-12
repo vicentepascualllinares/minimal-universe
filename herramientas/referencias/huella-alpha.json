@@ -1,0 +1,38 @@
+{
+  "src": "src",
+  "motor": null,
+  "seg": 96,
+  "total": "b4a3d7a056682a93f7d0fd53708163665cddc0ec9842d3ced38077c6c18cdff2",
+  "casos": {
+    "dub-968782145-ro100-124-bpm-e-eolico-parecido + dub-968782145-ro100-124-bpm-fs-eolico": {
+      "hash": "d2467c15a5c5599b6adbd6aa76513feda3702e15763c2209b53261b2726f9e5b",
+      "lines": 118814,
+      "compases": 49,
+      "errores": []
+    },
+    "genesis-2 + genesis-3": {
+      "hash": "cf5417459e4dc41f13d2c86861de77c393df01d3be6344171cbe3b2913c9d054",
+      "lines": 133625,
+      "compases": 49,
+      "errores": []
+    },
+    "genesis + semilla": {
+      "hash": "f62c15177d3c5b62a0d265e125a32a152a72adc1f59102e92fc9c3fe3adcdc3f",
+      "lines": 132738,
+      "compases": 49,
+      "errores": []
+    },
+    "semillas ROMINIMAL 100 + NORMAL": {
+      "hash": "c507968885c11310b5558fd413b506e59256a324d872fa3c99e6f1a59c8220f1",
+      "lines": 131294,
+      "compases": 49,
+      "errores": []
+    },
+    "semillas ROMINIMAL 60 P70 + ROMINIMAL 35": {
+      "hash": "3905a6f814e469a2c4c42b4b41117c4d5a4b18abfc232eb1dd610bc9d021a24a",
+      "lines": 139613,
+      "compases": 49,
+      "errores": []
+    }
+  }
+}

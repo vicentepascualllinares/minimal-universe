@@ -8,7 +8,7 @@
   "t": 1,
   "purity": 1
  },
- "motor": 2,
+ "motor": "alpha",
  "global": {
   "bpm": 124,
   "rootMidi": 29,
@@ -1835,7 +1835,7 @@
    "perc.back": 0.5930271003930829
   }
  },
- "code": "229732292-RO100-124-FEOL-M2",
+ "code": "229732292-RO100-124-FEOL-ALPHA",
  "oscMuted": false,
- "name": "BOSQUE · 229732292-RO100-M2 · 124 BPM · F EÓLICO"
+ "name": "BOSQUE · 229732292-RO100-ALPHA · 124 BPM · F EÓLICO"
 }

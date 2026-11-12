@@ -66,7 +66,7 @@ export class Engine {
   constructor({ motors, dev, start } = {}) {
     this.motors = motors ?? { 0: { Deck, SoundBank } };
     this.multi = !!motors;
-    this.devMotor = dev ?? Math.max(...Object.keys(this.motors).map(Number)); // el de NUEVO UNIVERSO de partida
+    this.devMotor = dev ?? Object.keys(this.motors).at(-1); // el de NUEVO UNIVERSO de partida
     this.banks = {}; // un BANCO DE SONIDOS por motor (ver bankOf)
     this.ready = false;
     this.playing = false;

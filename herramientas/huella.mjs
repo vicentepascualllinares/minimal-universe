@@ -11,10 +11,12 @@
 //
 // Toca con los universos guardados de `universos/` y unas semillas fijas (NORMAL y ROMINIMAL), en DJ,
 // con cambios de parte, un NUEVO UNIVERSO y un PARECIDO por medio. Sirve para:
-//   - que un MOTOR CONGELADO (src/motores/N) siga sonando EXACTAMENTE igual: su huella de referencia
-//     está en herramientas/referencias/ (ver --comprobar)
+//   - que un cambio en ALPHA (el motor de src/) NO QUITE NADA de lo que había: los universos de antes
+//     tienen que sonar EXACTAMENTE igual. Su huella de referencia está en herramientas/referencias/
+//     (ver --comprobar). Igual con un motor congelado (src/motores/<nombre>), si algún día lo hay
 //   - que una reorganización del código que no debe cambiar el sonido no lo cambie (antes / después)
-// `motor` (opcional): con qué motor nacen los universos (si el motor de `srcDir` sabe de motores).
+// `motor` (opcional): con qué motor nacen los universos, por su nombre (si `srcDir` sabe de motores).
+// SINFX=1: los viajes sin efectos de transición (para comparar solo la música y el sonido).
 // Variables: SEG=96 (segundos de cada caso), SOLO=nombre (un solo caso), VER=1 (cuenta lo apuntado).
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -24,7 +26,7 @@ import crypto from 'node:crypto';
 
 const args = process.argv.slice(2);
 const src = path.resolve(args[0] ?? '../src');
-const motorArg = args[1] && !args[1].startsWith('--') ? Number(args[1]) : null;
+const motorArg = args[1] && !args[1].startsWith('--') ? args[1] : null;
 const flag = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 const SEG = Number(process.env.SEG ?? 96);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -204,13 +206,13 @@ const SCRIPT = [
   [26, 0, 'similar'], [30, 1, 'press', 'drop'], [34, 0, 'press', 'kickout'], [36, 0, 'press', 'main'],
   [40, 0, 'reseed'], [44, 1, 'press', 'build'],
 ];
-// MEZCLA=1 (solo con registro de motores): además, cambios de MOTOR mientras suena (un universo del
-// motor en obras en B, NUEVO UNIVERSO en el en obras en A, vuelta a un guardado del 1 y un guardado
-// del 1 traído con el en obras: tal como nace). No es una referencia: comprueba que no falla nada
+// MEZCLA=<motor> (cuando haya más de uno): además, cambios de MOTOR mientras suena (un universo de ese
+// motor en B, NUEVO UNIVERSO con él en A, vuelta a un guardado del suyo y un guardado traído con ese:
+// tal como nace). No es una referencia: comprueba que no falla nada
 if (process.env.MEZCLA) {
-  const g = U[names[0]];
-  SCRIPT.push([12, 1, 'load', { ...seedU(555, 1), motor: 2 }], [20, 0, 'motor', 2], [20, 0, 'reseed'],
-    [28, 0, 'load', g], [32, 1, 'load', { ...g, motor: undefined, forceMotor: 2 }], [38, 1, 'similar']);
+  const g = U[names[0]], X = process.env.MEZCLA;
+  SCRIPT.push([12, 1, 'load', { ...seedU(555, 1), motor: X }], [20, 0, 'motor', X], [20, 0, 'reseed'],
+    [28, 0, 'load', g], [32, 1, 'load', { ...g, motor: undefined, forceMotor: X }], [38, 1, 'similar']);
   SCRIPT.sort((a, b) => a[0] - b[0]);
 }
 
@@ -245,12 +247,14 @@ for (const [name, ua, ub] of CASES) {
       for (const [sb, di, act, arg] of SCRIPT) {
         if (sb !== b) continue;
         const d = E.decks[di];
+        // SINFX=1: los viajes sin efectos de transición (para comparar solo la música y el sonido)
+        if (process.env.SINFX) for (const g of Object.values(d.gesture)) g.fx = false;
         if (act === 'press') d.press(arg);
         else if (act === 'reseed') d.reseed();
         else if (act === 'similar') d.similarUniverse(0.5, 0.5);
         else if (act === 'load') load(d, arg, false, arg.forceMotor ?? arg.motor);
         else if (act === 'motor') d.motorNext = arg;
-        if (process.env.MEZCLA) console.log(`  compás ${b} ${'AB'[di]} ${act}: suena M${d.motor}${d.nextMotor ? ` · espera M${d.nextMotor}` : ''} · semilla ${d.seed}`);
+        if (process.env.MEZCLA) console.log(`  compás ${b} ${'AB'[di]} ${act}: suena ${d.motor}${d.nextMotor ? ` · espera ${d.nextMotor}` : ''} · semilla ${d.seed}`);
       }
     }
     await drain(E);

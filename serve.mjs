@@ -84,7 +84,7 @@ async function listDir(folder) {
     try {
       const u = JSON.parse(await readFile(join(dirOf(folder), f), 'utf8'));
       if (!(u && typeof u === 'object' && u.seed >= 0 && u.gen)) continue; // solo universos (no fotos en bruto)
-      out.push({ file: folder ? `${folder}/${f}` : f, folder, name: u.name || null, seed: u.seed, code: u.code ?? null, style: u.style ?? null, global: u.global ?? null, saved: u.saved ?? null, similar: u.similar ?? null, motor: u.motor ?? 1 });
+      out.push({ file: folder ? `${folder}/${f}` : f, folder, name: u.name || null, seed: u.seed, code: u.code ?? null, style: u.style ?? null, global: u.global ?? null, saved: u.saved ?? null, similar: u.similar ?? null, motor: u.motor ?? null });
     } catch {}
   }
   return out;

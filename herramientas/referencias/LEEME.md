@@ -2,11 +2,10 @@
 
 - `universos/` — los universos con los que toca `huella.mjs` (copia fija de la biblioteca del
   2026-11-11: «Génesis», «Génesis 2», «Génesis 3» y los dos DUB). No se cambian: si cambian, cambia la
-  huella de todos los motores.
-- `huella-motor-1.json` — la huella del MOTOR 1, sacada del código de antes de los motores (commit
-  d8587b4). Ver `src/motores/LEEME.md`.
-- `huella-app-motor-1.json` — la de la app con universos del MOTOR 1 desde 2026-11-12, cuando los
-  viajes pasaron a aterrizar en una rejilla de su tamaño (`LANDING`, `src/audio/slots.js`). Con la
-  regla de antes la app daba IDÉNTICO a `huella-motor-1.json`. Ver `src/motores/LEEME.md`.
-  Rehecha el mismo día con la ENTRADA DEL DROP y el HUECO común a todos los motores (`src/audio/drop.js`)
-  y la ESCALA de cada puesto (`Engine.keyView`: en el caso de los DUB, B ya no toca en la tónica de A).
+  huella. Están en el formato de antes de ALPHA (sin `motor`): así la huella comprueba también que los
+  archivos de antes se siguen leyendo enteros.
+- `huella-alpha.json` — la huella del motor ALPHA (2026-11-12, al unificar el MOTOR 1 y el 2). Ver
+  `src/motores/LEEME.md`. Antes de unificar se comprobó, con `SINFX=1` (sin efectos de transición), que
+  la app con el MOTOR 1 y con ALPHA daban la misma huella en todos los casos.
+- Las de antes (`huella-motor-1.json`, `huella-app-motor-1.json`) se borraron con el MOTOR 1 congelado
+  (están en git, en c866517 y anteriores).

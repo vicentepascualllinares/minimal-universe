@@ -1808,6 +1808,7 @@
    "perc.back": 0.57008305484429
   }
  },
- "code": "968782145-RO100-124-F#EOL",
- "name": "DUB · 968782145-RO100 · 124 BPM · F# EÓLICO"
+ "code": "968782145-RO100-124-F#EOL-ALPHA",
+ "name": "DUB · 968782145-RO100 · 124 BPM · F# EÓLICO",
+ "motor": "alpha"
 }

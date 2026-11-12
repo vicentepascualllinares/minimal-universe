@@ -1,4 +1,4 @@
-// VOCES DE TRANSICIÓN — riser, redoble, impacto, platos, reverse y caída.
+// VOCES DE TRANSICIÓN — riser, shh, redoble, kick que sube, impacto, platos, reverse y caída.
 // Todo sintetizado, cero samples. `p` = la paleta del universo (music/transitions.js).
 // Las voces de un golpe se programan en un tiempo exacto `t`; el riser es una voz
 // sostenida que el universo mueve compás a compás con set(progreso).
@@ -92,7 +92,9 @@ export function riser(ctx, out, t, p, root, noise, level = 1, noiseOnly = false)
         lp.frequency.setTargetAtTime(900 * Math.pow(9, q), now, tc);
       }
       if (lfo) lfo.frequency.setTargetAtTime(2 + 14 * q * q, now, tc);
-      g.gain.setTargetAtTime(level * (0.04 + 0.96 * Math.pow(q, p.riseCurve ?? 1.8)), now, tc);
+      // `p.riseFloor`: el volumen al empezar (los viajes largos empiezan ya audibles)
+      const fl = p.riseFloor ?? 0.04;
+      g.gain.setTargetAtTime(level * (fl + (1 - fl) * Math.pow(q, p.riseCurve ?? 1.8)), now, tc);
     },
     end(at) { stop(at, 0.004); }, // corte seco: el riser muere justo en el 1
     kill(at) { stop(at, 0.05); },
@@ -157,30 +159,67 @@ export function rollHit(ctx, out, t, vel, p, q, noise) {
   n.stop(end);
 }
 
-// ───────────────────────── RISER TONAL (una nota del arpegio)
-// Lo programa el universo nota a nota (en la rejilla, exacto): sube por la escala del momento y
-// acelera. q = 0..1 avance: el filtro se abre y la nota se acorta. Seco y corto: no se pisa
-// con la llegada.
-export function arpNote(ctx, out, t, freq, vel, p, q) {
-  const dur = 0.16 - 0.1 * q;
-  const o = ctx.createOscillator();
-  o.type = p.wave;
-  o.frequency.value = freq;
-  const o2 = ctx.createOscillator(); // una octava abajo, flojo: cuerpo
-  o2.type = 'triangle';
-  o2.frequency.value = freq / 2;
-  const lp = filt(ctx, 'lowpass', 700 * Math.pow(12, q), 2);
+// ───────────────────────── SHH (sostenido y a ritmo): el riser de ruido blanco al compás
+// «shh shh shh»: ruido que late en la rejilla. El universo lo mueve con set(q) (el filtro se
+// abre, el volumen sube) y le marca cada golpe con hit(t, dur). Según `p.shh`:
+//   bombeo  como con sidechain: se hunde en cada golpe y vuelve a crecer hasta el siguiente
+//   golpe   un soplo en cada golpe que se apaga antes del siguiente
+//   contra  el soplo, a contratiempo (lo coloca quien llama)
+// `floor`: el volumen al empezar (0..1 del final); `curve`: cómo crece
+export function shh(ctx, out, t, p, noise, level = 1, floor = 0.08, curve = 1.6) {
+  const n = nz(ctx, noise, true);
+  const tone = p.shhTone ?? 1;
+  const hp = filt(ctx, 'highpass', 450 * tone, 0.7);
+  const lp = filt(ctx, 'lowpass', 3000 * tone, 0.7);
+  const pump = ctx.createGain();
+  const pumped = p.shh === 'bombeo';
+  pump.gain.value = pumped ? 1 : 0;
   const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(vel, t + 0.003);
-  g.gain.setTargetAtTime(0, t + 0.003, dur / 4);
-  const g2 = ctx.createGain();
-  g2.gain.value = 0.35;
-  o.connect(lp);
-  o2.connect(g2).connect(lp);
-  lp.connect(g).connect(out);
-  const end = t + dur * 1.8 + 0.02;
-  for (const x of [o, o2]) { x.start(t); x.stop(end); }
+  g.gain.value = 0;
+  n.connect(hp).connect(lp).connect(pump).connect(g).connect(out);
+  n.start(t, Math.random() * (noise.duration - 0.1));
+  let ended = false;
+  const stop = (at, tc) => {
+    if (ended) return;
+    ended = true;
+    g.gain.cancelScheduledValues(at);
+    g.gain.setTargetAtTime(0, at, tc);
+    n.stop(at + tc * 8 + 0.02);
+  };
+  return {
+    set(q, now) {
+      if (ended) return;
+      const tc = 0.06;
+      hp.frequency.setTargetAtTime(450 * tone * Math.pow(5, q), now, tc);       // 450 → 2,2 kHz
+      lp.frequency.setTargetAtTime(Math.min(18000, 3000 * tone * Math.pow(5, q)), now, tc); // 3 → 15 kHz
+      g.gain.setTargetAtTime(0.4 * level * (floor + (1 - floor) * Math.pow(q, curve)), now, tc);
+    },
+    // un golpe en `at`; `dur` = lo que falta para el siguiente (s)
+    hit(at, dur, vel = 1) {
+      if (ended) return;
+      const P = pump.gain;
+      if (pumped) {
+        P.setTargetAtTime(0.03, at, 0.004);
+        P.setTargetAtTime(vel, at + dur * 0.12, dur * 0.26);
+      } else {
+        P.setTargetAtTime(vel, at, 0.003);
+        P.setTargetAtTime(0, at + Math.min(0.02, dur * 0.1), dur * 0.2);
+      }
+    },
+    end(at) { stop(at, 0.004); }, // corte seco en el 1
+    kill(at) { stop(at, 0.04); },
+  };
+}
+
+// ───────────────────────── KICK QUE SUBE (un golpe)
+// El kick del universo, a una rejilla que acelera, subiendo de tono y abriéndose: lejano y
+// apagado al principio, entero al final. q = 0..1 avance; `hz` = su nota (la NOTA del kick)
+// ya subida; `dur` = hasta el siguiente golpe (s): la cola no se pisa con él
+export function kickRise(ctx, out, t, vel, kickP, hz, q, dur, noise) {
+  const lp = filt(ctx, 'lowpass', 220 * Math.pow(60, q), 0.7); // 220 Hz → 13 kHz
+  lp.connect(out);
+  const decay = Math.min(kickP.decay, Math.max(0.05, dur * 0.8));
+  V.kick(ctx, lp, t, vel, { ...kickP, hold: Math.min(kickP.hold, dur * 0.25), decay }, hz, noise);
 }
 
 // ───────────────────────── REDOBLE CON LA VOZ PROPIA: el clap del universo (su color), más corto

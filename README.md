@@ -195,9 +195,29 @@ suenan dentro de la **sala** del universo (ver "Espacio: delay, reverb y fondo")
 | **Se va la música** (DROP → INTRO, DROP → GROOVE…) | un reverse corto, redoble del último tiempo y plato |
 | **Sin kick** (entre escenas de la fila de arriba) | solo un barrido suave |
 
-- **Cuantos más compases, más capas**: con INSTANTÁNEO solo hay golpe o plato al llegar; con 1–2,
-  un redoble corto y un soplo de ruido; con 4, riser y tensión; con 8 o más, todo (el
-  riser dura como mucho 16 compases y el redoble 4).
+- **Los compases cuentan** (desde 2026-11-12, MOTOR 2): nada suena mientras el viaje espera su
+  rejilla; en cuanto **empieza a contar**, en viajes de 4 o más arranca la capa **LÍDER** y crece
+  hasta la llegada (en uno de 8 o más ya se oye al empezar, ~8 dB por debajo de su final). Las
+  demás se suman por el camino: a la mitad, en los últimos compases. Las escaleras de golpes se
+  estiran con el viaje: cada peldaño dura la mitad que el anterior, así que un redoble de 32
+  compases va 16 a un golpe por compás, 8 a blancas, 4 a negras, luego corcheas y acaba en
+  semicorcheas y fusas. La líder la elige cada transición:
+  - **RISER** (ruido, tono o los dos), todo el viaje.
+  - **SHH**: ruido blanco a ritmo («shh shh shh»), en negras casi todo el viaje y en corcheas y
+    semicorcheas al final, con el filtro abriéndose. Tres formas: **BOMBEO** (se hunde en cada
+    tiempo y vuelve a crecer, como con sidechain), **GOLPE** (un soplo en cada tiempo) y
+    **CONTRA** (el soplo a contratiempo).
+  - **REDOBLE que sube**: la caja (o la voz de la paleta) desde el primer compás, acelerando.
+  - **KICK QUE SUBE** (solo si entra el kick y DE GOLPE): el kick del universo, en su NOTA,
+    lejano y apagado al principio, subiendo de tono y acelerando (un golpe por compás →
+    semicorcheas) hasta el último compás. En PROGRESIVA no, porque el kick de verdad ya va
+    entrando y se pisarían.
+  En una caída (se va el kick) la líder puede ser también el **filtro que cierra**, todo el viaje.
+  Con INSTANTÁNEO solo hay golpe o plato al llegar; con 1–2, un redoble corto y un soplo de ruido.
+  Cuando suenan 3 capas o más, cada una baja un poco: el pico sigue en 0 dBFS antes del fader.
+- **Cancelar a medias** (volver a pulsar, u otra escena): lo que estaba sonando se apaga en ~0,1 s,
+  colas del redoble y del kick incluidas (cada capa de golpes va por su propio canal). Al llegar,
+  en cambio, las colas suenan.
 - **Paleta por universo**: qué riser (ruido, tono o los dos, cuánto sube, si late), qué
   redoble (caja, clap, rim o tom, si sube de tono), qué golpe (grave afinado en la tónica,
   sordo o los dos), cómo son los platos, cuánta tensión y si hay silencio antes del drop
@@ -205,13 +225,10 @@ suenan dentro de la **sala** del universo (ver "Espacio: delay, reverb y fondo")
   intensos; NUEVO UNIVERSO cambia también la paleta.
 - **Cada transición es distinta**: la paleta es la *familia* del universo, no un sonido fijo.
   Cada transición tira sus propios detalles alrededor de ella (afinaciones, colas, cómo crece el
-  riser, hasta dónde suben los filtros) y una combinación principal (riser · voz del redoble ·
-  patrón · impacto) que **no repite ninguna de las 3 anteriores**. Se reconoce el universo, pero
-  nunca suena idéntico.
-  - **Riser TONAL**: un arpegio en la escala y la tónica del momento (grado a grado, la tríada o
-    tónica y quinta) que sube, acelera (corcheas → semicorcheas → fusas) y se abre de filtro, con
-    un soplo de ruido debajo. Suena a ese tema, no a un efecto pegado. Solo en viajes de 4
-    compases o más (en los cortos, el riser es un soplo de ruido).
+  riser, hasta dónde suben los filtros) y una combinación principal (líder · riser · shh · voz del
+  redoble · patrón · impacto) que **no repite ninguna de las 3 anteriores**. Se reconoce el
+  universo, pero nunca suena idéntico. (El **riser TONAL**, un arpegio de notas cortas que subía,
+  se quitó el 2026-11-12 en el MOTOR 2: no convencía. En el MOTOR 1, congelado, sigue.)
   - **Redoble con la voz PROPIA**: el clap del universo, con su color, más corto y subiendo de tono.
   - **Patrones de redoble**: ACELERA (negras → fusas), RECTO (semicorcheas), TRESILLOS (de
     corchea y luego de semicorchea) y FANTASMAS (acento en los tiempos, el resto flojo y con huecos).
@@ -219,7 +236,7 @@ suenan dentro de la **sala** del universo (ver "Espacio: delay, reverb y fondo")
   - Los **básicos** siguen todos: riser de ruido blanco, riser de tono (ahora también con
     **senoidal** pura, la más probable cuando cambia la onda), los dos juntos, caída de ruido,
     barridos de filtro (HP de tensión, LP de caída), reverse, redobles, golpes y platos. Lo
-    tonal y lo propio se suman a ellos; no los sustituyen.
+    propio, el shh y el kick que sube se suman a ellos; no los sustituyen.
 - **VOLUMEN DE FX** de cada universo: un fader bajo el botón FX de su columna TRANSICIÓN (A a la
   izquierda, B a la derecha) y, el mismo, en el **MIXER** (caja FX, A y B, nunca vinculados, con
   medidor). 0 dB = el pico más alto de los efectos en 0 dBFS; el preset ROMINIMAL lo deja en

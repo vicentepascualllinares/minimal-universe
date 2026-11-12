@@ -423,7 +423,10 @@ export const ROMINIMAL = {
     'fx.amount': [0.25, 0.55], 'fx.riser': { noise: 4, tone: 1, both: 1.5 }, 'fx.wobble': 0.12,
     'fx.boom': 0.55, 'fx.thud': 0.65, 'fx.gapP': 0.12, 'fx.down': 0.8,
     'fx.crashDecay': [0.8, 1.6], 'fx.tensionHz': [180, 450], 'fx.downHz': [600, 1600],
-    'fx.vRiser': { noise: 3, tone: 0.6, both: 1, tonal: 1.2 },
+    'fx.vRiser': { noise: 3, tone: 0.6, both: 1 },
+    // la capa que tira de los viajes largos (8, 16, 32): más ruido a ritmo y redoble que riser
+    'fx.vLead': { riser: 1.5, shh: 3, roll: 2, kick: 2 },
+    'fx.vShh': { bombeo: 2, golpe: 1, contra: 3 },
     'fx.vRoll': { snare: 0.6, clap: 0.6, rim: 2.5, tom: 1.2, self: 2 },
     'fx.vPattern': { acelera: 1.2, recto: 1.5, tresillo: 1.5, fantasma: 4 },
 

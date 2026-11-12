@@ -128,7 +128,7 @@ export class Engine {
     this.xf = { hi: 0, mid: 0, lo: 0 };
     this.low = new LowRoles(this); // LOW reparte los papeles KICK y BAJO (ver lowRoles.js)
     // GANANCIA DEL MÁSTER (MIXER): antes del limitador, empuja la mezcla contra él (1 = 0 dB = como
-    // sonaba siempre). Como el resto del MIXER, aún no se guarda (vendrá con las cuentas)
+    // sonaba siempre). Va en el ARCHIVO de un universo, con los globales (ver completeCapture)
     this.masterGain = 1;
     // VOLUMEN DE FX por universo: ganancia (1 = 0 dB) y la posición de su fader, que comparten
     // la columna TRANSICIÓN del universo y el MIXER (ver setFxFader en instMixer.js)
@@ -239,12 +239,45 @@ export class Engine {
     if (i < 0) return;
     const M = u.mix;
     if (M) {
-      for (const k of INSTRUMENTS) this.mute[i][M.mute?.includes(k) ? 'add' : 'delete'](k);
+      // (desde 2026-11-12, `all`: el MUTE y el SOLO de TODOS sus canales, también los retornos y FX.
+      // Un archivo de antes: solo el MUTE de sus instrumentos, como entonces)
+      const keys = M.all ? [...MIX_CHANNELS, 'fx'] : INSTRUMENTS;
+      for (const k of keys) this.mute[i][M.mute?.includes(k) ? 'add' : 'delete'](k);
+      const soloWas = this.solo[i].size;
+      if (M.all) for (const k of keys) this.solo[i][M.solo?.includes(k) ? 'add' : 'delete'](k);
       for (const k of MIX_CHANNELS) if (M.inst?.[k] !== undefined) this.setInst(i, k, M.inst[k], at);
       if (M.fxPos !== undefined) this.fxPos[i] = M.fxPos;
       if (M.fxGain !== undefined) this.setFxGain(i, M.fxGain, at);
+      else if (M.all) this.setFxGain(i, this.fxGain[i], at);
+      // un SOLO que entra o se va cambia lo que se oye del otro universo (en el mismo compás)
+      if (M.all && (soloWas || this.solo[i].size)) {
+        const o = 1 - i;
+        for (const k of MIX_CHANNELS) this.setInst(o, k, this.inst[o][k], at);
+        this.setFxGain(o, this.fxGain[o], at);
+      }
       this.mixVersion = (this.mixVersion || 0) + 1;
     }
+    // lo del universo que no va en el MIXER (si el archivo lo trae): los OSCILADORES en silencio y los
+    // compases y FX del CLIC (columna TRANSICIÓN)
+    if (typeof u.oscMuted === 'boolean') deck.oscMuted = u.oscMuted;
+    const T = u.transition, C = deck.gesture?.click;
+    if (T && C) {
+      if (Number.isFinite(T.bars) && T.bars >= 0) C.bars = T.bars;
+      if (typeof T.fx === 'boolean') C.fx = T.fx;
+    }
+  }
+  // GUARDAR (universeIO.js): lo que el universo capturado por su motor (captureUniverse, también el
+  // de los motores congelados) no lleva y es del MIXER o de la vista: SOLO y MUTE de todos sus canales,
+  // OSCILADORES en silencio, compases y FX del CLIC; y, con los globales (se ponen si se pide, como el
+  // tempo), la GANANCIA DEL MÁSTER y el PRESET de mezcla. `deck` = el puesto o su Deck
+  completeCapture(deck, u) {
+    const i = this.slotOf(deck);
+    if (u.mix && i >= 0) Object.assign(u.mix, { mute: [...this.mute[i]], solo: [...this.solo[i]], all: true });
+    if (u.global) Object.assign(u.global, { master: this.masterGain, mixPreset: this.mixPreset });
+    u.oscMuted = !!deck.oscMuted;
+    const C = deck.gesture?.click;
+    if (C) u.transition = { ...(u.transition ?? { form: deck.form, flow: deck.flow }), bars: C.bars, fx: C.fx };
+    return u;
   }
   // TEMPO, TÓNICA y MODO de un universo traído (solo si se pidió: Deck.loadUniverse). Al entrar, en el
   // 1 de su compás: el modo cambia ya (no en el compás siguiente). En DJ cambian para los dos
@@ -252,11 +285,16 @@ export class Engine {
     if (G.bpm) this.bpm = G.bpm;
     if (G.rootMidi !== undefined) this.rootMidi = G.rootMidi;
     if (G.scaleI !== undefined) { this.scaleI = G.scaleI; this.scaleNext = null; }
+    // (desde 2026-11-12) la GANANCIA DEL MÁSTER y el PRESET del MIXER con los que sonaba (el preset
+    // no mueve los faders: es contra qué se marca RETOCADA y la mezcla con que nacen los estilos)
+    if (Number.isFinite(G.master) && G.master >= 0) this.setMasterGain(G.master);
+    if (MIX_PRESETS[G.mixPreset]) this.mixPreset = G.mixPreset;
+    if (G.master !== undefined || G.mixPreset !== undefined) this.mixVersion = (this.mixVersion || 0) + 1;
   }
 
   // MUTE y SOLO del MIXER, por universo e instrumento (`k` = un instrumento o 'fx'). Solo "en su
   // sitio": si hay alguno en SOLO, se oyen solo esos (de los dos universos). Actúan después del
-  // fader (no lo mueven) y con una rampa corta: sin clics. No se guardan
+  // fader (no lo mueven) y con una rampa corta: sin clics. Van en el ARCHIVO del universo (completeCapture)
   heard(i, k) {
     const anySolo = this.solo[0].size + this.solo[1].size > 0;
     return !this.mute[i].has(k) && (!anySolo || this.solo[i].has(k)) ? 1 : 0;

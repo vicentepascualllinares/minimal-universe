@@ -10,7 +10,10 @@
 //   ARCHIVO (.json)    el universo TAL COMO SUENA: además, lo que ha MUTADO mientras sonaba (los
 //                      generadores y sus dados), lo que se ha TOCADO (complejidad, osciladores, CANT ·
 //                      VAR, envíos, MIXER de ese universo) y los globales con los que sonaba (BPM,
-//                      tónica y modo; como en el código, solo se aplican si se pide). Para cargarlo se
+//                      tónica y modo; como en el código, solo se aplican si se pide). Desde 2026-11-12,
+//                      además (Engine.completeCapture, al guardar desde la app): MUTE y SOLO de todos
+//                      sus canales, OSCILADORES en silencio, compases y FX del CLIC y, con los globales,
+//                      el MÁSTER y el preset del MIXER. Para cargarlo se
 //                      rehace desde su semilla y encima se pone lo guardado: lo que se deriva (el estilo,
 //                      la respuesta del bajo...) no se guarda.
 // La estructura (la escena, los viajes) no va en el universo: es del intérprete.

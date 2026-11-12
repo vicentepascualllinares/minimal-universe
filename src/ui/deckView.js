@@ -474,6 +474,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
   q('.t-form').addEventListener('pointerdown', () => { deck.form = deck.form === 'golpe' ? 'prog' : 'golpe'; showForm(); });
   q('.t-flow').addEventListener('pointerdown', () => { deck.flow = deck.flow === 'suave' ? 'escalonado' : 'suave'; showForm(); });
   showForm();
+  let transSeen = '';
 
   const seedBtn = q('.seed');
   seedBtn.addEventListener('pointerdown', () => deck.reseed());
@@ -821,6 +822,9 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
         gsMode.classList.toggle('pending', E.scaleNext !== null);
       }
       showMotor();
+      // un UNIVERSO GUARDADO que se carga trae su forma de viaje y los compases y FX del CLIC
+      const tk = `${deck.form}|${deck.flow}|${deck.gesture.click.bars}|${deck.gesture.click.fx}`;
+      if (tk !== transSeen) { transSeen = tk; showForm(); showGesture(); }
       const sk = `${deck.motor}|${E.bpm}|${E.rootMidi}|${E.scaleNext ?? E.scaleI}|${deck.similarOf?.with ?? ''}|${deck.sty.t}|${deck.sty.arch}|${deck.styleNext.toFixed(2)}|${deck.purityNext.toFixed(2)}|${deck.sty.purity}|${deck.pendingSty?.t ?? -1}|${deck.seed}`;
       if (sk !== stySeen) {
         stySeen = sk;

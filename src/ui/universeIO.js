@@ -64,7 +64,7 @@ export const suggestName = (deck, engine) => [
 // GUARDAR el que suena en la biblioteca, con su nombre y en su carpeta ('' = sin carpeta). Si no hay
 // biblioteca (un servidor antiguo), se descarga el archivo
 export async function saveUniverse(deck, engine, name, folder = '') {
-  const universe = deck.capture();
+  const universe = engine.completeCapture(deck, deck.capture()); // (y SOLO, MÁSTER, osciladores, CLIC: ver Engine)
   try {
     const r = await api('/api/universos', send('POST', { name: name || suggestName(deck, engine), universe, folder }));
     shared.lastFolder = r.folder ?? folder;
@@ -176,7 +176,7 @@ export const importerHTML = () => `
     <span class="ui-what"></span>
     <span class="ui-glob-txt"></span>
     <div class="ui-line">
-      <button class="ui-glob" title="al entrar, poner también su tempo, tónica y modo (si no, siguen los de ahora)">CON SU TEMPO Y ESCALA</button>
+      <button class="ui-glob" title="al entrar, poner también su tempo, tónica y modo, y el MÁSTER y el preset del MIXER (si no, siguen los de ahora)">CON SU TEMPO Y ESCALA</button>
       <button class="ui-go">TRAER</button>
     </div>
     ${motorPickHTML}
@@ -422,7 +422,7 @@ export const multiverseHTML = (codeBtn) => `
       <span class="mv-lab">EN COLA</span>
       <div class="mv-q-what"></div>
       <div class="ui-line">
-        <button class="ui-glob" title="al entrar, poner también su tempo, tónica y modo (si no, siguen los de ahora)">CON SU TEMPO Y ESCALA</button>
+        <button class="ui-glob" title="al entrar, poner también su tempo, tónica y modo, y el MÁSTER y el preset del MIXER (si no, siguen los de ahora)">CON SU TEMPO Y ESCALA</button>
         <button class="mv-q-x" title="quitarlo de la cola">✕</button>
         <button class="mv-import" title="lanzarlo: entra en el 1 del compás siguiente (parado, al GENERAR)">IMPORTAR</button>
       </div>
@@ -501,7 +501,7 @@ export function bindMultiverse(root, engine, deck) {
     qWhat.innerHTML = `<b>${esc(it.name || u.name || seedCode(u))}</b><small>${esc([scaleTxt(G), G?.bpm ? `${bpmTxt(G)} BPM` : '', seedTxt(it)].filter((x) => x && x !== '—').join(' · '))}</small>`;
     globBtn.hidden = !G;
     globBtn.classList.toggle('on', withGlobals);
-    globBtn.title = G ? `al entrar, poner también su tempo y escala (${describeGlobal(G)}; ahora ${describeGlobal(nowGlobal(engine))}). Si no, siguen los de ahora` : '';
+    globBtn.title = G ? `al entrar, poner también su tempo y escala (${describeGlobal(G)}; ahora ${describeGlobal(nowGlobal(engine))}) y el MÁSTER del MIXER. Si no, siguen los de ahora` : '';
   };
   const enqueue = async (it) => {
     const u = await fetchUniverse(it.file);
@@ -635,7 +635,7 @@ export function bindMultiverse(root, engine, deck) {
     frame() {
       saver.frame();
       if (queued?.u.global && !globBtn.hidden) {
-        const t = `al entrar, poner también su tempo y escala (${describeGlobal(queued.u.global)}; ahora ${describeGlobal(nowGlobal(engine))}). Si no, siguen los de ahora`;
+        const t = `al entrar, poner también su tempo y escala (${describeGlobal(queued.u.global)}; ahora ${describeGlobal(nowGlobal(engine))}) y el MÁSTER del MIXER. Si no, siguen los de ahora`;
         if (globBtn.title !== t) globBtn.title = t;
       }
     },
@@ -644,7 +644,7 @@ export function bindMultiverse(root, engine, deck) {
 
 // DESCARGAR: el universo tal como suena, como archivo (para llevarlo a otro sitio)
 export function downloadUniverse(deck, engine) {
-  const u = deck.capture();
+  const u = engine.completeCapture(deck, deck.capture());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(u, null, 1)], { type: 'application/json' }));
   a.download = universeFileName(u);

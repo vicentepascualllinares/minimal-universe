@@ -107,7 +107,9 @@ export function instMixer(root, engine, onClose) {
   };
   load();
   let mixSeen = engine.mixVersion;
-  let masterVal = DEF;
+  // el MÁSTER, donde esté en el motor (un universo guardado puede traer el suyo: Engine.applyGlobals)
+  const masterPos = () => (engine.masterGain > 0 ? dbFader(20 * Math.log10(engine.masterGain), MASTER_TOP) : 0);
+  let masterVal = masterPos();
 
   const fader = (i, dj) => `
     <div class="im-fd" data-i="${i}">
@@ -299,6 +301,11 @@ export function instMixer(root, engine, onClose) {
     mixSeen = engine.mixVersion;
     load();
     for (const c of chans) { c.s.set(val[c.i][c.k]); c.show(val[c.i][c.k]); }
+    if (master && Math.abs(dbGain(faderDb(masterVal, MASTER_TOP)) - engine.masterGain) > 1e-6) {
+      const v = masterPos();
+      master.s.set(v);
+      master.apply(v);
+    }
     showPresets();
     showMS();
   }

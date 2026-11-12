@@ -30,7 +30,9 @@ import { NORMAL, sFloat, sWeighted, sChance } from './styles.js';
 // notas a todas). La paleta de cada universo lo mueve un poco.
 const HOW = { kick: 0.85, bass: 0.9, hat: 0.25, perc: 0.35, clap: 0.3, ohat: 0.4, foley: 0.3, chord: 1, pad: 0.2 };
 
-// frase en la que aterriza un viaje de `bars` compases (en compases)
+// frase en la que aterriza un viaje de `bars` compases (en compases). OJO: desde 2026-11-12 la app no
+// la usa: dónde aterriza un viaje es del intérprete y va igual en todos los motores (LANDING, en
+// src/audio/slots.js, que pone su startStepFor y su previewStart a cada Deck)
 export const PHRASE = (bars) => (bars <= 2 ? 4 : 8);
 
 // `from` / `to` = presencia de cada instrumento (ver arrangement: SCENES)

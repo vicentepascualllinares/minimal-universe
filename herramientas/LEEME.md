@@ -47,11 +47,11 @@ node huella.mjs ../src/motores/1 --comprobar referencias/huella-motor-1.json
 ```
 
 ```bash
-node huella.mjs ../src 1 --comprobar referencias/huella-motor-1.json
+node huella.mjs ../src 1 --comprobar referencias/huella-app-motor-1.json
 ```
 
 La primera = el MOTOR 1 congelado, solo; la segunda = la app de ahora con universos del MOTOR 1. Las
-dos tienen que decir «IDÉNTICO» (ver `src/motores/LEEME.md`). Otras opciones: `--guardar <archivo>`
+dos tienen que decir «IDÉNTICO» (ver `src/motores/LEEME.md`; la de la app tiene su propia referencia desde 2026-11-12). Otras opciones: `--guardar <archivo>`
 (guardar una referencia), `SEG=20` (más corto), `ROOT=39` (otra tónica, MIDI 28–39; avisa de valores NaN), `SOLO=genesis` (un caso), `VER=1` (qué se apunta y
 cuánto), `MEZCLA=1` (además, cambios de motor mientras suena: no es referencia, comprueba que no falla
 nada). También sirve para reorganizar código que no debe cambiar el sonido: huella antes y después.

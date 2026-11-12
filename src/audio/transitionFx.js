@@ -209,10 +209,13 @@ export class TransitionFx {
         case 'tension': this.f.hp.frequency.setTargetAtTime(20, t, 0.004); break;
         case 'down': this.f.lp.frequency.setTargetAtTime(20000, t, beat * 0.35); break;
         case 'gap': this.f.gap.gain.setTargetAtTime(1, t, 0.002); break;
-        case 'impact': // el de la variación: boom / thud / los dos, o el KICK del universo alargado
-          if (P.pal.kickImpact) FX.kickImpact(ctx, this.bus, t, ly.vel * P.lvl, this.deck.e.kick, E.rootHz, E.noise);
-          else FX.impact(ctx, this.bus, t, ly.vel * P.lvl, P.pal, E.rootHz, E.noise);
+        case 'impact': { // el de la variación: boom / thud / los dos, o el KICK del universo alargado.
+          // Afinado en la NOTA del kick (tune.js; por defecto, la tónica)
+          const kHz = this.deck.kickNote().hz;
+          if (P.pal.kickImpact) FX.kickImpact(ctx, this.bus, t, ly.vel * P.lvl, this.deck.e.kick, kHz, E.noise);
+          else FX.impact(ctx, this.bus, t, ly.vel * P.lvl, P.pal, kHz, E.noise);
           break;
+        }
         case 'crash': FX.crash(ctx, this.bus, t, ly.vel * P.lvl * 0.8, P.pal, E.noise); break;
         case 'downlifter': FX.downlifter(ctx, this.bus, t, ly.bars * E.barDur, ly.vel * P.lvl * 0.7, P.pal, E.noise); break;
       }

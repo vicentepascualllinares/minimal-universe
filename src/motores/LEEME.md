@@ -15,7 +15,7 @@ semilla da otra cosa. Para que un universo que gusta no se pierda, sus motores s
 | Motor | Estado | Desde | Qué tiene |
 |---|---|---|---|
 | **1** | congelado | 2026-11-11 | el de «Génesis» y todos los universos guardados hasta ese día |
-| **2** | en obras | 2026-11-11 | el que se sigue cambiando (hoy, idéntico al 1) |
+| **2** | en obras | 2026-11-11 | el que se sigue cambiando. Desde 2026-11-12: AFINAR (TECHO, ZONA y 8 del bajo, NOTA del kick; por defecto nada) y registro del bajo en NORMAL (40–140 Hz). ROMINIMAL, igual que el 1 |
 
 ## Cómo se usa en la app
 
@@ -58,15 +58,21 @@ node huella.mjs ../src/motores/1 --comprobar referencias/huella-motor-1.json
 ```
 
 ```bash
-node huella.mjs ../src 1 --comprobar referencias/huella-motor-1.json
+node huella.mjs ../src 1 --comprobar referencias/huella-app-motor-1.json
 ```
 
 - La primera es la **copia congelada sola**: tiene que dar SIEMPRE «IDÉNTICO». Si no, alguien ha tocado
   `src/motores/1`.
 - La segunda es **la app** (la mesa y los puestos de ahora) con universos del MOTOR 1. Si da distinto
-  y la primera no, lo que cambió es común (mesa, máster, puestos): mirar si era a propósito.
-- La referencia se sacó del código de antes de los motores (commit d8587b4): el MOTOR 1 suena
-  exactamente como sonaba la app ese día.
+  y la primera no, lo que cambió es común (mesa, máster, puestos, lo del intérprete): mirar si era a
+  propósito. Si lo era, se guarda otra vez su referencia (`--guardar` en vez de `--comprobar`) y se
+  apunta aquí por qué.
+- `huella-motor-1.json` se sacó del código de antes de los motores (commit d8587b4): el MOTOR 1 suena
+  exactamente como sonaba la app ese día. Sirve para la primera siempre.
+- `huella-app-motor-1.json` (2026-11-12): la de la app desde que **los viajes aterrizan en una rejilla
+  de su tamaño** (`LANDING` en `slots.js`: un viaje de 4, cada 4 y no cada 8). Es lo único que cambió:
+  con la regla de antes, la app daba IDÉNTICO a `huella-motor-1.json`. El sonido de los universos es
+  el mismo; cambia en qué compás aterrizan los viajes de la prueba.
 - Lo único que cambia de una vez a otra, como siempre, es lo que el programa sortea al tocar con
   `Math.random` (el humanizado de cada golpe, dónde empieza un ruido): eso nunca fue parte del
   universo.

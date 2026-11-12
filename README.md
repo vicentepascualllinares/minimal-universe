@@ -60,11 +60,12 @@ quitar; con cable o con el altavoz la respuesta es mucho más inmediata.
 | Control | Qué hace |
 |---|---|
 | **ESTRUCTURA** (8 escenas) | Los momentos de un tema, uno por botón (ver abajo). **Clic** = cambiar a esa escena. **Mantener** = CORTE: suena mientras lo mantienes y al soltar vuelve. |
-| **TRANSICIÓN** | La **forma** de los viajes de CLIC, con dos interruptores (pulsar en cualquier parte de la caja cambia al otro). **DE GOLPE**: la estructura se aguanta y todo cambia a la vez en el 1 de la llegada. **PROGRESIVA**: cambia durante el viaje; entonces el segundo elige **SUAVE** (todos a la vez, a lo largo del viaje) o **ESCALONADA** (uno tras otro, cada uno en su compás). Ver "Formas del viaje". Debajo, cuánto dura el viaje de CLIC (INSTANTÁNEO, 1, 2, 4, 8, 16, 32 compases) y **FX**: si lleva efectos de transición. Por defecto, 4 compases con FX. El CORTE no se ajusta: siempre instantáneo (la forma no le afecta), en la siguiente corchea, sin FX. |
+| **TRANSICIÓN** | La **forma** de los viajes de CLIC, con dos interruptores (pulsar en cualquier parte de la caja cambia al otro). **DE GOLPE**: la estructura se aguanta y todo cambia a la vez en el 1 de la llegada. **PROGRESIVA**: cambia durante el viaje; entonces el segundo elige **SUAVE** (todos a la vez, a lo largo del viaje) o **ESCALONADA** (uno tras otro, cada uno en su compás). Ver "Formas del viaje". Debajo, cuánto dura el viaje de CLIC (INSTANTÁNEO, 1, 2, 4, 8, 16, 32 compases) y **FX**: si lleva efectos de transición. Por defecto (desde 2026-11-11), **DE GOLPE e INSTANTÁNEO**, con FX. El CORTE no se ajusta: siempre instantáneo (la forma no le afecta), en la siguiente corchea, sin FX. |
 | **COMPLEJIDAD** (4 faders) | KICK · PERCS · BASS · INSTR.: cuánta información dice cada grupo (ver abajo). Se aplica en el siguiente compás. Doble clic = 0,5. |
 | **OSCILADOR** (uno por fader) | La complejidad del grupo va y viene entre el fader (A) y la **marca** ◂ de su derecha (B): arrastrar = ponerla, doble clic = quitarla. El **cuadradito** junto al nombre del grupo = encenderlo / apagarlo. Debajo, el **GESTO** (‹ › o clic en la palabra) y la **línea de la frase**: arrastrar arriba / abajo = más rápido / más lento, de lado = en qué tramo de la frase; doble clic = como el gesto; mantener = editor de casillas. Ver "Osciladores". |
 | **OSC** (junto a COMPLEJIDAD) | Todos los osciladores del universo encendidos / en silencio. En silencio suenan los faders, y los osciladores se siguen viendo y tocando: se preparan por debajo y entran al volver a encenderlo. |
 | **GLOBAL** (barra en la cabecera) | SIMPLE ← → COMPLEJO. Escala a la vez los cuatro faders, en proporción. Rueda = fino, doble clic = 0,8. En DJ y en móvil las etiquetas son − / +. |
+| **AFINAR** (bajo BASS y KICK; desde 2026-11-12, solo MOTOR 2) | En minimal el bajo es media canción: estas perillas mueven la línea que hizo el universo **sin salir de la escala**. Bajo **BASS**: **TECHO** = la nota más alta, de 1 (la tónica) a 8 (su octava), o sin techo (a la derecha del todo): lo que pase **baja una octava** (es la misma nota de la escala); si así bajara del límite grave, se queda en el techo. **ZONA** = mueve toda la línea por la escala, de −7 a +7 grados (1-3-7 con −1 = 7-2-6, con −2 = 6-1-5, con +1 = 2-4-1): los saltos entre notas se mantienen. **8** = la octava de la tónica de la línea (el salto 1–8; en ROMINIMAL, un golpe corto): encendido (por defecto), se salta el TECHO; se mueve con la ZONA. Primero la ZONA, luego el TECHO y al final el registro en Hz (40–140 Hz, el 8 hasta 200). Bajo **KICK**: **NOTA** = la nota del kick, de −4 a +4 grados alrededor de la tónica, entre 32 y 100 Hz (el número a su lado: la nota que suena); el golpe grave de las transiciones la sigue. Por defecto no cambian nada. Son del **universo**: se guardan en su archivo, pasan al PARECIDO y NUEVO UNIVERSO empieza en lo de por defecto. En universos de motores de antes (MOTOR 1) se ven apagadas: para usarlas, traer su semilla con el MOTOR 2 (hoy suena igual; ver "Motores"). Código: `src/music/tune.js`. |
 | **CANT · VAR** (bajo HAT, PERC y FOLEY) | Dos perillas por grupo, con el centro arriba (= lo normal). **CANT** (cantidad) = cuántos golpes da cada sonido; **VAR** (variedad) = cuántos sonidos distintos hay, de 1 a 5 (el número a su lado). Independientes de la COMPLEJIDAD. Arrastrar arriba / abajo, rueda; doble clic = centro. Se aplican en el siguiente compás. Ver "Cantidad y variedad". |
 | **NUEVO UNIVERSO** | Otros motivos, otro kit de percusión, otro **color** de sonido y otros valores de los cuatro faders de complejidad y de las perillas CANT · VAR (en el siguiente compás). El GLOBAL no cambia. Nace con el **ESTILO** que marca el fader de al lado. |
 | **ESTILO** (junto a NUEVO UNIVERSO) | **NORMAL ← → ROMINIMAL**: con qué género nace el **próximo** universo. NORMAL (izquierda) = lo de siempre, idéntico; ROMINIMAL (derecha) = el género puro; en medio, los valores intermedios. Cuenta al pulsar NUEVO UNIVERSO y, antes del primer GENERAR, también para el universo que espera (no hay que generar dos veces). En UN UNIVERSO es un fader; en DJ y en el móvil, una perilla (**RO**). Doble clic = NORMAL. La marca del fader = el estilo del universo que suena; al pasar el ratón, su arquetipo. Ver "Estilo: NORMAL ↔ ROMINIMAL". |
@@ -155,15 +156,24 @@ el bajo rodando. DRIFT viene del ambient y de los directos modulares: algo que f
   siguiente corchea) mientras lo mantienes; al soltar vuelve a la escena elegida, igual. La escena elegida
   no cambia. Se pueden mantener varias a la vez (manda la última; al soltarla, la anterior).
 - **Viajar a una escena**: tarda los compases elegidos y
-  **aterriza en frase**: la llegada cae en el inicio de una frase (cada 4 compases para
-  viajes de 1–2, cada 8 para 4 o más), así que puede esperar unos compases antes de
-  empezar. Es una rejilla de frases común, contada desde el
-  primer compás. Junto a ESTRUCTURA, un trazo por compás de la frase (el que suena,
+  **aterriza en una rejilla de su tamaño** (desde 2026-11-12): el de 1 en cualquier compás, el
+  de 2 cada 2, el de 4 cada 4 y los de 8, 16 y 32 cada 8 (así uno largo no espera tanto). Antes
+  eran cada 4 para 1–2 y cada 8 para 4 o más, y uno de 4 podía esperar 8 compases. Puede esperar
+  unos compases antes de empezar. Es una rejilla común (A y B), contada desde el
+  primer compás. Junto a ESTRUCTURA, un trazo por compás de la rejilla (4 u 8; el que suena,
   encendido) y, **antes de pulsar**, "ENTRA YA" o "ENTRA EN N": cuándo empezaría un viaje
   con los compases de CLIC. Después, "→ ESCENA · ENTRA EN N" mientras espera y
   "→ ESCENA · N COMP." durante el viaje. INSTANTÁNEO = en la siguiente negra. Pulsa la **misma
-  escena** otra vez para **pausar** y otra más para seguir (si aún no había empezado,
-  vuelve a esperar frase). Pulsar **otra escena** cambia el destino desde donde estés.
+  escena** otra vez para **cancelar** el viaje (desde 2026-11-11; antes lo pausaba): si aún
+  sonaba entera la parte de origen (esperando su compás, o DE GOLPE), se queda en ella y se
+  apagan los FX; en una PROGRESIVA a medias, vuelve a la parte de antes en lo mismo que llevaba
+  recorrido, desde el siguiente tiempo y sin FX. Volver a pulsarla es un **viaje nuevo**, con los
+  compases que marque TRANSICIÓN en ese momento y contado desde ahí (un viaje de 4 cancelado y
+  marcado de 1 entra cuando le toca al de 1). **Cambiar los compases en TRANSICIÓN** mientras un
+  viaje espera (o va DE GOLPE) lo **rehace solo** con los nuevos, contado desde ese momento, sin
+  cancelar; una PROGRESIVA ya en marcha sigue igual. Todo esto (rejilla, cancelar, rehacer) vale
+  para todos los motores: es del intérprete (`src/audio/slots.js`). Pulsar **otra escena** cambia
+  el destino desde donde estés.
 - Cada viaje lleva su **transición** si su gesto tiene **FX** (ver abajo). Sin FX, el viaje
   es solo el cambio (de golpe o progresivo, según TRANSICIÓN).
 - **Al abrir**, los universos empiezan en **INTRO**. **Parado** (antes del primer GENERAR
@@ -627,6 +637,9 @@ cosa. Por eso el código que hace sonar los universos se **congela** por épocas
   igual (comprobado con la huella: idéntico, nodo a nodo y golpe a golpe, a la app de antes).
 - **MOTOR 2** — **en obras**: el que se sigue cambiando. Sus semillas pueden sonar distinto hasta que
   se congele. Antes de un cambio que las rompa, si hay universos guardados suyos, se congela primero.
+  Lo que tiene que el 1 no (2026-11-12): las perillas de **AFINAR** (TECHO, ZONA y 8 del bajo, NOTA del
+  kick; por defecto no cambian nada) y el **registro del bajo en NORMAL** (40–140 Hz, el 8 hasta 200;
+  antes llegaba a ~470 Hz). En ROMINIMAL, con las perillas en su sitio, suena igual que el 1 (huella).
 - Cada universo apunta a su motor (`-M1` en la semilla, `motor` en el archivo; sin nada, el 1) y se
   trae con él. Al traer (EN COLA, OPCIONES → UNIVERSOS) se puede elegir otro para **comparar**: en
   otro motor entra **tal como nace** (semilla, estilo, tempo y escala); lo que mutó es del suyo.

@@ -30,7 +30,7 @@ const nums = (arr) => arr.map((n) => [String(n), String(n)]);
 // botón de una parte: solo su nombre (lo que es en el tema, no qué instrumentos lleva)
 const sceneBtn = (name) => {
   const text = SCENES[name].label.replace('KICK-OUT', 'KICK-&#8203;OUT'); // si no cabe, corta tras el guion
-  return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: pausa"><span class="sc-name">${text}</span></button>`;
+  return `<button class="scene" data-s="${name}" title="clic: ir aquí · mantener: corte (vuelve al soltar) · en un viaje, otra vez: cancelar"><span class="sc-name">${text}</span></button>`;
 };
 
 // GENERACIÓN: las piezas (las mismas clases en la cabecera de DJ y en el panel de UN UNIVERSO)
@@ -107,9 +107,9 @@ function template(label, panel) {
     </section>
     <section class="col trans">
       <div class="col-title">TRANSICIÓN</div>
-      ${opts('t-form stack', [['golpe', 'DE GOLPE'], ['prog', 'PROGRESIVA']], 'prog')}
+      ${opts('t-form stack', [['golpe', 'DE GOLPE'], ['prog', 'PROGRESIVA']], 'golpe')}
       ${opts('t-flow stack', [['escalonado', 'ESCALONADA'], ['suave', 'SUAVE']], 'suave')}
-      ${opts('t-len', [['0', 'INSTANTÁNEO'], ...nums([1, 2, 4, 8, 16, 32])], '4')}
+      ${opts('t-len', [['0', 'INSTANTÁNEO'], ...nums([1, 2, 4, 8, 16, 32])], '0')}
       <button class="t-fx on" title="efectos de transición en el viaje: riser, redoble, platos, drop">FX</button>
       <div class="t-vol" title="VOLUMEN de los efectos de transición de este universo (también en el MIXER) · doble clic = 0 dB">
         <div class="fader"><div class="t-track"><div class="t-line"></div><i class="im-zero"></i><div class="t-handle"></div></div></div>
@@ -436,7 +436,7 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
     q('.t-len').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === g.bars));
     fxBtn.classList.toggle('on', g.fx);
   };
-  options('.t-len', (v) => (deck.gesture.click.bars = Number(v)));
+  options('.t-len', (v) => deck.setClickBars(Number(v))); // (un viaje que espera se rehace con los nuevos: ver slots.js)
   fxBtn.addEventListener('pointerdown', () => {
     deck.gesture.click.fx = !deck.gesture.click.fx;
     showGesture();
@@ -621,6 +621,80 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
     }
   }
 
+  // AFINAR (music/tune.js): bajo BASS, TECHO, ZONA y el 8; bajo KICK, NOTA. Son del universo (NUEVO
+  // UNIVERSO las vuelve a lo de por defecto; un archivo trae las suyas). Solo en motores que las tienen
+  // (desde el MOTOR 2): en los congelados de antes se ven apagadas
+  const TUNE_PARAMS = {
+    bass: [
+      ['ceil', 'TECHO', 'TECHO: la nota más alta del bajo, de 1 (la tónica) a 8 (su octava) · a la derecha del todo, sin techo · lo que pase baja una octava (si así bajara del límite grave, se queda en el techo) · el 8 se lo salta si el botón 8 está encendido · doble clic = sin techo'],
+      ['zone', 'ZONA', 'ZONA: mueve toda la línea del bajo dentro de la escala, de −7 a +7 grados (1-3-7 con −1 = 7-2-6; con +1 = 2-4-1) · los saltos entre notas se mantienen · doble clic = 0'],
+    ],
+    kick: [
+      ['kick', 'NOTA', 'NOTA del kick: de −4 a +4 grados de la escala alrededor de la tónica, entre 32 y 100 Hz (lo que se saldría se queda en el último que cabe) · el golpe grave de las transiciones la sigue · doble clic = la tónica'],
+    ],
+  };
+  // posición de la perilla (0..1) ↔ valor
+  const TUNE_MAP = {
+    ceil: { to: (v) => { const i = Math.round(v * 8); return i >= 8 ? null : i + 1; }, from: (c) => (c === null ? 1 : (c - 1) / 8), def: 1, bipolar: false },
+    zone: { to: (v) => Math.round(v * 14 - 7), from: (z) => (z + 7) / 14, def: 0.5, bipolar: true },
+    kick: { to: (v) => Math.round(v * 8 - 4), from: (k) => (k + 4) / 8, def: 0.5, bipolar: true },
+  };
+  const noteName = (m) => `${NOTES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`;
+  const tuneK = [];
+  let free8Btn = null;
+  for (const [g, params] of Object.entries(TUNE_PARAMS)) {
+    const box = document.createElement('div');
+    box.className = 'kit tune';
+    box.innerHTML = params.map(([p, lab, tip]) =>
+      `<div class="kit-p" data-p="${p}" title="${tip}"><div class="kit-knob"></div><span class="kit-lab">${lab}<b></b></span></div>`).join('') +
+      (g === 'bass' ? '<button class="tune-8" title="8: la octava de la tónica de la línea (el salto 1–8; en ROMINIMAL, un golpe corto) · encendido, se salta el TECHO · se mueve con la ZONA">8</button>' : '');
+    cells[g].el.appendChild(box);
+    cells[g].el.classList.add('kit-cell');
+    for (const el of box.querySelectorAll('.kit-p')) {
+      const p = el.dataset.p, M = TUNE_MAP[p];
+      const num = el.querySelector('b');
+      const show = () => {
+        const T = deck.tune;
+        if (!T) { num.textContent = ''; return; }
+        const v = T[p];
+        num.textContent = p === 'ceil' ? (v === null ? '' : String(v))
+          : p === 'zone' ? (v ? (v > 0 ? `+${v}` : `−${-v}`) : '')
+          : noteName(deck.kickNote().midi);
+      };
+      const k = new Knob(el.querySelector('.kit-knob'), {
+        value: M.def, def: M.def, bipolar: M.bipolar,
+        onChange: (v) => {
+          if (!deck.setTune) return;
+          const x = M.to(v);
+          if (x !== deck.tune[p]) deck.setTune(p, x);
+          show();
+        },
+      });
+      tuneK.push({ p, k, show, M });
+    }
+    free8Btn ||= box.querySelector('.tune-8');
+  }
+  free8Btn.addEventListener('pointerdown', () => {
+    if (!deck.setTune) return;
+    deck.setTune('free8', !deck.tune.free8);
+  });
+  // las perillas siguen al universo (NUEVO, un archivo, otro motor) y la NOTA, a la tónica y el modo
+  let tuneSeen = '';
+  const showTune = () => {
+    const T = deck.tune, E = deck.engine;
+    const key = T ? `${deck.cxVersion}|${T.zone}|${T.ceil}|${T.free8}|${T.kick}|${E.rootMidi}|${E.scaleI}` : 'off';
+    if (key === tuneSeen) return;
+    tuneSeen = key;
+    for (const x of tuneK) {
+      x.k.el.closest('.kit-p').classList.toggle('off', !T);
+      if (T && x.M.to(x.k.value) !== T[x.p]) x.k.set(x.M.from(T[x.p]));
+      x.show();
+    }
+    free8Btn.classList.toggle('on', !!T?.free8);
+    free8Btn.classList.toggle('off', !T || T.ceil === null);
+  };
+  showTune();
+
   // ESCENAS: apoyar = CLIC (ir ahí); seguir apoyado = CORTE (vuelve al soltar).
   // El gesto lo decide el universo (deck.down / deck.up), igual que hará el MIDI.
   // Cada botón sigue a su propio dedo: se pueden mantener varios a la vez.
@@ -673,6 +747,7 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
         for (const g of GROUPS) cxF[g].s.set(deck.cx[g]);
         for (const x of kitK) { x.k.set(deck.kit[x.g][x.p]); x.show(deck.kit[x.g][x.p]); }
       }
+      showTune();
       // lo que suena ahora (con su oscilador × global): número y línea fina
       const p = deck.pos();
       const step = p === null ? null : Math.max(0, Math.floor(p));

@@ -179,6 +179,7 @@ export function captureUniverse(deck, engine) {
     space: clone(deck.space), spaceRng: deck.spaceRng.a,
     fxPal: clone(fxPal), fxRng: deck.fxRng.a,
     transition: { form: deck.form, flow: deck.flow },
+    tune: clone(deck.tune), // AFINAR: TECHO, ZONA y el 8 del bajo, NOTA del kick (tune.js)
     mix: i < 0 ? null : {
       inst: Object.fromEntries(MIX_CHANNELS.map((k) => [k, engine.inst[i][k]])),
       mute: [...engine.mute[i]], fxPos: engine.fxPos[i], fxGain: engine.fxGain[i],

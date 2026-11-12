@@ -13,7 +13,7 @@ export const MOTORS = {
   },
   2: {
     ...DEV, label: 'MOTOR 2', frozen: false,
-    desc: 'en obras: el que se sigue cambiando. Sus semillas pueden sonar distinto hasta que se congele',
+    desc: 'en obras: el que se sigue cambiando. Sus semillas pueden sonar distinto hasta que se congele. Tiene AFINAR (TECHO, ZONA y 8 del bajo, NOTA del kick) y el bajo de NORMAL entre 40 y 140 Hz',
   },
 };
 // el de NUEVO UNIVERSO de partida: el que está en obras

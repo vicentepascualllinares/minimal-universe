@@ -5,3 +5,6 @@
   huella de todos los motores.
 - `huella-motor-1.json` — la huella del MOTOR 1, sacada del código de antes de los motores (commit
   d8587b4). Ver `src/motores/LEEME.md`.
+- `huella-app-motor-1.json` — la de la app con universos del MOTOR 1 desde 2026-11-12, cuando los
+  viajes pasaron a aterrizar en una rejilla de su tamaño (`LANDING`, `src/audio/slots.js`). Con la
+  regla de antes la app daba IDÉNTICO a `huella-motor-1.json`. Ver `src/motores/LEEME.md`.

@@ -13,6 +13,12 @@ const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const engine = new Engine({ motors: MOTORS, dev: DEV_MOTOR }); // MOTORES: ver src/motores/LEEME.md
 window.MU = engine; // para depurar desde la consola
+// TRANSICIÓN de partida (es del intérprete, no del motor: vale para todos): DE GOLPE e INSTANTÁNEO.
+// Aquí y no en el Deck, para no cambiar los motores congelados ni la huella (herramientas/huella.mjs)
+for (const d of engine.decks) {
+  d.form = 'golpe';
+  d.gesture.click.bars = 0;
+}
 // cualquier error del programa queda en el REGISTRO DE INCIDENCIAS (OPCIONES → RENDIMIENTO)
 window.addEventListener('error', (e) => engine.logIncident('error', `${e.message} · ${e.filename?.split('/').pop()}:${e.lineno}`));
 window.addEventListener('unhandledrejection', (e) => engine.logIncident('error', `${e.reason?.message || e.reason}`));

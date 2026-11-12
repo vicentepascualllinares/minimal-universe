@@ -737,6 +737,17 @@ body.mode-dj .inst .name { letter-spacing: 0.04em; }
   .kit-lab { font-size: 7px; letter-spacing: 0; }
   .kit-lab b { margin-left: 1px; }
 }
+/* AFINAR (bajo BASS y KICK): las mismas perillas; apagadas en motores que no las tienen. El 8: un
+   interruptor pequeño junto al TECHO (atenuado mientras no hay techo) */
+.kit-p.off { opacity: 0.25; pointer-events: none; }
+.tune { align-items: flex-start; }
+.tune-8 {
+  flex: 0 0 auto; align-self: center; margin-top: -8px;
+  font: inherit; font-size: 8px; line-height: 1; padding: 2px 3px;
+  background: none; color: var(--dim); border: 1px solid var(--faint); border-radius: 2px; cursor: pointer;
+}
+.tune-8.on { color: var(--fg); border-color: var(--fg); }
+.tune-8.off { opacity: 0.35; }
 
 /* ───────── mesa de mezcla */
 .mixer {

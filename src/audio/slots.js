@@ -30,8 +30,69 @@ function adopt(to, from) {
   for (const [k, v] of Object.entries(from)) if (typeof v !== 'function') to[k] = copyData(v);
 }
 
+// CANCELAR UN VIAJE (del intérprete: igual en todos los motores, por eso aquí y no en el Deck). Pulsar
+// otra vez el destino de un viaje lo CANCELA. Antes lo pausaba y, al volver a pulsarlo, seguía con los
+// compases de entonces aunque se hubieran cambiado en TRANSICIÓN. Ahora volver a pulsarlo es un viaje
+// nuevo, con los compases que marque TRANSICIÓN y contado desde ese momento: un viaje de 4 cancelado
+// y vuelto a marcar de 1 entra en cuanto le toca al de 1, no donde iba a entrar el de 4.
+//   aún suena entera la parte de origen   se queda en ella, sin más: esperando su compás, o DE GOLPE
+//                                         (el origen se aguanta hasta el 1). Los FX se apagan
+//   PROGRESIVA a medias (ya suena mezcla) vuelve a la parte elegida antes, en lo mismo que llevaba
+//                                         recorrido, desde el siguiente tiempo y sin FX
+// Devuelve si lo ha cancelado (entonces la pulsación no hace nada más: ni viaje ni CORTE)
+function cancelTravel(d, name) {
+  const A = d.arr, T = A.travel, E = d.engine;
+  if (!T || T.name !== name || !(T.bars > 0) || d.held.length || !E.playing) return false;
+  if (A.canMorph()) {
+    A.travel = null;
+    A.target = A.home = T.fromName;
+  } else {
+    const back = [d.pressHome, T.fromName].find((n) => n && n !== name);
+    if (!back) return true; // (no se sabe de dónde venía: sigue el viaje)
+    const bars = Math.max(0.25, Math.round(T.done * T.bars * 4) / 4);
+    const s = E.step;
+    A.vNext = A.vNow; // vuelve a la versión que sonaba
+    A.goTo(back, bars, s + ((4 - (s % 4)) % 4), { stagger: d.flow === 'escalonado' ? d.fxPal.order : null });
+    A.home = back;
+  }
+  d.fx?.cancel(d.ctx?.currentTime ?? 0);
+  A.compute();
+  return true;
+}
+
+// ATERRIZAR (del intérprete, igual en todos los motores): un viaje de `bars` compases aterriza en una
+// REJILLA DE SU TAMAÑO: el de 1 en cualquier compás, el de 2 cada 2, el de 4 cada 4 y los de 8 o más
+// cada 8 (así uno de 16 o 32 no espera tanto). Rejilla común, contada desde el primer compás. Antes
+// (hasta 2026-11-12): los de 1–2 cada 4 y los de 4 o más cada 8, y uno de 4 podía esperar 8 compases
+export const LANDING = (bars) => Math.min(8, Math.max(1, bars));
+// dónde empieza: la llegada cae en el primer inicio de rejilla posible, empezando como pronto en el
+// siguiente compás. Instantáneo (0 compases): en el siguiente paso múltiplo de `quant` (4 = negra)
+function startStepFor(d, bars, quant = 4) {
+  const s = d.engine.step; // el siguiente paso aún sin programar
+  if (bars === 0) return s + ((quant - (s % quant)) % quant);
+  const P = LANDING(bars) * 16;
+  const earliest = Math.ceil(s / 16) * 16;
+  return Math.ceil((earliest + bars * 16) / P) * P - bars * 16;
+}
+// cada Deck, de cualquier motor, viaja con estas reglas: se ponen en el propio Deck (su goScene llama a
+// this.startStepFor), sin tocar el código de los motores congelados. La vista: cuánto falta para que
+// empiece un viaje de `bars` y en qué compás de la rejilla estamos (de 4 trazos como poco)
+function performer(d) {
+  d.startStepFor = (bars, quant) => startStepFor(d, bars, quant);
+  d.previewStart = (bars) => {
+    const pos = d.pos() ?? d.engine.step;
+    const P = Math.max(4, LANDING(bars));
+    return {
+      wait: bars === 0 ? 0 : Math.max(0, (startStepFor(d, bars) - pos) / 16),
+      phrase: P,
+      bar: Math.floor(Math.max(0, pos) / 16) % P,
+    };
+  };
+  return d;
+}
+
 export function makeSlot(engine, i, id, opts, motor) {
-  const slot = { i, id, inner: engine.newDeck(motor, id, opts), next: null, motorNext: motor };
+  const slot = { i, id, inner: performer(engine.newDeck(motor, id, opts)), next: null, motorNext: motor };
   const E = engine;
   const want = (m) => (E.motors[m] ? m : E.devMotor);
 
@@ -74,7 +135,7 @@ export function makeSlot(engine, i, id, opts, motor) {
     if (slot.next?.motor === m) return slot.next;
     drop();
     const I = slot.inner;
-    const d = E.newDeck(m, id, { scene: I.arr.home, v: I.emotion.v, a: I.emotion.a });
+    const d = performer(E.newDeck(m, id, { scene: I.arr.home, v: I.emotion.v, a: I.emotion.a }));
     handGen(I, d);
     adopt(d.arr, I.arr);
     adopt(d.emotion, I.emotion);
@@ -113,6 +174,26 @@ export function makeSlot(engine, i, id, opts, motor) {
   const swapIfStopped = () => { if (slot.next && !E.playing) swap(E.ctx?.currentTime ?? 0); };
 
   const methods = {
+    // ESTRUCTURA: pulsar el destino de un viaje lo cancela (ver cancelTravel); lo demás, como siempre
+    press(name) {
+      return cancelTravel(slot.inner, name) ? 'cancel' : slot.inner.press(name);
+    },
+    down(name) {
+      const d = slot.inner;
+      if (d.pads[name]) return;
+      if (cancelTravel(d, name)) { d.pads[name] = { timer: null, holding: false }; return; } // (para que up lo suelte)
+      d.down(name);
+    },
+    // TRANSICIÓN: los compases del CLIC. Si hay un viaje de CLIC en el que aún suena entera la parte de
+    // origen (esperando su compás, o DE GOLPE), se rehace solo con los nuevos, contado desde ahora: no
+    // hace falta cancelarlo y volver a pulsar. Una PROGRESIVA ya en marcha sigue igual (los nuevos
+    // compases, para el siguiente viaje)
+    setClickBars(bars) {
+      const d = slot.inner, A = d.arr, T = A.travel;
+      d.gesture.click.bars = bars;
+      if (!T || !(T.bars > 0) || T.bars === bars || d.held.length || !E.playing || !A.canMorph()) return;
+      d.goScene(T.name, d.gesture.click, true);
+    },
     // NUEVO UNIVERSO: en el motor elegido (MOTOR, junto al ESTILO)
     reseed() {
       prep(want(slot.motorNext)).reseed();

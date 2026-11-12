@@ -14,6 +14,7 @@ import { SpaceFx } from './spaceFx.js';
 import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
+import { newTune, readTune, tuneBassDeg, kickDeg, NORMAL_BASS_REG } from '../music/tune.js';
 import { hatMain, hatKind, percSound, foleySound } from '../music/sounds.js';
 import { NORMAL, rollStyle, styleColor, sValue, bassSweep } from '../music/styles.js';
 import { makeSpace } from '../music/space.js';
@@ -72,6 +73,8 @@ export class Deck {
     // KIT: CANTIDAD y VARIEDAD de hats y percs (ver kit.js). NUEVO UNIVERSO también los sortea
     // (cxVersion avisa a la vista igual que con la complejidad)
     this.kit = newKit();
+    // AFINAR (tune.js): TECHO, ZONA y el 8 del bajo, NOTA del kick. Del universo; por defecto, nada
+    this.tune = newTune();
     // ESTILO (styles.js): `styleNext` = el fader de la cabecera (0 = NORMAL .. 1 = ROMINIMAL), con el
     // que nacerá el PRÓXIMO universo; `sty` = el estilo con el que nació el que suena. No se guarda
     // (como el resto de OPCIONES, vendrá con las cuentas): cada sesión empieza en NORMAL
@@ -318,6 +321,7 @@ export class Deck {
     if (u.fxRng !== undefined) this.fxRng.a = u.fxRng;
     if (u.spaceRng !== undefined) this.spaceRng.a = u.spaceRng;
     if (u.transition) { this.form = u.transition.form ?? this.form; this.flow = u.transition.flow ?? this.flow; }
+    if (u.tune) this.tune = readTune(u.tune);
     this.cxVersion++;
     this.engine.universeLoaded(this, u, t0);
   }
@@ -363,6 +367,7 @@ export class Deck {
     // va la traía de un estilo (ver Engine.styleMix)
     this.engine.styleMix(this, this.sty, t0);
     this.setBus(this.sty, t0);
+    this.tune = newTune(); // (las perillas de AFINAR, en lo de por defecto; un archivo trae las suyas)
     if (snap) this.applySnap(snap, t0); // UNIVERSO GUARDADO: lo mutado y lo tocado, encima
   }
 
@@ -382,6 +387,15 @@ export class Deck {
   setComplexity(group, v) { this.cx[group] = v; }
   // KIT: `group` = 'hat' | 'perc' | 'foley', `key` = 'amt' (CANTIDAD) | 'vary' (VARIEDAD). En el siguiente compás
   setKit(group, key, v) { this.kit[group][key] = v; }
+  // AFINAR (tune.js): `key` = 'zone' | 'ceil' | 'free8' | 'kick'. Al momento (en la siguiente nota)
+  setTune(key, v) { this.tune[key] = v; }
+  // la NOTA del kick que suena: su grado (dentro de KICK_HZ), su frecuencia y su nota MIDI
+  kickNote() {
+    const E = this.engine, sc = E.scale;
+    const d = kickDeg(this.tune, (k) => E.rootHz * Math.pow(2, degreeToSemis(k, sc) / 12));
+    const semis = degreeToSemis(d, sc);
+    return { deg: d, hz: E.rootHz * Math.pow(2, semis / 12), midi: E.rootMidi + semis };
+  }
   // OSCILADOR: encendido, marca B (null = sin oscilar), GESTO y GUÍA DE TIEMPOS (velocidad y
   // tramo de la frase); volver a la variante del gesto; volver al gesto (borra lo retocado)
   setOscOn(group, on) { this.osc[group].on = on; }
@@ -873,7 +887,7 @@ export class Deck {
         this.kickEntry = false;
         if (this.engine.auto.kickGap) this.kickGap(t);
       }
-      V.kick(ctx, C.kick.input, t, ev.vel, e.kick, root, noise);
+      V.kick(ctx, C.kick.input, t, ev.vel, e.kick, this.kickNote().hz, noise); // (en su NOTA: tune.js)
       const depth = e.kick.duck * ev.vel * A.state.kick.progress;
       // SIDECHAIN al bajo: el suyo o, con EASY EQ en DJ, el bajo que suene en la mezcla
       const low = this.engine.low;
@@ -936,27 +950,32 @@ export class Deck {
       const fOf = (deg) => root * Math.pow(2, (degreeToSemis(deg, scale) + 12) / 12);
       const tb = tg('bass');
       const F = this.sty.t ? this.gen.bass.feel : null;
+      // REGISTRO: lo que pase del techo baja una octava y lo que quede por debajo del suelo sube; la
+      // octava de la tónica (el 8) puede pasar hasta `octaveMax`. El del estilo; en NORMAL, desde
+      // 2026-11-12, el mismo (antes no tenía: ver tune.js NORMAL_BASS_REG)
+      const R = F || NORMAL_BASS_REG;
+      const [lo, hi] = R.range;
+      const fit = (f, oct) => {
+        if (oct && f <= R.octaveMax) return f;
+        while (f > hi) f /= 2;
+        while (f < lo) f *= 2;
+        return f;
+      };
+      // AFINAR (tune.js): ZONA y TECHO, antes del registro
+      const at = (deg) => fOf(tuneBassDeg(deg, this.tune, fOf, lo));
       if (!F) {
         const dur = Math.max(sd * 0.55, ev.len * sd * e.bass.lenMul - 0.01);
-        V.bass(ctx, C.bass.input, tb, ev.vel, fOf(ev.deg), dur, e.bass, this.engine.q.lean);
+        V.bass(ctx, C.bass.input, tb, ev.vel, fit(at(ev.deg), ev.deg === 7), dur, e.bass, this.engine.q.lean);
       } else {
         // ESTILO (styles.js `bass.feel`, generators.js `articulate`): la nota ligada suena todo su
         // largo (hasta la siguiente), los deslizamientos dentro de su largo, el FILTRO LENTO (el corte
-        // y, con él, cuánto abre la envolvente), el REGISTRO (lo que pase del techo baja una octava;
-        // la octava de la tónica, corta, puede pasar) y el sonido de la nota (envolvente, paso bajo
-        // fijo, altura al atacar, caída al final)
-        const [lo, hi] = F.range;
-        const fit = (f, oct) => {
-          if (oct && f <= F.octaveMax) return f;
-          while (f > hi) f /= 2;
-          while (f < lo) f *= 2;
-          return f;
-        };
+        // y, con él, cuánto abre la envolvente), el REGISTRO (arriba; la octava de la tónica, corta,
+        // puede pasar) y el sonido de la nota (envolvente, paso bajo fijo, altura al atacar, caída al final)
         const len = ev.len * sd;
         const dur = ev.tie ? len - 0.012 : Math.max(sd * 0.55, len * e.bass.lenMul - 0.01);
         const slides = ev.gl?.filter((g) => g.o < ev.len).map((g) => ({
           t: s + g.o < 16 ? this.grooveTime('bass', s + g.o, gridT + g.o * sd) : gridT + g.o * sd,
-          f: fit(fOf(g.deg), false),
+          f: fit(at(g.deg), false),
         }));
         const oct = bassSweep(F, b + s / 16);
         const p = { ...e.bass, cutoff: e.bass.cutoff * Math.pow(2, oct), env: e.bass.env * Math.pow(2, oct * 0.5), filtDecay: e.bass.filtDecay * Math.pow(2, oct * 0.4) };
@@ -964,7 +983,7 @@ export class Deck {
           slides: slides?.length ? slides : null, tau: F.glideTau, sus: F.sus, dec: F.dec, post: F.post,
           pitch: F.pitch, fall: ev.fall ? F.fall : null,
         };
-        V.bass(ctx, C.bass.input, tb, ev.vel, fit(fOf(ev.deg), ev.oct), dur, p, this.engine.q.lean, x);
+        V.bass(ctx, C.bass.input, tb, ev.vel, fit(at(ev.deg), ev.oct), dur, p, this.engine.q.lean, x);
       }
       emit('bass', tb, ev.vel);
     }

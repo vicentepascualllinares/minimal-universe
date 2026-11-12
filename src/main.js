@@ -188,12 +188,18 @@ function frame() {
     root.style.setProperty('--gb', engine.mix[1].fader);
   }
 
-  $('#key').textContent = NOTE[engine.rootMidi % 12];
+  // ESCALA: la cabecera mueve las de los dos universos a la vez; en DJ, si cada uno lleva la suya
+  // (su panel ESCALA), enseña las dos: A · B (y tocarla las vuelve a juntar en la de A)
+  const both = engine.mode === 'dj' && !engine.sameKey;
+  const [KA, KB] = engine.keys;
+  const keyTxt = both ? `${NOTE[KA.rootMidi % 12]}·${NOTE[KB.rootMidi % 12]}` : NOTE[engine.rootMidi % 12];
+  if ($('#key').textContent !== keyTxt) $('#key').textContent = keyTxt;
   // (el BPM también puede cambiarlo un UNIVERSO GUARDADO al entrar: ver Engine.universeLoaded)
   const bpmTxt = String(engine.bpm % 1 ? engine.bpm.toFixed(1) : engine.bpm);
   if ($('#bpm').textContent !== bpmTxt) $('#bpm').textContent = bpmTxt;
   const nextScale = engine.scaleNext !== null ? SCALES[engine.scaleNext] : null;
-  const modeTxt = (nextScale || engine.scale).name.toUpperCase();
+  const modeOf = (K) => SCALES[K.scaleNext ?? K.scaleI].name.toUpperCase();
+  const modeTxt = both ? `${modeOf(KA).slice(0, 3)}·${modeOf(KB).slice(0, 3)}` : (nextScale || engine.scale).name.toUpperCase();
   if ($('#mode').textContent !== modeTxt) $('#mode').textContent = modeTxt;
   $('#mode').classList.toggle('pending', !!nextScale);
   const st = Math.max(0, engine.step - 1);

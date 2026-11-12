@@ -51,10 +51,17 @@ const GEN = {
         <button class="simbtn">PARECIDO</button>
       </div>`,
   code: '<button class="ucode" title="SEMILLA del universo que suena (con su tempo y escala): clic para copiarla"></button>',
+  // ESCALA de ESTE universo (desde 2026-11-12, en DJ cada uno la suya; la cabecera de arriba mueve
+  // las dos a la vez)
+  key: `<div class="gscale">
+        <span class="gs-key" title="TÓNICA de este universo · arrastrar arriba / abajo o rueda · la de la cabecera cambia las de los dos"></span>
+        <button class="gs-mode" title="MODO de este universo · clic = el siguiente · entra en el compás siguiente · el de la cabecera cambia los de los dos"></button>
+      </div>`,
 };
 // UN UNIVERSO: el panel de la derecha, en dos bloques.
 //  GENERAR UNIVERSO: NUEVO (grande) y, a su lado, PARECIDO con cuánto se mantiene del SONIDO y de la
-//    MÚSICA; debajo, el ESTILO (con su PUREZA) y la ESCALA (tónica y modo globales, como en la cabecera).
+//    MÚSICA; debajo, el ESTILO (con su PUREZA) y la ESCALA (la de este universo; con uno solo, la
+//    misma que en la cabecera).
 //  MULTIVERSO: SONANDO (el que suena: nombre y GUARDAR), lo que está EN COLA para IMPORTAR y la
 //    BIBLIOTECA (carpetas → la lista de cada una; doble clic = a la cola). Ver universeIO.js
 const genPanel = () => `
@@ -72,12 +79,7 @@ const genPanel = () => `
     </div>
     <div class="gp"><div class="gp-t gp-row">ESTILO ${GEN.pur}</div>${GEN.sty}</div>
     <div class="gp gp-mot"><span class="gp-t">MOTOR<i class="gp-h mot-h"></i></span>${GEN.mot}</div>
-    <div class="gp gp-scale"><span class="gp-t">ESCALA</span>
-      <div class="gscale">
-        <span class="gs-key" title="TÓNICA global (la misma que en la cabecera) · arrastrar arriba / abajo o rueda"></span>
-        <button class="gs-mode" title="MODO global (el mismo que en la cabecera) · clic = el siguiente · entra en el compás siguiente"></button>
-      </div>
-    </div>
+    <div class="gp gp-scale"><span class="gp-t">ESCALA</span>${GEN.key}</div>
     <div class="col-title gp-multi">MULTIVERSO</div>
     ${multiverseHTML(GEN.code)}
   </section>`;
@@ -91,7 +93,7 @@ function template(label, panel) {
       <div class="h-track"><div class="h-line"></div><div class="h-fill"></div><div class="h-handle"></div></div>
       <span class="cx-lab hi">COMPLEJO</span>
     </div>
-    ${panel ? '' : `<div class="gen">${GEN.sty}${GEN.pur}${GEN.mot}${GEN.seed}${GEN.sim}${GEN.code}</div>`}
+    ${panel ? '' : `<div class="gen">${GEN.sty}${GEN.pur}${GEN.mot}${GEN.key}${GEN.seed}${GEN.sim}${GEN.code}</div>`}
   </div>
   <div class="rows">
   <div class="row">
@@ -549,9 +551,10 @@ export function deckView(root, deck, label = `UNIVERSO ${deck.id}`, { panel = fa
   const codeBtn = q('.ucode');
   // (panel) MULTIVERSO: GUARDAR el que suena, la BIBLIOTECA y la COLA para IMPORTAR (universeIO.js)
   const multi = panel ? bindMultiverse(q('.genp'), deck.engine, () => deck) : null;
-  // (panel) ESCALA: tónica (arrastrar / rueda, E..D#, como la cabecera) y modo (clic = el siguiente)
+  // ESCALA de este universo (en el panel o, en DJ, en su cabecera): tónica (arrastrar / rueda, E..D#,
+  // como la cabecera) y modo (clic = el siguiente). `deck.engine` = su vista del motor (keyView)
   const gsKey = q('.gs-key'), gsMode = q('.gs-mode');
-  if (panel) {
+  {
     const E = deck.engine;
     const setKey = (v) => { E.rootMidi = Math.round(Math.min(39, Math.max(28, v))); }; // E1..D#2: las 12 notas
     let kp = null;
@@ -815,8 +818,9 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
       // ESTILO: la marca y el cartel siguen al universo que suena (y al que viene, si espera el compás)
       const E = deck.engine;
       multi?.frame();
-      if (panel) {
-        const k = NOTES[E.rootMidi % 12], m = SCALES[E.scaleNext ?? E.scaleI].name.toUpperCase();
+      {
+        const full = SCALES[E.scaleNext ?? E.scaleI].name.toUpperCase();
+        const k = NOTES[E.rootMidi % 12], m = panel ? full : full.slice(0, 3); // (en DJ, en 3 letras)
         if (gsKey.textContent !== k) gsKey.textContent = k;
         if (gsMode.textContent !== m) gsMode.textContent = m;
         gsMode.classList.toggle('pending', E.scaleNext !== null);

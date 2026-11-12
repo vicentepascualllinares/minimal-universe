@@ -51,6 +51,8 @@ export const MARGIN_MODES = {
   largo: { label: 'LARGO', desc: '250 ms · ordenadores que se atascan' },
 };
 const MARGIN_S = { corto: 0.06, normal: 0.12, largo: 0.25 };
+// lo de la ESCALA que es de cada universo (ver Engine.keys y keyView)
+const KEY_FIELDS = new Set(['rootMidi', 'scaleI', 'scaleNext']);
 
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -69,20 +71,28 @@ export class Engine {
     this.ready = false;
     this.playing = false;
     this.bpm = 124;
-    this.rootMidi = 28 + Math.floor(Math.random() * 6); // E1..A1: el kick se afina aquí
-    this.scaleI = 1;          // eólico
-    this.scaleNext = null;    // cambio de modo pedido: entra al empezar el siguiente compás
+    // ESCALA de cada universo (A, B): tónica, modo y cambio de modo pedido (entra al empezar el
+    // siguiente compás). Desde 2026-11-12, en DJ cada uno la suya: su Deck la lee por su VISTA del
+    // motor (keyView), así vale para todos los motores. `engine.rootMidi`, `scaleI` y `scaleNext` a
+    // secas (la cabecera, las herramientas) leen la de A y escriben las dos
+    const root = 28 + Math.floor(Math.random() * 6); // E1..A1: el kick se afina aquí
+    this.keys = [0, 1].map(() => ({ rootMidi: root, scaleI: 1, scaleNext: null })); // 1 = eólico
     this.step = 0;
     this.glitches = 0;  // CORTES: el audio se quedó sin datos (DSP demasiado pesado)
     this.late = 0;      // TARDE: pasos programados tarde (hilo principal atascado)
     this.rec = new Recorder(); // GRABAR (ver recorder.js)
     this.generated = false;    // ¿se ha pulsado GENERAR alguna vez? (hasta entonces no suena nada)
     // OPCIONES → AUTO-ARREGLOS: trucos de producción que el programa hace solo, en vivo.
-    // kickGap = HUECO ANTES DEL KICK (ver Deck.kickGap); kickDrop = CAÍDA DEL KICK AL FINAL DE
+    // kickGap = HUECO ANTES DEL KICK (ver audio/drop.js, igual en todos los motores); kickDrop = CAÍDA DEL KICK AL FINAL DE
     // FRASE (ver Deck.kickDrop); bassOut, lowsDip y breakDip, ver Deck.autoArrange.
     // Aún no se guardan: vendrá con las cuentas
+    // El HUECO no es un pre-drop: es psicoacústica, para que el kick pegue más: que haga el efecto
+    // sin que se oiga como silencio (justo delante de un golpe fuerte, el propio golpe lo tapa).
+    // `kickGapS` = desde que todo calla hasta el golpe (silencio + rampa de vuelta de 2 ms); antes
+    // va la rampa de bajada (4 ms, drop.js). 6 ms = 10 ms EN TOTAL, rampas incluidas
+    // (2026-11-12: antes 30 y 15 ms sin contar la bajada)
     this.auto = {
-      kickGap: true, kickGapS: 0.03,
+      kickGap: true, kickGapS: 0.006,
       kickDrop: true, kickDropBars: 16,
       bassOut: true,
       lowsDip: true, lowsDb: -6,
@@ -143,8 +153,9 @@ export class Engine {
   }
 
   // MOTORES: un Deck del motor `m` (lo crea el puesto: slots.js)
-  newDeck(m, id, opts) {
-    const d = new this.motors[m].Deck(this, id, opts);
+  // `i` = su puesto (0 = A, 1 = B): el Deck ve el motor con la escala de ese puesto (keyView)
+  newDeck(m, id, opts, i) {
+    const d = new this.motors[m].Deck(i === undefined ? this : this.keyView(i), id, opts);
     d.motor = m;
     return d;
   }
@@ -280,7 +291,8 @@ export class Engine {
     return u;
   }
   // TEMPO, TÓNICA y MODO de un universo traído (solo si se pidió: Deck.loadUniverse). Al entrar, en el
-  // 1 de su compás: el modo cambia ya (no en el compás siguiente). En DJ cambian para los dos
+  // 1 de su compás: el modo cambia ya (no en el compás siguiente). El TEMPO, para los dos; la TÓNICA
+  // y el MODO, para el suyo (lo llama su Deck con su vista: keyView)
   applyGlobals(G) {
     if (G.bpm) this.bpm = G.bpm;
     if (G.rootMidi !== undefined) this.rootMidi = G.rootMidi;
@@ -401,6 +413,25 @@ export class Engine {
   get barDur() { return this.stepDur * 16; }
   get rootHz() { return midiHz(this.rootMidi); }
   get scale() { return SCALES[this.scaleI]; }
+  // la ESCALA a secas: la de A al leer, las dos al escribir (ver keys)
+  get rootMidi() { return this.keys[0].rootMidi; }
+  set rootMidi(v) { for (const K of this.keys) K.rootMidi = v; }
+  get scaleI() { return this.keys[0].scaleI; }
+  set scaleI(v) { for (const K of this.keys) K.scaleI = v; }
+  get scaleNext() { return this.keys[0].scaleNext; }
+  set scaleNext(v) { for (const K of this.keys) K.scaleNext = v; }
+  // ¿suenan A y B en la misma escala? (la cabecera, en DJ)
+  get sameKey() { const [a, b] = this.keys; return a.rootMidi === b.rootMidi && a.scaleI === b.scaleI && a.scaleNext === b.scaleNext; }
+  // la VISTA del motor de un universo: el mismo motor, con SU escala. Es el `engine` de sus Deck (de
+  // cualquier motor) y de su vista: leer o escribir rootMidi, scaleI o scaleNext (y rootHz, scale,
+  // cycleScale, applyGlobals...) va a la suya; todo lo demás, al motor
+  keyView(i) {
+    const V = (this.views ||= []);
+    return (V[i] ||= new Proxy(this, {
+      get: (E, k, recv) => (KEY_FIELDS.has(k) ? E.keys[i][k] : k === 'keyIndex' ? i : Reflect.get(E, k, recv)),
+      set: (E, k, v) => (KEY_FIELDS.has(k) ? ((E.keys[i][k] = v), true) : Reflect.set(E, k, v)),
+    }));
+  }
   // universos que existen en este modo (en solo, B ni se crea: no gasta CPU)
   get active() { return this.mode === 'solo' ? [this.decks[0]] : this.decks; }
 
@@ -757,7 +788,8 @@ export class Engine {
     if (this.ready) for (const d of this.active) d.release(this.ctx.currentTime);
   }
 
-  // MODO global (cabecera): igual para todos los universos, así nunca chocan.
+  // MODO: el siguiente. Desde la cabecera, el de los dos (los junta en el de A); desde la vista de
+  // un universo (su panel ESCALA, keyView), solo el suyo.
   // Cada clic pasa al siguiente; entra al empezar el siguiente compás.
   cycleScale() {
     const n = ((this.scaleNext ?? this.scaleI) + 1) % SCALES.length;
@@ -831,7 +863,7 @@ export class Engine {
       // TARDE: el hilo principal se atascó y este paso ya debería estar sonando
       // (sus notas salen desplazadas). Distinto de un CORTE (el audio sin datos).
       if (this.nextGrid < now) this.late++;
-      if (this.step % 16 === 0 && this.scaleNext !== null) { this.scaleI = this.scaleNext; this.scaleNext = null; }
+      if (this.step % 16 === 0) for (const K of this.keys) if (K.scaleNext !== null) { K.scaleI = K.scaleNext; K.scaleNext = null; }
       // EASY EQ · GRAVES: un cambio de dueño del kick o del bajo entra en el tiempo, antes de sus notas
       if (this.step % 4 === 0) this.safe(() => this.low.apply(this.nextGrid), 'low');
       for (const d of act) this.safe(() => d.scheduleStep(this.step, this.nextGrid), `${d.id} paso`);

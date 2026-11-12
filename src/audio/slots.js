@@ -14,6 +14,8 @@
 // de motores. Llamar a sus métodos o leer sus campos va al Deck que suena; lo del universo que espera
 // (pending*, el fader de ESTILO...) al que espera, si es de otro motor.
 
+import { installDrop } from './drop.js';
+
 // lo del INTÉRPRETE que se mira al generar: se escribe en los dos Decks (el que suena y el que espera)
 const GEN_KEYS = new Set(['styleNext', 'purityNext', 'keepSound', 'keepMusic']);
 // lo del universo que espera: si espera en otro motor, se lee de ese Deck
@@ -77,7 +79,9 @@ function startStepFor(d, bars, quant = 4) {
 // cada Deck, de cualquier motor, viaja con estas reglas: se ponen en el propio Deck (su goScene llama a
 // this.startStepFor), sin tocar el código de los motores congelados. La vista: cuánto falta para que
 // empiece un viaje de `bars` y en qué compás de la rejilla estamos (de 4 trazos como poco)
+// La ENTRADA DEL DROP y el HUECO ANTES DEL KICK, también del intérprete: ver drop.js
 function performer(d) {
+  installDrop(d);
   d.startStepFor = (bars, quant) => startStepFor(d, bars, quant);
   d.previewStart = (bars) => {
     const pos = d.pos() ?? d.engine.step;
@@ -92,7 +96,7 @@ function performer(d) {
 }
 
 export function makeSlot(engine, i, id, opts, motor) {
-  const slot = { i, id, inner: performer(engine.newDeck(motor, id, opts)), next: null, motorNext: motor };
+  const slot = { i, id, inner: performer(engine.newDeck(motor, id, opts, i)), next: null, motorNext: motor };
   const E = engine;
   const want = (m) => (E.motors[m] ? m : E.devMotor);
 
@@ -135,7 +139,7 @@ export function makeSlot(engine, i, id, opts, motor) {
     if (slot.next?.motor === m) return slot.next;
     drop();
     const I = slot.inner;
-    const d = performer(E.newDeck(m, id, { scene: I.arr.home, v: I.emotion.v, a: I.emotion.a }));
+    const d = performer(E.newDeck(m, id, { scene: I.arr.home, v: I.emotion.v, a: I.emotion.a }, slot.i));
     handGen(I, d);
     adopt(d.arr, I.arr);
     adopt(d.emotion, I.emotion);

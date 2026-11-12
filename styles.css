@@ -322,6 +322,10 @@ body.mode-dj .sty { display: none; }
 body.mode-dj .sty-k { display: flex; gap: 3px; }
 body.mode-dj .sty-k .knob { width: 22px; height: 22px; }
 body.mode-dj .gen { gap: 8px; }
+/* ESCALA de cada universo en su cabecera de DJ: más estrecha (el modo, en 3 letras) */
+body.mode-dj .gen .gscale { width: auto; }
+body.mode-dj .gen .gs-key { flex-basis: 26px; padding: 4px 0; font-size: 10px; }
+body.mode-dj .gen .gs-mode { width: 34px; overflow: hidden; padding: 4px 3px; font-size: 9px; letter-spacing: 0.06em; white-space: nowrap; text-overflow: clip; }
 
 .pad { display: flex; flex-direction: column; gap: 8px; }
 .pad-title, .col-title { color: var(--dim); font-size: 10px; height: 13px; white-space: nowrap; }

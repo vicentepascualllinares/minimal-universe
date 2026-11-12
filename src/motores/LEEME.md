@@ -47,6 +47,12 @@ LOW, GRABAR y la interfaz (`src/audio/engine.js`, `strip.js`, `lowRoles.js`, `re
 `src/ui/`). Si se cambian, cambian también para los universos de motores congelados: es la mesa, no
 el universo.
 
+También lo del **intérprete**, que se pone en cada Deck desde `src/audio/slots.js` sin tocar el código
+de los motores: dónde aterriza un viaje (`LANDING`), cancelar un viaje, la **ENTRADA DEL DROP** y el
+**HUECO ANTES DEL KICK** (`src/audio/drop.js`, desde 2026-11-12) y la **ESCALA** de cada puesto (cada
+Deck ve el motor con la tónica y el modo de su puesto: `Engine.keyView`, desde 2026-11-12; en DJ cada
+universo puede llevar la suya).
+
 ## Comprobar que un motor congelado sigue igual (`herramientas/huella.mjs`)
 
 La huella apunta **todo** lo que el motor programa en el audio (cada nodo, conexión, valor, rampa,

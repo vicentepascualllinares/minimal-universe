@@ -28,9 +28,10 @@ const inOrder = (modes, keys, attr) => keys.map((k) => plain(attr, k, modes[k]))
 const ms = (s) => `${Math.round(s * 1000)} ms`;
 const dB = (v) => `${String(v).replace('.', ',').replace('-', '−')} dB`;
 
-// AUTO-ARREGLOS: un interruptor por truco (ver Deck.autoArrange y Deck.kickGap)
+// AUTO-ARREGLOS: un interruptor por truco (ver Deck.autoArrange y kickGap en audio/drop.js)
 const AUTOS = [
-  { k: 'kickGap', label: 'HUECO ANTES DEL KICK', amount: (o) => ms(o.kickGapS),
+  // (en total, con la rampa de bajada de 4 ms: ver kickGap en audio/drop.js)
+  { k: 'kickGap', label: 'HUECO ANTES DEL KICK', amount: (o) => ms(o.kickGapS + 0.004),
     desc: 'cuando entra el kick de golpe (venía de una escena sin kick), el universo calla un instante justo antes de su primer golpe: más pegada' },
   { k: 'kickDrop', label: 'CAÍDA DEL KICK AL FINAL DE FRASE', amount: (o) => `ÚLTIMO TIEMPO · CADA ${o.kickDropBars} COMPASES`,
     desc: 'el kick calla el último tiempo del último compás de cada tramo: respira y marca que empieza otro' },
@@ -191,10 +192,11 @@ export function optionsPanel(root, engine, onClose) {
   const unis = [...root.querySelectorAll('.op-uni')].map((row) => {
     const i = +row.dataset.i;
     const deck = () => engine.decks[i];
-    const imp = bindImporter(row.querySelector('.op-uimp'), engine, deck);
-    const sav = bindSaver(row.querySelector('.op-usaver'), engine, deck);
+    const E = engine.keyView(i); // (con la ESCALA de ese universo)
+    const imp = bindImporter(row.querySelector('.op-uimp'), E, deck);
+    const sav = bindSaver(row.querySelector('.op-usaver'), E, deck);
     row.querySelector('.op-udown').addEventListener('click', () => {
-      row.querySelector('.op-udown-note').textContent = `descargado: ${downloadUniverse(deck(), engine)}`;
+      row.querySelector('.op-udown-note').textContent = `descargado: ${downloadUniverse(deck(), E)}`;
     });
     return { row, i, imp, sav, code: row.querySelector('.op-ucode') };
   });
@@ -202,7 +204,7 @@ export function optionsPanel(root, engine, onClose) {
     for (const U of unis) {
       U.row.hidden = U.i === 1 && engine.mode !== 'dj';
       const d = engine.decks[U.i];
-      const c = d ? currentCode(d, engine) : '';
+      const c = d ? currentCode(d, engine.keyView(U.i)) : '';
       if (U.code.textContent !== c) U.code.textContent = c;
       U.imp.frame();
       U.sav.frame();

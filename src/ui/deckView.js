@@ -15,6 +15,7 @@ import { multiverseHTML, bindMultiverse, currentCode } from './universeIO.js';
 import { SCALES } from '../music/emotion.js';
 import { NOTES } from '../music/universe.js';
 import { describeSpace } from '../music/space.js';
+import { describeAtmos } from '../music/atmos.js';
 
 const LABEL = { kick: 'KICK', bass: 'BASS', hat: 'HAT', perc: 'PERC', clap: 'CLAP', ohat: 'OPEN', foley: 'FOLEY', chord: 'CHORD', pad: 'PAD' };
 // las dos perillas del KIT (bajo HAT, PERC y FOLEY)
@@ -843,7 +844,8 @@ MÚSICA = notas y ritmos del bajo, ritmos de la batería, alturas de la percusi�
         codeBtn.textContent = currentCode(deck, deck.engine, panel);
         styNow.style.left = `${deck.sty.t * 100}%`;
         styNow.hidden = !(deck.sty.t > 0);
-        const now = (deck.sty.t > 0 ? `${styleName(deck.sty)}: ${deck.sty.archDesc}` : 'NORMAL (lo de siempre)') + `\nespacio: ${describeSpace(deck.space)}`;
+        const now = (deck.sty.t > 0 ? `${styleName(deck.sty)}: ${deck.sty.archDesc}` : 'NORMAL (lo de siempre)') + `\nespacio: ${describeSpace(deck.space)}`
+          + (deck.sty.atmos ? `\ncapas: ${describeAtmos(deck.sty.atmos)}` : '');
         const next = Math.round(deck.styleNext * 100);
         const tip = `ESTILO del próximo NUEVO UNIVERSO: NORMAL ← → ${styLabel} (${next ? `${next} %` : 'NORMAL'}) · solo cuenta al generar · doble clic = NORMAL`;
         styEl.title = `${tip}\nel que suena (la marca): ${now}`;

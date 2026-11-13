@@ -32,6 +32,7 @@ import { makeSpace } from './space.js';
 import { makePalette } from './transitions.js';
 import { genState, rollCharacter, seedCode, styleDataOf } from './universe.js';
 import { INSTRUMENTS, MIX_CHANNELS } from './arrangement.js';
+import { ATMOS_CH } from './atmos.js';
 
 const clone = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
 const gainDb = (g) => (g > 0 ? 20 * Math.log10(g) : -120);
@@ -41,7 +42,8 @@ const dbToGain = (d) => (d <= -119 ? 0 : Math.pow(10, d / 20));
 // la mezcla con la que nace (la pone el motor: depende del preset del MIXER)
 // (`style` null = NORMAL)
 export function birthUniverse(seed, style, mixOf) {
-  const sty = style ? rollStyle(seed, style.t, style.name, style.purity) : rollStyle(seed, 0);
+  // (con la marca de CRUJIDO y RUIDO si la lleva: el PARECIDO de uno que los tiene, también)
+  const sty = style ? rollStyle(seed, style.t, style.name, style.purity, { atmos: style.atmos }) : rollStyle(seed, 0);
   const ch = rollCharacter(seed, sty);
   const { sty: _s, ...fxPal } = makePalette(seed, sty);
   const u = {
@@ -222,6 +224,17 @@ export function blendUniverse(A, B, keepS, keepMusic, r) {
     for (const f of ['kick.skip', 'kick.pickup', 'perc.back']) if (SA.k[f] !== undefined) S.k[f] = mixNum(keepM, SA.k[f], SB.k[f]);
     if (!keep(keepM)) S.k['loop.bars'] = SB.k['loop.bars'];
     if (keepM < 0.5) Object.assign(S, { arch: SB.arch, archLabel: SB.archLabel, archDesc: SB.archDesc }); // el nombre: el que más pesa
+    // CRUJIDO y RUIDO (2026-11-13): son SONIDO; todas sus capas, de uno o de otro (cada capa va con su
+    // canal, sus envíos y su entrar y salir: no se mezclan sueltas). Al final y solo si el universo los
+    // lleva: el PARECIDO de uno de antes tira los mismos dados que antes
+    if (SA.atmos && SB.atmos) {
+      const src = keep(keepS) ? A : B;
+      S.atmos = clone(src.styleData.atmos);
+      for (const fx of ['dly', 'rev', 'bg']) for (const ch of ATMOS_CH) {
+        delete U.space[fx].send[ch];
+        if (src.space[fx].send[ch] !== undefined) U.space[fx].send[ch] = src.space[fx].send[ch];
+      }
+    }
 
 }
   U.styleData = S;

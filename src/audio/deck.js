@@ -11,6 +11,7 @@ import { Arrangement, INSTRUMENTS, mixOf } from '../music/arrangement.js';
 import { classify, makePalette, PHRASE } from '../music/transitions.js';
 import { TransitionFx } from './transitionFx.js';
 import { SpaceFx } from './spaceFx.js';
+import { Atmos, AtmosRenderer } from './atmosFx.js';
 import { blockRate } from './quality.js';
 import { shapeComplexity, shareDensity, randomComplexity, randomOsc, GROUPS, newOsc, oscAt, layerCells, applyGesture, compileOsc } from '../music/complexity.js';
 import { newKit, randomKit } from '../music/kit.js';
@@ -113,8 +114,21 @@ export class Deck {
     this.spaceRng = new Rng((seed ^ 0x510e527f) >>> 0);
   }
 
-  // un canal del MIXER: un instrumento o un retorno (DELAY, REVERB)
-  mixChannel(k) { return this.ch?.[k] ?? this.spaceFx?.ret[k]; }
+  // un canal del MIXER: un instrumento, CRUJIDO o RUIDO (si el universo los tiene) o un retorno (DELAY, REVERB)
+  mixChannel(k) { return this.ch?.[k] ?? this.atmos?.ch[k] ?? this.spaceFx?.ret[k]; }
+
+  // CRUJIDO y RUIDO (music/atmos.js, atmosFx.js): el audio se crea la primera vez que entra un universo
+  // que los lleva; uno que no los lleva los deja en silencio (y uno de antes no crea ni un nodo)
+  syncAtmos(t) {
+    const A = this.sty?.atmos ?? null;
+    if (!this.ctx || (!A && !this.atmos)) return;
+    this.atmos ||= new Atmos(this);
+    this.atmos.set(A, t);
+  }
+  // que lo del universo que viene esté grabado cuando entre
+  prefetchAtmos(sty) {
+    if (this.ctx && sty?.atmos) (this.engine.atmosRenderer ||= new AtmosRenderer()).prefetch(sty.atmos);
+  }
 
   // MOTORES (src/motores/LEEME.md): el BANCO DE SONIDOS es el de este motor (sus hats y percs se
   // graban con su drumsynth); `this.motor` lo pone el Engine al crear el universo
@@ -207,6 +221,10 @@ export class Deck {
     this.spaceFx.set(this.space, ctx.currentTime, this.engine.stepDur, true);
     this.setBus(this.sty ?? NORMAL, ctx.currentTime, true); // (audio rehecho: el bus como estaba)
 
+    // CRUJIDO y RUIDO: otra vez, si el universo los lleva (audio rehecho: sus camas siguen grabadas)
+    this.atmos = null;
+    this.syncAtmos(ctx.currentTime);
+
     // hats y percs: ranuras nuevas sobre los canales nuevos (las grabaciones siguen en el banco)
     this.drums.init(ctx);
     this.refreshSounds();
@@ -263,7 +281,9 @@ export class Deck {
     this.pendingSeed = newSeed();
     this.pendingGlobals = null;
     const q = (x) => Math.round(x * 1000) / 1000;
-    this.pendingSty = rollStyle(this.pendingSeed, q(this.styleNext), undefined, q(this.purityNext));
+    // (con lo NUEVO del motor que aún no tenían los universos de antes: CRUJIDO y RUIDO, ver Engine.novelties)
+    this.pendingSty = rollStyle(this.pendingSeed, q(this.styleNext), undefined, q(this.purityNext), { atmos: this.engine.novelties?.atmos });
+    this.prefetchAtmos(this.pendingSty);
     this.pendingSnap = null;
     this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
     this.pendingSpace = makeSpace(this.pendingSeed, this.pendingSty);
@@ -281,8 +301,9 @@ export class Deck {
     this.purityNext = S?.purity ?? 1;
     this.waitStyle = `${this.styleNext}|${this.purityNext}`; // (que GENERAR no lo vuelva a sortear)
     this.pendingSeed = u.seed >>> 0;
-    this.pendingSty = rollStyle(this.pendingSeed, this.styleNext, S?.name, this.purityNext);
+    this.pendingSty = rollStyle(this.pendingSeed, this.styleNext, S?.name, this.purityNext, { atmos: S?.atmos }); // (CRUJIDO y RUIDO, si su código o su archivo los trae)
     applyStyleData(this.pendingSty, u.styleData); // (un PARECIDO: lo de su estilo que no sale de la semilla)
+    this.prefetchAtmos(this.pendingSty);
     this.pendingGen = makeGenerators(this.pendingSeed, this.pendingSty);
     if (u.gen) applyGenState(this.pendingGen, u.gen);
     this.pendingSpace = u.space ? JSON.parse(JSON.stringify(u.space)) : makeSpace(this.pendingSeed, this.pendingSty);
@@ -367,6 +388,7 @@ export class Deck {
     // va la traía de un estilo (ver Engine.styleMix)
     this.engine.styleMix(this, this.sty, t0);
     this.setBus(this.sty, t0);
+    this.syncAtmos(t0); // CRUJIDO y RUIDO: los suyos, o silencio
     this.tune = newTune(); // (las perillas de AFINAR, en lo de por defecto; un archivo trae las suyas)
     if (snap) this.applySnap(snap, t0); // UNIVERSO GUARDADO: lo mutado y lo tocado, encima
   }
@@ -620,6 +642,7 @@ export class Deck {
       this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], now);
     }
     this.updateSound(now);
+    this.atmos?.update(now); // CRUJIDO y RUIDO siguen a la estructura; el dron, a la tónica
     this.spaceFx?.tempo(this.engine.stepDur, now); // el delay sigue al BPM
   }
 
@@ -857,6 +880,10 @@ export class Deck {
       for (const k of INSTRUMENTS) this.ch[k].applyTransition(this.arr.state[k].progress, this.fxPal.how[k], gridT, 0.006);
     }
     if (s === 0 || !this.bars.kick) this.prepareBar(b, n - s, gridT);
+    if (this.atmos) { // CRUJIDO y RUIDO: suenan mientras se toca; entra y sale y los pájaros, al empezar cada compás
+      this.atmos.play(gridT);
+      if (s === 0) this.atmos.bar(gridT, 16 * this.engine.stepDur);
+    }
     // ¿ENTRA EL KICK DE GOLPE? En el paso anterior no sonaba y ahora está entero: un DROP DE
     // GOLPE, un cambio INSTANTÁNEO o un CORTE. Si entra poco a poco
     // (PROGRESIVA) no hay una entrada que marcar
@@ -1124,6 +1151,7 @@ export class Deck {
   // pausa: soltar lo que se sostiene (el pad)
   release(at) {
     this.fx.kill(at);
+    this.atmos?.stop(at);
     if (this.padVoice) this.padVoice.release(at, 1.2);
     this.padVoice = null;
   }

@@ -126,6 +126,16 @@ Canal fijo por instrumento (Channel) -> suma del universo -> mesa DJ -> master
   tras dar prioridad a lo urgente en el banco). Memoria: llega al presupuesto (45 de 48 MB) y
   se recorta sola. ⚠ Sin medir en móvil: grabar allí cuesta varias veces más y el presupuesto
   es 16 MB; si se pierden golpes, primero bajar las variantes o las capas en LIGERA.
+- **CRUJIDO y RUIDO** (2026-11-13, antes TEXTURA y AMBIENTE; `src/audio/atmosFx.js`; solo en universos
+  que nacen con ellos): de 1 a 4 capas por universo, cada cama grabada UNA vez en su propio Worker
+  (`atmosWorker.js`) como bucle estéreo a 32 kHz: 16,4 s (~4 MB); lluvia, viento y ciudad, 32,8 s (~8 MB;
+  en móvil, 16,4 s). Grabar cuesta de 0,1 a 3 s por capa en el PC de desarrollo (Node; lo peor, la
+  lluvia en un charco y el fuego de 4 fogones) y hasta ~6 s un universo de 4 capas: mientras, no suenan
+  y entran con un fundido. Se guardan las 8 últimas camas (≤ ~64 MB en lo peor) y 60 cantos. Al sonar,
+  un BufferSource por cama, 4 osciladores + 1 filtro el dron y 3 nodos por canto de pájaro (uno cada
+  6–25 s). Medido en la app (2026-11-12, UN UNIVERSO, cinco NUEVO UNIVERSO seguidos cada 4 s
+  mientras se grababan): 0 CORTES, 0 TARDE, 0 golpes perdidos. ⚠ Sin medir en DJ con los dos
+  universos ni en móvil (allí grabar tardará varias veces más: si molesta, camas más cortas en LIGERA).
 - **Latencia de un gesto** = margen de programación + búfer + salida. Hoy en PC:
   120 ms + 11 ms + ~48 ms ≈ **180 ms** como mucho. No se nota porque casi todo se cuantiza
   a la negra, el compás o la frase. Importará con MIDI y con CORTE en YA.

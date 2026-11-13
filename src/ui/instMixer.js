@@ -49,10 +49,18 @@ LABEL.fx = 'FX';
 LABEL.dly = 'DELAY';
 LABEL.rev = 'REVERB';
 LABEL.bg = 'FONDO';
+LABEL.cr1 = 'CRUJIDO 1';
+LABEL.cr2 = 'CRUJIDO 2';
+LABEL.ru1 = 'RUIDO 1';
+LABEL.ru2 = 'RUIDO 2';
 const TIP = {
   fx: 'EFECTOS DE TRANSICIÓN de cada universo: riser, redoble, golpes, platos, reverse, caída · nunca vinculados · también en la columna TRANSICIÓN de cada universo',
   dly: 'DELAY: los ecos del universo (cada universo nace con los suyos: división, repeticiones, a quién) · 0 dB = como los generó',
   rev: 'REVERB: la sala del universo (cada universo nace con la suya: largo, color, a quién) · 0 dB = como la generó',
+  cr1: 'CRUJIDO 1: lo crujiente, a sucesos sueltos (vinilo, lluvia, fuego o pájaros) · sube en BREAK y DRIFT · solo en los universos ROMINIMAL que nacen con él (código «-AT2»)',
+  cr2: 'CRUJIDO 2: otro sonido crujiente (si lo hay; si es la 3.ª o 4.ª capa, entra y sale cada 16–32 compases)',
+  ru1: 'RUIDO 1: lo continuo (cinta, el aire de una sala, viento, ciudad lejana o un dron en la escala) · casi constante, baja un poco con todo dentro · solo en los universos ROMINIMAL que nacen con él (código «-AT2»)',
+  ru2: 'RUIDO 2: otro sonido continuo (si lo hay; si es la 3.ª o 4.ª capa, entra y sale cada 16–32 compases)',
   bg: 'FONDO: la reverb de fondo, el colchón (cola larga, oscura y comprimida; sobre todo foley, transiciones y pad) · cada universo nace con la suya · 0 dB = como la generó',
 };
 

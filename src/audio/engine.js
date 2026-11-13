@@ -10,6 +10,7 @@ import { Strip, easyGains, easyX, bandGain, bandValue, faderGain } from './strip
 import { LowRoles } from './lowRoles.js';
 import { SCALES } from '../music/emotion.js';
 import { INSTRUMENTS, MIX_CHANNELS } from '../music/arrangement.js';
+import { ATMOS_V } from '../music/atmos.js';
 import { glide, ceiling } from './dsp.js';
 import { PROFILE } from '../core/profile.js';
 import { QUALITY_MODES } from './quality.js';
@@ -82,6 +83,11 @@ export class Engine {
     this.late = 0;      // TARDE: pasos programados tarde (hilo principal atascado)
     this.rec = new Recorder(); // GRABAR (ver recorder.js)
     this.generated = false;    // ¿se ha pulsado GENERAR alguna vez? (hasta entonces no suena nada)
+    // LO NUEVO DEL MOTOR (src/motores/LEEME.md): lo que llevan los universos que nacen AHORA y no tenían
+    // los de antes. Cada universo guarda su marca (código «-AT1», `style.atmos` en el archivo): uno de
+    // antes suena como nació. La huella lo apaga (nacen como antes: herramientas/huella.mjs)
+    //   atmos  CRUJIDO y RUIDO (2026-11-13; antes TEXTURA y AMBIENTE, music/atmos.js), solo con ESTILO
+    this.novelties = { atmos: ATMOS_V };
     // OPCIONES → AUTO-ARREGLOS: trucos de producción que el programa hace solo, en vivo.
     // kickGap = HUECO ANTES DEL KICK (ver audio/drop.js, igual en todos los motores); kickDrop = CAÍDA DEL KICK AL FINAL DE
     // FRASE (ver Deck.kickDrop); bassOut, lowsDip y breakDip, ver Deck.autoArrange.

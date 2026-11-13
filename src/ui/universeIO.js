@@ -659,7 +659,8 @@ export function downloadUniverse(deck, engine) {
 // el código del universo que suena (con su tempo y escala, si `withGlobal`)
 export const currentCode = (deck, engine, withGlobal = true) => seedCode({
   seed: deck.seed,
-  style: deck.sty.t > 0 ? { name: deck.sty.name, t: deck.sty.t, purity: deck.sty.purity ?? 1 } : null,
+  // (con la marca de CRUJIDO y RUIDO, «-AT2», si nació con ellos: sin ella, el código los perdería)
+  style: deck.sty.t > 0 ? { name: deck.sty.name, t: deck.sty.t, purity: deck.sty.purity ?? 1, atmos: deck.sty.atmos?.v } : null,
   global: withGlobal ? nowGlobal(engine) : null,
   motor: deck.motor, // (MOTORES: «-ALPHA»; ver src/motores/LEEME.md)
 }) + (deck.similarOf ? ' · PARECIDO' : '');

@@ -53,6 +53,25 @@ cuánto), `SINFX=1` (los viajes sin efectos de transición: solo música y sonid
 (cuando haya más de uno: además, cambios de motor mientras suena; no es referencia, comprueba que no
 falla nada). También sirve para reorganizar código que no debe cambiar el sonido: huella antes y después.
 
+La huella hace nacer los NUEVO UNIVERSO de sus casos **como antes** de lo nuevo del motor
+(`E.novelties = {}`: sin CRUJIDO ni RUIDO, ver `Engine.novelties`). Lo nuevo se mide aparte
+(`atmos.mjs`); así la huella sigue comparando lo de siempre.
+
+## Crujido y ruido (`atmos.mjs`)
+
+```bash
+node atmos.mjs ../src
+```
+
+Graba las camas y los cantos como el Worker y los mide **contra los datos de los que salen**: el
+vinilo (clics por segundo y que entre clic y clic haya silencio: sin siseo), el fuego (chasquidos por
+segundo y dónde está su energía), la pendiente de la cinta contra su ecualización, la sala
+contra su curva NC, la ciudad contra lo previsto (tráfico sin la A, aire ISO 9613-1, edificios), el
+reparto de la lluvia por superficie, el ritmo de la velocidad del viento, y en 40 universos ROMINIMAL:
+cuántas capas y cuáles (y cuáles entran y salen), RMS y pico de cada una, si el bucle tiene costura y
+cuánto tarda en grabarse. `--wav <carpeta>` escribe además un .wav por capa y por pájaro para escucharlos fuera de la
+app. Tarda ~1 min.
+
 ## Densidad y repetición (`measure.mjs`)
 
 ```bash

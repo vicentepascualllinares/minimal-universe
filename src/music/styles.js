@@ -28,6 +28,7 @@
 import { Rng, clamp, lerp } from '../core/rng.js';
 import { mapEmotion } from './emotion.js';
 import { INSTRUMENTS, RETURNS } from './arrangement.js';
+import { rollAtmos, ATMOS_CH } from './atmos.js';
 
 // sin estilo: todas las tiradas, las de siempre
 export const NORMAL = Object.freeze({ t: 0, k: Object.freeze({}), name: null, mutes: [], mix: null, color: null });
@@ -525,7 +526,10 @@ export const ROMINIMAL = {
   // (2026-11-11, al escucharlo: percusión −11 → −22, por detrás, y el open −17 → −10)
   // (2026-11-11, después: LA MEZCLA DEL USUARIO, la que dejó a oído en el navegador con un universo
   // ROMINIMAL a tope (DUB). Es también el preset ROMINIMAL del MIXER (mix.js), el de por defecto)
-  mix: { kick: -4.4, bass: -9.2, hat: -13.9, perc: -23.4, clap: -14, ohat: -10.1, foley: -14.1, chord: -22.2, pad: -54.7, dly: 0, rev: 0, bg: -6.4, fx: -11.8 },
+  // CRUJIDO 1 y 2, RUIDO 1 y 2 (music/atmos.js), al nacer: muy abajo, como el pad («se nota si falta, no se
+  // oye»). 2026-11-13, el usuario al escucharlo: −46 dB (y vinilo, cinta y sala, 18 dB más abajo dentro
+  // de su canal: −64), «para nada son protagonistas». Cada capa sale con su RMS en −24 dBFS como mucho
+  mix: { kick: -4.4, bass: -9.2, hat: -13.9, perc: -23.4, clap: -14, ohat: -10.1, foley: -14.1, chord: -22.2, pad: -54.7, cr1: -46, cr2: -46, ru1: -46, ru2: -46, dly: 0, rev: 0, bg: -6.4, fx: -11.8 },
 
   // ENVÍOS: el recorte del usuario (dB) sobre lo que sortea cada universo, por efecto e instrumento.
   // Lo ajustó a oído con las perillas de ENVÍOS del MIXER (2026-11-11, mismo universo DUB). Se
@@ -663,7 +667,9 @@ export const DEFAULT_STYLE = 'rominimal';
 // mismas decisiones pesan más): moverlo un poco no cambia de arquetipo ni de MUTE de golpe
 // `purity` (0..1, PUREZA): cuánto respeta el universo su estilo (ver «PUREZA», arriba). Con 1, sin
 // aflojar nada (las mismas tiradas que antes de existir la perilla)
-export function rollStyle(seed, t, name = DEFAULT_STYLE, purity = 1) {
+// `opts.atmos` (2026-11-12): nace con CRUJIDO y RUIDO (music/atmos.js): la marca de su versión (2), la
+// de NUEVO UNIVERSO (Engine.novelties) o la que trae un código o un archivo. Sin ella, como antes
+export function rollStyle(seed, t, name = DEFAULT_STYLE, purity = 1, opts = {}) {
   t = clamp(t);
   const P = STYLES[name];
   if (!(t > 0) || !P) return NORMAL;
@@ -694,6 +700,9 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE, purity = 1) {
   for (const k of [...INSTRUMENTS, 'fx']) mix[k] = Math.min(0, P.mix[k] + (A.mix?.[k] ?? 0) + (BM[k] ?? 0) + (CM[k] ?? 0) + r.float(-1, 1) * mixVar);
   // los RETORNOS (DELAY, REVERB) sin tirada: cuánto efecto lleva ya está en sus envíos (space.js)
   for (const k of RETURNS) mix[k] = Math.min(0, (P.mix[k] ?? 0) + (A.mix?.[k] ?? 0));
+  // CRUJIDO y RUIDO: sin tirada (los dados de siempre no se mueven); un universo que no los lleva
+  // tampoco tiene sus canales: el fader solo queda puesto
+  for (const k of ATMOS_CH) mix[k] = P.mix[k] ?? -46;
   // GENERACIÓN: lo del estilo, lo que sustituye el arquetipo, los modos y lo que multiplica
   const k = { ...P.k, ...(A.k || {}), ...P.bassModes[bassMode].k, ...P.chordModes[chordMode].k };
   for (const [key, m] of Object.entries(A.mul || {})) {
@@ -730,7 +739,10 @@ export function rollStyle(seed, t, name = DEFAULT_STYLE, purity = 1) {
     sends[fx] = {};
     for (const [kk, d] of Object.entries(ks)) sends[fx][kk] = 1 + ((d === -Infinity ? 0 : Math.pow(10, d / 20)) - 1) * t;
   }
-  return { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a, sends, purity: 1 - Lq.loose, loose: Lq.loose, lseed: Lq.lseed };
+  const sty = { name, label: P.label, t, arch, archLabel: A.label, archDesc: A.desc, bassMode, chordMode, mutes, mix, k, color, v: P.v, a: P.a, sends, purity: 1 - Lq.loose, loose: Lq.loose, lseed: Lq.lseed };
+  // CRUJIDO y RUIDO, con su propio dado (al final: no mueven nada de lo de arriba)
+  sty.atmos = opts.atmos ? rollAtmos(seed, sty) : null;
+  return sty;
 }
 
 // GROOVE de un universo (ver `groove` en ROMINIMAL): por instrumento, su swing de más (`sw`) y su

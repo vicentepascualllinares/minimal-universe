@@ -25,6 +25,15 @@ percusión nuevo, en silencio en los universos generados cuando no existía; un 
 propio azar para no mover los números del resto). Comprobación, después de cada cambio así (abajo):
 la huella de ALPHA tiene que seguir dando «IDÉNTICO».
 
+**Lo nuevo que llevan solo los universos nuevos** (`Engine.novelties`). Cuando lo nuevo debe sonar en
+los universos que nacen desde hoy pero no en los de antes, NUEVO UNIVERSO lo pone y el universo lo
+**apunta** (una marca en su código de semilla y en su archivo); un código o un archivo sin la marca
+suena como antes. La primera: **CRUJIDO y RUIDO** (2026-11-12 como TEXTURA y AMBIENTE, rehecha el 13;
+`music/atmos.js`), marca «-AT2» (`style.atmos = 2`; «-AT1», la de un día, se lee igual). Sus canales ni se crean en un universo sin marca. La huella hace nacer sus NUEVO
+UNIVERSO sin lo nuevo (`E.novelties = {}`), así sigue comparando lo de siempre; lo nuevo se mide aparte
+(`herramientas/atmos.mjs`). Muchas marcas = parche sobre parche: entonces, mejor saltar a BETA
+(ROMINIMAL.md §7, «Qué cabe en ALPHA y qué pide BETA»).
+
 **Cuándo habrá otro motor.** Cuando lo acumulado (o una feature: capas, ADN, cambios de patrones)
 **niegue algo que existía** y los universos guardados ya no puedan sonar igual. Entonces, o se
 unifica otra vez (si lo que cambia se acepta para todos, como el 2026-11-12) o se **salta a un motor

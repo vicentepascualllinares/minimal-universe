@@ -226,7 +226,9 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .im-preset.on { color: var(--fg); border-color: var(--dim); }
 .im-touched { color: var(--faint); font-size: 8px; letter-spacing: 0.16em; visibility: hidden; }
 .im-touched.on { visibility: visible; }
-.im-name { color: var(--fg); font-size: 9px; letter-spacing: 0.16em; }
+.im-name { color: var(--fg); font-size: 9px; letter-spacing: 0.16em; white-space: nowrap; }
+/* CRUJIDO 1 y 2: el nombre más largo del MIXER, en una línea (si no, su fader queda más corto) */
+.instmix .im-ch[data-k^="cr"] .im-name { font-size: 9px; letter-spacing: 0.04em; margin-right: 0; }
 .im-zero { position: absolute; left: 50%; top: 25%; width: 20px; height: 1px; background: var(--dim); transform: translateX(-50%); }
 .im-foot { display: flex; gap: 28px; }
 .im-foot button { font-size: 10px; letter-spacing: 0.14em; padding: 6px 0; }

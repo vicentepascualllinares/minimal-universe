@@ -535,6 +535,50 @@ el volumen de cada retorno en el MIXER (DELAY, REVERB y FONDO, con MUTE y SOLO).
   En CALIDAD LIGERA las salas duran como mucho 1,2 s.
 - **Falta escucharlo** (el oído decide los rangos y el nivel de los retornos).
 
+## Crujido y ruido
+
+(2026-11-12 como TEXTURA y AMBIENTE; rehecho el 2026-11-13 al escucharlo, **falta escucharlo otra vez**)
+Las capas de fondo, **solo en los universos con ESTILO (ROMINIMAL) que nacen desde entonces**. Que el
+silencio entre golpes también suene a algo. «Para nada son protagonistas»: nacen muy abajo en el MIXER.
+
+- **Cuatro canales**, cada uno con **una capa**:
+  - **CRUJIDO 1 y 2**, lo crujiente, a sucesos sueltos: **VINILO** (solo crujido, sin siseo: entre clic
+    y clic, silencio; a ráfagas, de unos 3 clics por segundo en un disco limpio a 90 en uno muy gastado,
+    y rayas: un golpe sordo en cada vuelta del disco, 33⅓ o 45), **LLUVIA** (en hojas, en un tejado,
+    en tierra o en un charco con burbujas que suben), **FUEGO** (chasquidos, siseo a golpes y el
+    temblor grave de la llama) y **PÁJAROS** (una a tres especies, cada una con su canto, de vez en
+    cuando, lejos, cada una en su sitio del panorama).
+  - **RUIDO 1 y 2**, lo continuo: **CINTA** (el soplido de un casete: plano en los medios y subiendo
+    6 dB por octava en los agudos), **SALA** (el aire de una habitación tranquila, con la forma de una
+    curva NC), **VIENTO** (racheado, con aullido de rendija y hojas), **CIUDAD** lejana (el rumor del
+    tráfico a medio kilómetro o a dos: sin agudos) y un **DRON** (dos notas de la escala del universo
+    que laten despacio; sigue a la tónica y al modo).
+- **Cuántas capas** (investigado: ver ROMINIMAL.md §7): de **1 a 4** por universo, como mucho dos de cada
+  tipo; lo normal, 1 o 2 a la vez (en 40 universos: 7 con una, 20 con dos, 7 con tres, 6 con cuatro).
+  Las dos primeras suenan siempre; la **3.ª y la 4.ª entran y salen** solas, 16, 24 o 32 compases dentro
+  y otros tantos fuera, con un fundido de unos 4 compases. Cuáles salen depende del arquetipo (el vinilo,
+  lo más común; BOSQUE pide pájaros y lluvia; DUB, vinilo, cinta y dron; ESQUELETO, pocas capas).
+- **Con la estructura**: lo crujiente sube en BREAK y DRIFT y casi se va con todo dentro; el ruido,
+  casi constante (como mucho 6 dB menos con todo dentro). Viaja con las partes.
+- **MIXER**: cuatro columnas, **CRUJIDO 1**, **CRUJIDO 2**, **RUIDO 1** y **RUIDO 2**, a **−46 dB** al
+  nacer; dentro, vinilo, cinta y sala van 18 dB más abajo (−64 en total). Con medidor, MUTE, SOLO y sus
+  perillas de envío: los sonidos de lugar (lluvia, fuego, pájaros, viento, ciudad, dron) mandan a la
+  REVERB y sobre todo al FONDO; vinilo, cinta y sala, secos.
+- **Los universos de antes no cambian**: el código de semilla de uno que los lleva termina en
+  «**-AT2**» (`968782145-RO100-AT2-124-F#EOL-ALPHA`); sin esa marca, el universo suena exactamente
+  igual que siempre y no se crean ni sus canales. («-AT1», la primera versión, duró un día sin ningún
+  universo guardado: se lee y suena como esta.) Un PARECIDO de uno que los lleva, también: todas sus
+  capas de uno o del otro. Al pasar el ratón por el fader de ESTILO: «capas: CRUJIDO: VINILO + LLUVIA ·
+  RUIDO: CINTA (entra y sale)».
+- **Cómo está hecho**: sin samples, todo sintetizado con los números de la investigación (crujido y
+  rayas de vinilo de la tesis de Aalto y de Moliner y Välimäki; lluvia, viento y fuego de Farnell;
+  burbujas de van den Doel; curvas NC; tráfico EN 1793-3 y absorción del aire ISO 9613-1; cantos de
+  2–7 kHz; fuentes en `src/audio/atmosSynth.js`). Cada cama se graba una vez, en un Worker (de 0,1 a 3 s
+  cada una: entran con un fundido cuando están), como un bucle **sin costura** de 16 s (lluvia, viento
+  y ciudad, 33 s; hechos en frecuencia, periódicos por construcción; el del vinilo dura un número entero
+  de vueltas). Los pájaros, canto a canto; el dron, en vivo. Qué decide cada universo:
+  `src/music/atmos.js`; el audio: `src/audio/atmosFx.js`. Medido contra los datos: `herramientas/atmos.mjs`.
+
 ## Color de cada universo
 
 Ya no hay pad de EMOCIÓN. Cada universo sale con su propio color de sonido (más oscuro o

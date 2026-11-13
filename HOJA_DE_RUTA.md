@@ -12,10 +12,21 @@ después, el resto del plan: movimiento lento (automatización), sonido, arreglo
 [ROMINIMAL.md](ROMINIMAL.md) §7 «Plan acordado al escucharlo»; herramientas para medir y comprobar
 que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
 
+**Orden desde 2026-11-12:** primero todo lo que **cabe en ALPHA** sin cambiar cómo suenan los
+universos que ya existen, empezando por **texturas y ambiente** (sesión 1, hecho el mismo día: falta
+escucharlo); lo siguiente de ALPHA, el **movimiento lento**; lo que pide un motor nuevo
+(BETA) se junta para un solo salto. El reparto, en [ROMINIMAL.md](ROMINIMAL.md) §7 «Qué cabe en ALPHA
+y qué pide BETA».
+
 ## Sesiones pendientes
 
 1. **Texturas**: capas de fondo, ruido con vida y movimiento lento. Que el silencio entre
    golpes también suene a algo.
+   - **Empezada 2026-11-12, rehecha 2026-11-13 (falta escucharla)**: cuatro canales, **CRUJIDO 1 y 2**
+     (vinilo, lluvia, fuego, pájaros) y **RUIDO 1 y 2** (cinta, sala, viento, ciudad, dron), de 1 a 4
+     capas por universo (lo normal 1–2; la 3.ª y la 4.ª entran y salen), solo en los ROMINIMAL que nacen
+     con la marca «-AT2»; los de antes, idénticos. Detalle en ROMINIMAL.md §7 «CRUJIDO y RUIDO». Queda: a
+     oído, más sonidos de cada tipo, susurros (sesión 19) y field recordings de verdad (sesión 6).
    - **ROMINIMAL lo pide** (ROMINIMAL.md §7, 2026-11-10): crujido de vinilo y pops («three-dimensional
      quality»), ruido de sala, field recordings (pájaros, lluvia, ciudad), drones, susurros. Cuando
      existan, entran en el perfil ROMINIMAL de `styles.js` (cuánto, en qué arquetipo: BOSQUE y
@@ -305,7 +316,8 @@ que NORMAL no cambia, en [herramientas/LEEME.md](herramientas/LEEME.md).
    `node huella.mjs ../src --comprobar referencias/huella-alpha.json` (desde `herramientas/`) que lo de
    antes suena IDÉNTICO. Cuando una feature niegue algo que existía (capas, ADN, cambios de patrones),
    decidir con el usuario: unificar otra vez o saltar a un motor nuevo con otro nombre (BETA),
-   congelando ALPHA antes. Pendiente para entonces: ver el selector de MOTOR en el móvil y, si se
+   congelando ALPHA antes. Lo que ya se sabe que pide BETA: ROMINIMAL.md §7 «Qué cabe en ALPHA y qué
+   pide BETA». Pendiente para entonces: ver el selector de MOTOR en el móvil y, si se
    congelan muchos, cargar los viejos solo cuando hagan falta (~430 KB cada uno). Los cambios de la
    mesa, el máster o LOW son comunes: afectan también a los universos de motores congelados.
 19. **SINTETIZADOR DE VOZ: canal VOZ** (apuntado 2026-11-12, sin empezar). Voz sintetizada de verdad,

@@ -223,6 +223,9 @@ for (const [name, ua, ub] of CASES) {
   H = crypto.createHash('sha256'); lines = 0; bad = 0; now = 0; nid = 0; bid = 0; timers = []; tseq = 0;
   reseedRandom(0x1234567);
   const E = new Engine(motors ? { motors: motors.MOTORS, dev: motors.DEV_MOTOR, start: motorArg ?? undefined } : undefined);
+  // los NUEVO UNIVERSO de los casos nacen como antes (sin lo nuevo del motor: Engine.novelties); lo nuevo
+  // se mide aparte (atmos.mjs). Así la huella sigue comparando lo de siempre
+  E.novelties = {};
   E.mode = 'dj';
   E.rootMidi = Number(process.env.ROOT ?? 30); E.bpm = 124; E.scaleI = 1; // ROOT = tónica (MIDI, 28..39)
   await E.prepare();

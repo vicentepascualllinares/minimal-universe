@@ -3,7 +3,8 @@
 // Dos maneras:
 //   CÓDIGO DE SEMILLA  «968782145-RO100-124-F#EOL-ALPHA» (semilla · estilo y cuánto · «-P60» si la PUREZA
 //                      no es 100 % · TEMPO · TÓNICA y MODO con los que sonaba · MOTOR, ver src/motores/LEEME.md;
-//                      los de antes, con «-M1», «-M2» o sin motor, suenan con ALPHA): vuelve a generar el universo
+//                      los de antes, con «-M1», «-M2» o sin motor, suenan con ALPHA; «-AT2» si nació con CRUJIDO
+//                      y RUIDO, music/atmos.js: sin él, un universo de antes, sin ellos): vuelve a generar el universo
 //                      TAL COMO NACE (estilo, generadores, espacio, transiciones, color, complejidad,
 //                      osciladores, CANT · VAR). Corto: se copia, se apunta, se escribe. Tempo y escala
 //                      son opcionales al escribirlo, y al traerlo solo se aplican si se pide
@@ -47,11 +48,11 @@ export const describeGlobal = (G) => [
   G?.rootMidi !== undefined && SCALES[G.scaleI] ? `${NOTES[G.rootMidi % 12]} ${SCALES[G.scaleI].name.toUpperCase()}` : '',
 ].filter(Boolean).join(' · ');
 
-// `u` = { seed, style: { name, t, purity } | null, global?: { bpm, rootMidi, scaleI } }
+// `u` = { seed, style: { name, t, purity, atmos? } | null, global?: { bpm, rootMidi, scaleI } }
 export function seedCode(u) {
   const S = u.style, G = u.global;
   let c = String(u.seed >>> 0);
-  if (S && S.t > 0 && S.name) c += `-${styleCode(S.name)}${pct(S.t)}${S.purity < 1 ? `-P${pct(S.purity)}` : ''}`;
+  if (S && S.t > 0 && S.name) c += `-${styleCode(S.name)}${pct(S.t)}${S.purity < 1 ? `-P${pct(S.purity)}` : ''}${S.atmos ? `-AT${S.atmos}` : ''}`;
   if (G?.bpm) c += `-${String(G.bpm)}`;
   if (G?.rootMidi !== undefined && SCALES[G.scaleI]) c += `-${NOTES[G.rootMidi % 12]}${modeCode(G.scaleI)}`;
   c += motorCode(u.motor);
@@ -68,16 +69,18 @@ export function parseSeedCode(str) {
   if (!(seed >= 0 && seed <= 0xffffffff)) return null;
   const out = { seed, style: null };
   const G = {};
+  let atmos = 0; // «-AT2»: nació con CRUJIDO y RUIDO (solo con estilo; «-AT1», la versión de un día, igual)
   for (let i = 1; i < toks.length; i++) {
     let t = toks[i];
     // «RO 100» escrito separado: las letras de un estilo y su número
     if (/^[A-Z]{2,}$/.test(t) && /^\d+(\.\d+)?$/.test(toks[i + 1] ?? '') && Object.keys(STYLES).some((n) => styleCode(n) === t)) t += toks[++i];
-    // y la tónica y el modo separados: «F# EOL»; y un motor de antes: «M 1»
+    // y la tónica y el modo separados: «F# EOL»; un motor de antes: «M 1»; y la marca: «AT 1»
     if (/^[A-G]#?$/.test(t) && /^[A-Z]{3,}$/.test(toks[i + 1] ?? '') && !MOTOR_CODES[toks[i + 1]]) t += toks[++i];
-    if (t === 'M' && /^\d{1,3}$/.test(toks[i + 1] ?? '')) t += toks[++i];
+    if ((t === 'M' || t === 'AT') && /^\d{1,3}$/.test(toks[i + 1] ?? '')) t += toks[++i];
     let m;
     if (MOTOR_CODES[t]) out.motor = MOTOR_CODES[t];
     else if (/^M\d{1,3}$/.test(t)) {} // (los de antes de ALPHA, «-M1» y «-M2»: suenan con ALPHA)
+    else if ((m = /^AT(\d{1,2})$/.exec(t))) atmos = Number(m[1]);
     else if ((m = /^P(\d+(?:\.\d+)?)$/.exec(t))) { if (!out.style) return null; out.style.purity = Math.min(1, Number(m[1]) / 100); }
     else if ((m = /^([A-Z]{2,})(\d+(?:\.\d+)?)$/.exec(t))) {
       const name = Object.keys(STYLES).find((n) => styleCode(n) === m[1]);
@@ -92,6 +95,7 @@ export function parseSeedCode(str) {
     } else return null;
   }
   if (G.bpm || G.rootMidi) out.global = G;
+  if (atmos) { if (!out.style) return null; out.style.atmos = atmos; }
   return out;
 }
 
@@ -152,6 +156,7 @@ export function styleDataOf(sty) {
   return {
     arch: sty.arch, archLabel: sty.archLabel, archDesc: sty.archDesc, bassMode: sty.bassMode, chordMode: sty.chordMode,
     color: Array.from(sty.color), mix: clone(sty.mix), mutes: [...sty.mutes],
+    atmos: sty.atmos ? clone(sty.atmos) : undefined, // CRUJIDO y RUIDO (el PARECIDO los mezcla)
     k: {
       'bass.feel': clone(sty.k['bass.feel']), groove: clone(sty.k.groove),
       'kick.skip': sty.k['kick.skip'], 'kick.pickup': sty.k['kick.pickup'], 'loop.bars': sty.k['loop.bars'], 'perc.back': sty.k['perc.back'],
@@ -165,6 +170,7 @@ export function applyStyleData(sty, D) {
   sty.color = Float64Array.from(D.color);
   sty.mix = clone(D.mix);
   sty.mutes = [...D.mutes];
+  if (D.atmos !== undefined) sty.atmos = clone(D.atmos);
   for (const [key, v] of Object.entries(D.k)) if (v !== undefined) sty.k[key] = clone(v);
   return sty;
 }
@@ -174,7 +180,7 @@ export function applyStyleData(sty, D) {
 export function captureUniverse(deck, engine) {
   const i = engine.slotOf(deck);
   const S = deck.sty;
-  const style = S.t > 0 ? { name: S.name, t: S.t, purity: S.purity ?? 1 } : null;
+  const style = S.t > 0 ? { name: S.name, t: S.t, purity: S.purity ?? 1, atmos: S.atmos ? S.atmos.v : undefined } : null;
   const { sty, ...fxPal } = deck.fxPal;
   const u = {
     app: 'MINIMAL UNIVERSE', version: UNIVERSE_VERSION, saved: new Date().toISOString(),

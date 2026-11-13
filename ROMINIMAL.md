@@ -226,6 +226,78 @@ percusión y foley**. Se acordó este orden (lo que más acerca a «suena a disc
 7. **Arreglo horizontal y mezcla / máster** (sesiones 10, 13 y 4): un elemento entra o sale cada
    8–16 compases durante 7–10 minutos; mono por debajo de ~200 Hz, máster de vinilo.
 
+### Qué cabe en ALPHA y qué pide BETA (acordado 2026-11-12)
+
+La pregunta es una sola: **¿cambia cómo suena una semilla o un archivo que ya existe?** (la huella de
+ALPHA, `src/motores/LEEME.md`). Se acordó hacer **primero todo lo que cabe en ALPHA**, empezando por
+**texturas y ambiente**, y juntar lo de BETA en un solo salto cuando haya bastante.
+
+- **En ALPHA (se añade, no quita nada)**: movimiento lento (capa nueva con su propio azar); efectos
+  creativos (LFO al corte, paneo aleatorio, grano o bits en buses, cinta: nacen a cero); **texturas y
+  ambiente**, voz, gancho / samples (canales nuevos, en silencio en los universos de antes); sonidos
+  nuevos **como opción más** (kick rominimal por capas, rim / snap, teclas de verdad, bleeps, 303,
+  sub de seno en capa), mientras el universo de antes siga con lo suyo. Para que lo nuevo venga
+  encendido en los universos nuevos y apagado en los viejos: una **marca en el código de semilla**
+  (como la PUREZA, «-P60»); sin marca, apagado.
+- **No es del motor**: arreglo horizontal y auto-play (si los lleva el intérprete, como los viajes);
+  mezcla y máster (la mesa, común: no rompe motores, pero cambia cómo se oyen **todos** los
+  universos, también los guardados).
+- **Pide BETA (o aceptar que cambien los de siempre)**: lo que cambia lo que los generadores ya hacen
+  por defecto: groove en NORMAL; acentos de velocidad con su propio dibujo en lugar de los de ahora;
+  deslizar el bajo desde la última nota del compás anterior; mutación propia de rominimal;
+  **sustituir** (no añadir) kick, clap o teclas de ROMINIMAL; y **retocar el bajo** cuando se escuche
+  (ya está en ALPHA: cambiaría los ROMINIMAL guardados). Con marcas en la semilla también cabrían en
+  ALPHA, pero muchas marcas son parche sobre parche: entonces, mejor el salto.
+
+### CRUJIDO y RUIDO (2026-11-12 como TEXTURA y AMBIENTE; rehecho 2026-11-13, **falta escucharlo**)
+
+Lo primero de lo que cabe en ALPHA. Al escucharlo (2026-11-13), el usuario pidió: el vinilo **sin
+siseo** (solo crujido), los niveles muy abajo («para nada son protagonistas»: −64 la textura, −46 el
+ambiente) y **otro reparto**: no superficie / lugar, sino **lo crujiente** (sucesos sueltos) y **lo que
+es ruido** (continuo). Y cuántas capas tienen estos géneros.
+
+**Cuántas capas (investigado 2026-11-13).** En minimal no hay una cifra publicada: las guías piden una
+paleta pequeña («unas pocas texturas»), muy bajas y filtradas (crujido a −30 dB con paso alto en 1 kHz
+[IQ Sounds]; «sin desordenar» [Sample Sound]) y cambiar algo cada 8–16 compases en vez de apilar. Un
+tutorial de Computer Music cambia de capa de vinilo según la sección (cama en la intro, crujido en la
+subida, ruido limpio bajo el drop): no suenan todas a la vez. MusicRadar junta tres ruidos (zumbido,
+cinta, crujido). En lo-fi, «3 a 5 capas bastan» [LoFi Weekly]; en cine y videojuego, «2 a 4 por escena»:
+una cama de tono, una o dos de ambiente y detalles [Pixflow]. Del rominimal, ninguna fuente documenta
+grabaciones de campo concretas (solo vinilo troceado y contención [fabric, ROminimal]). Decidido con el
+usuario: **de 1 a 4 capas, lo normal 1 o 2 a la vez**, la 3.ª y la 4.ª entrando y saliendo.
+
+- **CUATRO CANALES, una capa cada uno**: **CRUJIDO 1 y 2** (VINILO, LLUVIA, FUEGO y PÁJAROS: sucesos
+  sueltos, aunque los pájaros sean tonales) y **RUIDO 1 y 2** (CINTA, SALA, VIENTO, CIUDAD y el DRON:
+  continuo, aunque el dron sea tonal). Como mucho dos de cada tipo.
+- Lo de cada sonido: **VINILO** (crujido a ráfagas de ~3 a ~90 clics/s según el desgaste, rayas que dan
+  un golpe sordo en cada vuelta; entre clic y clic, silencio), **LLUVIA** (lavado de 1000–10000 gotas/s,
+  gotas cercanas y, en un charco, burbujas de Minnaert que suben), **FUEGO** (el modelo de Farnell:
+  chasquidos de 0–29 ms con su banda en 1,5–16 kHz, siseo a golpes y «lamido» grave de 30 Hz, de 2 a 4
+  fogones cada uno por su banda: 3–10 chasquidos/s), **PÁJAROS** (1–3 especies, sílabas de 2–7 kHz,
+  cada 6–25 s, lejos), **CINTA** (plana hasta el codo de 120 o 70 µs y +6 dB/octava por encima),
+  **SALA** (curva NC-20…35), **VIENTO** (Farnell: cuerpo, aullido y hojas con ráfagas y turbonadas),
+  **CIUDAD** (tráfico menos lo que se come el aire a 400–2200 m, ISO 9613-1) y **DRON** (dos notas de
+  la escala que laten, por un paso bajo que respira).
+- **Con la estructura** (`ATM_PRESENCE` en `src/music/atmos.js`): lo crujiente mucho (sube en BREAK y
+  DRIFT, casi se va con todo dentro); el ruido poco (como mucho −6 dB). La 3.ª y la 4.ª capa, además,
+  entran y salen cada 16–32 compases («un elemento entra o sale cada 8–16 compases», punto 7 de arriba).
+- **Nivel**: los cuatro faders nacen a −46 dB; vinilo, cinta y sala van 18 dB más abajo dentro de su
+  canal (−64). El fuego, sin oír: −52. Los sonidos de lugar mandan a la REVERB y al FONDO; vinilo,
+  cinta y sala, secos.
+- Cuáles salen, por arquetipo (el vinilo, lo más común; BOSQUE, pájaros y lluvia; DUB, vinilo, cinta y
+  dron; ESQUELETO, pocas capas). Sin samples: todo sintetizado con los números de la investigación
+  (fuentes en `src/audio/atmosSynth.js`); medido contra ellos con `herramientas/atmos.mjs`.
+
+**La marca**: solo los universos ROMINIMAL que nacen desde el 2026-11-12 los llevan (código «-AT2»,
+`style.atmos = 2`; «-AT1», la primera versión, duró un día sin universos guardados y suena como esta).
+Un código o un archivo sin marca suena **idéntico** (huella de ALPHA: IDÉNTICO; NORMAL: idéntico).
+Código en `src/music/atmos.js` (qué), `src/audio/atmosSynth.js` (cómo suena), `src/audio/atmosFx.js`
+(el audio y el Worker).
+
+Queda: **escucharlo** (faders, el fuego, la presencia por parte); más sonidos de cada tipo (crujientes:
+grava, hojas secas, goteo; ruido: mar, río, nevera, tren); susurros (sesión 19, VOZ); y grabaciones de
+campo de verdad (sesión 6).
+
 Lo que queda abierto de lo hecho en estas sesiones:
 - **Escucharlo todo**: loops, foley como ear candy, bus de percusión con sidechain, groove.
 - La **mezcla ROMINIMAL, los envíos (`sendTrim`) y el preset ROMINIMAL los puso el usuario a oído**
@@ -247,7 +319,8 @@ Lo que queda abierto de lo hecho en estas sesiones:
   - **Paneo con LFO aleatorio** y movimiento sutil en todo («a bit of movement here and there» [Caia]).
   - Realimentación, blur, stutter, cinta (wow, tape stop); y en las transiciones de rominimal: tirar
     de reverb/delay al final de frase en vez de risers.
-- **Texturas y ambiente (sesión 1)**: crujido de vinilo y pops («three-dimensional quality»
+- ~~**Texturas y ambiente (sesión 1)**~~ (**hecho 2026-11-12**, arriba: «CRUJIDO y RUIDO»; faltan los
+  susurros y escucharlo): crujido de vinilo y pops («three-dimensional quality»
   [EB 2017]), ruido de sala, field recordings (pájaros, lluvia, ciudad), drones («drone-like»
   [Caia]), susurros. Hoy el aire del pad es lo único parecido.
 - **Voz y efectos de voz (sesiones 5 y 6)**: fragmentos hablados que asoman de fondo [RMC], voces

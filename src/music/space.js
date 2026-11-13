@@ -29,6 +29,7 @@
 
 import { Rng } from '../core/rng.js';
 import { sFloat, sWeighted, sChance } from './styles.js';
+import { WET } from './atmos.js';
 
 // instrumentos que pueden mandar a los efectos (kick y bajo, nunca)
 export const SENDS = ['hat', 'perc', 'clap', 'ohat', 'foley', 'chord', 'pad'];
@@ -105,6 +106,16 @@ export function makeSpace(seed, sty) {
   if (T) {
     for (const [fx, ks] of Object.entries(T)) for (const [k, g] of Object.entries(ks)) if (k in S[fx].send) S[fx].send[k] *= g;
     S.dly.throwAmt *= T.dly?.[focus] ?? 1;
+  }
+  // CRUJIDO y RUIDO (2026-11-13, music/atmos.js): sus envíos salen de su receta, sin tirar nada (un
+  // universo que no los lleva sale idéntico). Los sonidos de lugar (lluvia, fuego, pájaros, viento,
+  // ciudad, dron), a la REVERB y sobre todo al FONDO; vinilo, cinta y sala, secos. Al DELAY, nada
+  const AT = sty.atmos;
+  for (const L of AT?.layers ?? []) {
+    const wet = WET[L.kind] ? 1 : 0;
+    S.dly.send[L.ch] = 0;
+    S.rev.send[L.ch] = wet * amt * AT.send.rev;
+    S.bg.send[L.ch] = wet * amt * AT.send.bg;
   }
   // copia de lo sorteado: las perillas de ENVÍOS del MIXER cambian `send` en vivo; con doble clic
   // vuelven a esto

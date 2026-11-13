@@ -28,12 +28,17 @@
 //   DE GOLPE    (`drop`) aguanta el origen y salta al destino de golpe en el 1
 
 import { clamp } from '../core/rng.js';
+import { atmOf, ATMOS_CH } from './atmos.js';
 
 export const INSTRUMENTS = ['kick', 'bass', 'hat', 'perc', 'clap', 'ohat', 'foley', 'chord', 'pad'];
 // RETORNOS de los efectos del universo (ver music/space.js): no son partes de la estructura, pero
 // en el MIXER van como un canal más (fader, MUTE, SOLO, presets y mezcla del estilo)
 export const RETURNS = ['dly', 'rev', 'bg'];
-export const MIX_CHANNELS = [...INSTRUMENTS, ...RETURNS];
+// CRUJIDO 1 y 2, RUIDO 1 y 2 (2026-11-13, music/atmos.js): canales del MIXER que solo existen en los universos
+// que nacen con ellos. No son instrumentos de la estructura (no cuentan para parecerse a una parte ni
+// para el orden de una transición ESCALONADA): tienen su propia presencia por parte (`atm`, abajo)
+export const ATMOS = ATMOS_CH;
+export const MIX_CHANNELS = [...INSTRUMENTS, ...ATMOS, ...RETURNS];
 
 const ALL_DRUMS = { kick: 1, hat: 1, perc: 1, clap: 1, ohat: 1 };
 const NO_DRUMS = { kick: 0, hat: 0, perc: 0, clap: 0, ohat: 0 };
@@ -73,6 +78,12 @@ export const SCENES = {
     { ...ALL_DRUMS, bass: 1, chord: 0.9, pad: 0.6, foley: 0.3 },        // todo; el foley discreto
     { ...ALL_DRUMS, bass: 1, chord: 1, pad: 0.95, foley: 0.5 }),        // todo, con acordes y pad enteros
 };
+
+// CRUJIDO y RUIDO en cada parte y versión (music/atmos.js, ATM_PRESENCE): viaja con la estructura como un
+// instrumento más (SUAVE, a lo largo del viaje), pero no cuenta en nada de lo de los instrumentos
+for (const [n, S] of Object.entries(SCENES)) S.mixes.forEach((m, v) => (m.atm = atmOf(n, v)));
+// lo que viaja en un cambio de parte: los instrumentos y la presencia de CRUJIDO y RUIDO
+const MOVES = [...INSTRUMENTS, 'atm'];
 
 // mezcla de una parte en una versión (0 = la 1, 1 = la 2)
 export const mixOf = (name, v = 0) => SCENES[name].mixes[v];
@@ -182,7 +193,7 @@ export class Arrangement {
     if (!T) return;
     const to = mixOf(T.name, this.vNext);
     if (!T.drop && T.started) {
-      for (const k of INSTRUMENTS) {
+      for (const k of MOVES) {
         if (Math.abs(to[k] - T.to[k]) < 1e-6) continue;
         const w = T.steps?.[k];
         const x = w ? clamp((T.done - w[0]) / (w[1] - w[0])) : T.done;
@@ -255,7 +266,7 @@ export class Arrangement {
         T.done = clamp((pos - T.startStep) / (T.bars * 16));
       }
       if (!T.drop && T.started) {
-        for (const k of INSTRUMENTS) {
+        for (const k of MOVES) {
           const w = T.steps?.[k]; // ESCALONADA: cada uno en su tramo
           const x = w ? clamp((T.done - w[0]) / (w[1] - w[0])) : T.done;
           this.cur[k] = T.from[k] + (T.to[k] - T.from[k]) * smooth(x);
@@ -267,7 +278,7 @@ export class Arrangement {
     const M = this.morph;
     if (M && M.len && pos !== null && pos >= M.startStep && this.canMorph()) {
       const u = clamp((pos - M.startStep) / M.len);
-      for (const k of INSTRUMENTS) {
+      for (const k of MOVES) {
         const w = M.steps?.[k];
         const x = w ? clamp((u - w[0]) / (w[1] - w[0])) : u;
         this.cur[k] = M.from[k] + (M.to[k] - M.from[k]) * smooth(x);
